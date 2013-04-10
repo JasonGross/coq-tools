@@ -9,7 +9,7 @@ file_imports_fast = {}
 file_imports_slow = {}
 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
-IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Import|Require)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
+IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Import|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
 def get_file(file_name, verbose=True):
     if file_name[-2:] != '.v': file_name += '.v'
@@ -66,7 +66,7 @@ def recursively_get_imports(file_name, verbose=True, fast=False):
     if file_name[-2:] != '.v': file_name += '.v'
     if os.path.exists(file_name):
         imports = get_imports(file_name, verbose=verbose, fast=fast)
-        make_globs(*imports)
+        if not fast: make_globs(*imports)
         imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast) for i in imports]
         return merge_imports(*imports_list) + [file_name[:-2]]
     return [file_name[:-2]]
@@ -75,7 +75,7 @@ def contents_without_imports(file_name, verbose=True):
     if file_name[-2:] != '.v': file_name += '.v'
     contents = get_file(file_name, verbose=verbose)
     if '(*' in ' '.join(IMPORT_LINE_REG.findall(contents)):
-        print('Warning: There are comments in your Require/Import/Export lines.')
+        print('Warning: There are comments in your Require/Import/Export lines in %s.' % file_name)
     return IMPORT_LINE_REG.sub('', contents)
 
 def include_imports(file_name, verbose=True, fast=False):

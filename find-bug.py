@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-import argparse, tempfile, sys
+import argparse, tempfile, sys, os
 from replace_imports import include_imports
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
+parser.add_argument('--directory', '-d', metavar='DIRECTORY', dest='directory', type=str, default='.',
+                    help='The directory in which to execute')
 parser.add_argument('bug_file', metavar='BUGGY_FILE', type=argparse.FileType('r'),
                     help='a .v file which displays the bug')
 parser.add_argument('output_file', metavar='OUT_FILE', type=str,
@@ -27,8 +29,9 @@ def write_to_file(file_name, contents):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    bug_file_name = bug_file.name
-    output_file_name = args.output_file.name
+    os.chdir(args.directory)
+    bug_file_name = args.bug_file.name
+    output_file_name = args.output_file
     temp_file_name = args.temp_file
     verbose = args.verbose
     fast = args.fast
