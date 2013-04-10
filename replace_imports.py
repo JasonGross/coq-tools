@@ -1,5 +1,5 @@
 from __future__ import with_statement
-import os, subprocess, re
+import os, subprocess, re, sys
 
 __all__ = ["include_imports"]
 
@@ -128,3 +128,14 @@ def include_imports(file_name, verbose=True, fast=False):
             remaining_imports.append(import_name)
     rtn = 'Require Import %s.\n%s' % (' '.join(remaining_imports), rtn)
     return rtn
+
+if __name__ == "__main__":
+    # if we're working in python 3.3, we can test this file
+    try:
+        import doctest
+        success = True
+    except ImportError:
+        print('This is not the main file to use.\nOnly run it if you have doctest (python 3.3+) and are testing things.')
+        success = False
+    if success:
+        doctest.testmod()
