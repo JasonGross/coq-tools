@@ -1,11 +1,13 @@
 from __future__ import with_statement
 import os, sys, tempfile, subprocess, re
+from memoize import memoize
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output"]
 
 DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n([^\n]+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
 
+@memoize
 def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """Returns True if the coq output encoded in output has an error
     matching the given regular expression, False otherwise.
@@ -16,6 +18,7 @@ def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING):
     else:
         return False
 
+@memoize
 def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """Returns the line number that the error matching reg_string
     occured on.
@@ -24,6 +27,7 @@ def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """
     return int(re.search(reg_string, output).groups()[1])
 
+@memoize
 def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """Returns the error string of the error matching reg_string.
 
@@ -31,6 +35,7 @@ def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """
     return re.search(reg_string, output).groups()[0]
 
+@memoize
 def make_reg_string(output):
     """Returns a regular expression for matching the particular error
     in output.
@@ -39,6 +44,7 @@ def make_reg_string(output):
     """
     return DEFAULT_ERROR_REG_STRING_GENERIC % get_error_string(output)
 
+@memoize
 def get_coq_output(contents):
     """Returns the coqc output of running through the given
     contents."""
