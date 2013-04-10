@@ -114,8 +114,10 @@ def include_imports(file_name, verbose=True, fast=False):
     Inductive t := a | b.
 
     (*asdf*)
-    >>> for ext in ('.v', '.v.d', '.glob', '.vo'): os.remove(f.name[:-2] + ext)
-    >>> for ext in ('.v', '.v.d', '.glob', '.vo'): os.remove(g.name[:-2] + ext)
+    >>> exts = ('.v', '.v.d', '.glob', '.vo', '.o', '.cmi', '.cmxs', '.native', '.cmx')
+    >>> names = [f.name[:-2] + ext for ext in exts] + [g.name[:-2] + ext for ext in exts]
+    >>> names = [i for i in names if os.path.exists(i)]
+    >>> for name in names: os.remove(name)
     """
     if file_name[-2:] != '.v': file_name += '.v'
     all_imports = recursively_get_imports(file_name, verbose=verbose, fast=fast)
