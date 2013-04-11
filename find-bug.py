@@ -182,11 +182,12 @@ def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_lin
 def try_admit_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num):
     def check_statements(try_statements):
         output = diagnose_error.get_coq_output('\n'.join(try_statements))
-        return diagnose_error.has_error(output, error_reg_string)
+        if diagnose_error.has_error(output, error_reg_string):
+            write_to_file(output_file_name, '\n'.join(try_statements))
 
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
-    statements = admit_definitions(statements, check_statements)
+    statements = admit_definitions(statements, check_statements, temp_file_name)
     output = diagnose_error.get_coq_output('\n'.join(statements))
     new_line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     write_to_file(output_file_name, '\n'.join(statements))
