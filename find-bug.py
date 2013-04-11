@@ -41,11 +41,11 @@ def read_from_file(file_name):
 def get_error_reg_string(output_file_name):
     error_reg_string = ''
     while error_reg_string == '':
-        print('Coqing the file...')
+        print('\nCoqing the file...')
         contents = read_from_file(output_file_name)
         output = diagnose_error.get_coq_output(contents)
         result = ''
-        print("This file produces the following output when Coq'ed:")
+        print("\nThis file produces the following output when Coq'ed:")
         print(output)
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
@@ -56,7 +56,7 @@ def get_error_reg_string(output_file_name):
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            print("I think the error is '%s'." % error_string)
+            print("\nI think the error is '%s'." % error_string)
             print("The corresponding regular expression is %s." % repr(error_reg_string))
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
@@ -64,18 +64,18 @@ def get_error_reg_string(output_file_name):
             if result in ('no', 'n'):
                 error_reg_string = ''
         else:
-            print('The current state of the file does not have a recognizable error.')
+            print('\nThe current state of the file does not have a recognizable error.')
 
         if error_reg_string == '':
-            error_reg_string = raw_input('Please enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
+            error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
 
         while (error_reg_string != ''
                and (not re.search(error_reg_string, output)
                     or len(re.search(error_reg_string, output).groups()) != 2)):
             if not re.search(error_reg_string, output):
-                print('The given regular expression does not match the output.')
+                print('\nThe given regular expression does not match the output.')
             elif len(re.search(error_reg_string, output).groups()) != 2:
-                print('The given regular expression does not have two groups.')
+                print('\nThe given regular expression does not have two groups.')
                 print('It must have one integer group which matches on the line number,')
                 print('and another group which matches on the error string.')
             error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file. ')
@@ -91,10 +91,10 @@ def try_strip_comments(output_file_name, error_reg_string):
     contents = strip_comments(contents)
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
-        print('Succeeded in stripping comments.')
+        print('\nSucceeded in stripping comments.')
         write_to_file(output_file_name, contents)
     else:
-        print('Non-fatal error: Failed to strip comments and preserve the error.')
+        print('\nNon-fatal error: Failed to strip comments and preserve the error.')
         print('The new error was:')
         print(output)
         print('Stripped comments file not saved.')
@@ -143,10 +143,10 @@ if __name__ == '__main__':
     verbose = args.verbose
     fast = args.fast
     if bug_file_name[-2:] != '.v':
-        print('Error: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         sys.exit(1)
     if output_file_name[-2:] != '.v':
-        print('Error: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
         sys.exit(1)
     remove_temp_file = False
     if temp_file_name == '':
@@ -155,11 +155,11 @@ if __name__ == '__main__':
         temp_file.close()
         remove_temp_file = True
     if temp_file_name[-2:] != '.v':
-        print('Error: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
+        print('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
         sys.exit(1)
 
 
-    print('First, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+    print('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
     inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast)
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
@@ -167,15 +167,15 @@ if __name__ == '__main__':
         print('Failed to inline inputs.')
         sys.exit(1)
 
-    print('Now, I will attempt to coq the file, and find the error...')
+    print('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name)
 
-    print('Now, I will try to strip the comments from this file...')
+    print('\nNow, I will try to strip the comments from this file...')
     try_strip_comments(output_file_name, error_reg_string)
 
 
 
-    print('In order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+    print('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     output = diagnose_error.get_coq_output('\n'.join(statements))
@@ -189,11 +189,11 @@ if __name__ == '__main__':
         print(output)
         sys.exit(1)
 
-    print('I will now attempt to remove any lines after the line which generates the error.')
+    print('\nI will now attempt to remove any lines after the line which generates the error.')
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name)
 
-    print('I will now attempt to recursively remove unused Ltacs')
+    print('\nI will now attempt to recursively remove unused Ltacs')
     try_remove_ltac(output_file_name, error_reg_string, temp_file_name)
 
 
