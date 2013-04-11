@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import argparse, tempfile, sys, os, re
 from replace_imports import include_imports
+from strip_comments import strip_comments
+from split_file import split_coq_file_contents
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -83,6 +85,40 @@ def get_error_reg_string(output_file_name):
     return error_reg_string
 
 
+def try_strip_comments(output_file_name, error_reg_string):
+    contents = read_from_file(output_file_name)
+    contents = strip_comments(contents)
+    output = diagnose_error.get_coq_output(contents)
+    if diagnose_error.has_error(output, error_reg_string):
+        print('Succeeded in stripping comments.')
+        write_to_file(output_file_name, contents)
+    else:
+        print('Non-fatal error: Failed to strip comments and preserve the error.')
+        print('The new error was:')
+        print(output)
+        print('Stripped comments file not saved.')
+
+
+def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name):
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    cur_line_num = 0
+    new_statements = statements
+    for statement_num, statement in enumerate(statements):
+        cur_line_num += statement.count('\n')
+        if cur_line_num > line_num:
+            new_statements = statements[:statement_num + 1]
+            break
+    output = diagnose_error.get_coq_output('\n'.join(new_statements))
+    if diagnose_error.has_error(output, error_reg_string):
+        print('Trimming successful.')
+        write_to_file(output_file_name, '\n'.join(new_statements))
+    else:
+        print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+        write_to_file(temp_file_name, '\n'.join(new_statements))
+        print(output)
+
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -118,7 +154,28 @@ if __name__ == '__main__':
     print('Now, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name)
 
+    print('Now, I will try to strip the comments from this file...')
+    try_strip_comments(output_file_name, error_reg_string)
 
+
+
+    print('In order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    output = diagnose_error.get_coq_output('\n'.join(statements))
+    if diagnose_error.has_error(output, error_reg_string):
+        print('Splitting successful.')
+        write_to_file(output_file_name, '\n'.join(statements))
+    else:
+        print('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
+        write_to_file(temp_file_name, '\n'.join(statements))
+        print('The output given was:')
+        print(output)
+        sys.exit(1)
+
+    print('I will now attempt to remove any lines after the line which generates the error.')
+    line_num = diagnose_error.get_error_line_number(output, error_reg_string)
+    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name)
 
     if os.path.exists(temp_file_name):
         os.remove(temp_file_name)

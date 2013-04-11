@@ -25,6 +25,9 @@ def strip_comments(contents):
         elif comment_level > 0:
             if token == '*)':
                 comment_level -= 1
+        elif token.count('"') % 2 == 1: # there are an odd number of '"' characters, so we're starting a string
+            is_string = True
+            rtn.append(token)
         else:
             rtn.append(token)
-    return ' '.join(tokens)
+    return ' '.join(rtn)
