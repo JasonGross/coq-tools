@@ -32,26 +32,75 @@ def has_colon_equals(statement):
     statement = re.sub(r"\blet\b\s*[\w']*\s*:=", '', statement)
     return ':=' in statement
 
-def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3):
+def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=False):
     """Removes any definition (anything matching type_reg) which is not
     used later in statements.  Does not remove any code in the last
     exclude_n statements."""
     rtn = list(reversed(statements))[:exclude_n]
     reg = re.compile(r'^\s*%s(?:%s)\s+([^\s]+)' % (PREFIXES, type_reg), re.MULTILINE)
     definition_level = 0
+    most_recent_definition_statements = []
     for statement in list(reversed(statements))[exclude_n:]:
-        match = reg.search(statement)
-        if match:
-            name = match.groups()[0]
-            # search for the name, by itself
-            name_reg = re.compile(r"(?<![\w'])%s(?![\w'])" % name, re.MULTILINE)
-            if any(name_reg.search(other_statement) for other_statement in rtn):
-                rtn.append(statement)
-            elif not has_colon_equals(statement):
-                definition_level += 1
-        elif definition_level > 0:
-            if END_REG.search(statement):
-                definition_level -= 1
+        if debug: print('Statement: %s' % statement)
+        if END_REG.search(statement):
+            definition_level += 1
+            if debug: print('matches end, new_level: %d' % definition_level)
+            if len(most_recent_definition_statements) < definition_level:
+                most_recent_definition_statements.append([])
+            most_recent_definition_statements[definition_level - 1].append(statement)
+            if debug: print('list: %s' % str(most_recent_definition_statements[definition_level - 1]))
         else:
-            rtn.append(statement)
+            if debug: print('does not match end')
+            if definition_level > 0:
+                if debug: print('in definition')
+                match = reg.search(statement)
+                if match:
+                    name = match.groups()[0]
+                    if debug: print('matches begin, name: %s' % name)
+                    # search for the name, by itself
+                    name_reg = re.compile(r"(?<![\w'])%s(?![\w'])" % name, re.MULTILINE)
+                    if has_colon_equals(statement):
+                        if debug: print('has :=')
+                        if any(name_reg.search(other_statement) for other_statement in rtn):
+                            if debug: print('name found')
+                            rtn.append(statement)
+                        else:
+                            if debug: print('name not found')
+                    else:
+                        if any(name_reg.search(other_statement) for other_statement in rtn):
+                            if debug: print('name found')
+                            if definition_level > 2:
+                                most_recent_definition_statements[definition_level - 2] += most_recent_definition_statements[definition_level - 1]
+                                most_recent_definition_statements[definition_level - 2].append(statement)
+                            else:
+                                rtn += most_recent_definition_statements[definition_level - 1]
+                                rtn.append(statement)
+                            most_recent_definition_statements[definition_level - 1] = []
+                        else:
+                            if debug: print('name not found')
+                        definition_level -= 1
+                        if debug: print('new definition level: %d' % definition_level)
+                else:
+                    if debug: print('no match')
+                    most_recent_definition_statements[definition_level - 1].append(statement)
+            else:
+                if debug: print('not in definition')
+                match = reg.search(statement)
+                if match:
+                    name = match.groups()[0]
+                    if debug: print('matches begin, name: %s' % name)
+                    # search for the name, by itself
+                    name_reg = re.compile(r"(?<![\w'])%s(?![\w'])" % name, re.MULTILINE)
+                    if has_colon_equals(statement):
+                        if debug: print('has :=')
+                        if any(name_reg.search(other_statement) for other_statement in rtn):
+                            if debug: print('name found')
+                            rtn.append(statement)
+                        else:
+                            if debug: print('name not found')
+                    else:
+                        if debug: print('wtf?')
+                else:
+                    if debug: print('no match')
+                    rtn.append(statement)
     return list(reversed(rtn))
