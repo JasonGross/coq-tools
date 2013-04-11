@@ -5,6 +5,7 @@ from strip_comments import strip_comments
 from split_file import split_coq_file_contents
 from recursive_remove_ltac import recursively_remove_ltac
 from recursive_remove_definitions import recursively_remove_definitions
+from admit_definitions import admit_definitions
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -178,6 +179,23 @@ def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_lin
         return old_line_num
 
 
+def try_admit_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num):
+    def check_statements(try_statements):
+        output = diagnose_error.get_coq_output('\n'.join(try_statements))
+        return diagnose_error.has_error(output, error_reg_string)
+
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    statements = admit_definitions(statements, check_statements)
+    output = diagnose_error.get_coq_output('\n'.join(statements))
+    new_line_num = diagnose_error.get_error_line_number(output, error_reg_string)
+    write_to_file(output_file_name, '\n'.join(statements))
+    if new_line_num != old_line_num:
+        print('Admits successful')
+    else:
+        print('Admits unsuccessful.')
+    return new_line_num
+
 
 
 if __name__ == '__main__':
@@ -250,6 +268,9 @@ if __name__ == '__main__':
 
         print('\nI will now attempt to remove hints.')
         try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num)
+
+        print('\nI will now attempt to admit definitions.')
+        try_admit_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)
