@@ -53,4 +53,6 @@ def get_coq_output(contents):
         file_name = f.name
     p = subprocess.Popen(['coqc', '-q', file_name], stderr=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
+    if os.path.exists(file_name):
+        os.remove(file_name)
     return stderr
