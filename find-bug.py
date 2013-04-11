@@ -3,6 +3,7 @@ import argparse, tempfile, sys, os, re
 from replace_imports import include_imports
 from strip_comments import strip_comments
 from split_file import split_coq_file_contents
+from recursive_remove_ltac import recursively_remove_ltac
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -49,7 +50,7 @@ def get_error_reg_string(output_file_name):
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
         if result in ('n', 'no'):
-            raw_input('Please modify the file so that it errors correctly, and then press ENTER to continue, or ^C to break.')
+            raw_input('Please modify the file (%s) so that it errors correctly, and then press ENTER to continue, or ^C to break.' % output_file_name)
             continue
 
         if diagnose_error.has_error(output):
@@ -115,8 +116,21 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
         write_to_file(output_file_name, '\n'.join(new_statements))
     else:
         print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-        write_to_file(temp_file_name, '\n'.join(new_statements))
         print(output)
+        write_to_file(temp_file_name, '\n'.join(new_statements))
+
+def try_remove_ltac(output_file_name, error_reg_string, temp_file_name):
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    statements = recursively_remove_ltac(statements)
+    output = diagnose_error.get_coq_output('\n'.join(statements))
+    if diagnose_error.has_error(output, error_reg_string):
+        print('Ltac removal successful')
+        write_to_file(output_file_name, '\n'.join(statements))
+    else:
+        print('Ltac removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+        print(output)
+        write_to_file(temp_file_name, '\n'.join(statements))
 
 
 
@@ -134,10 +148,12 @@ if __name__ == '__main__':
     if output_file_name[-2:] != '.v':
         print('Error: OUT_FILE must end in .v (value: %s)' % output_file_name)
         sys.exit(1)
+    remove_temp_file = False
     if temp_file_name == '':
         temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=False)
         temp_file_name = temp_file.name
         temp_file.close()
+        remove_temp_file = True
     if temp_file_name[-2:] != '.v':
         print('Error: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
         sys.exit(1)
@@ -177,5 +193,11 @@ if __name__ == '__main__':
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name)
 
-    if os.path.exists(temp_file_name):
+    print('I will now attempt to recursively remove unused Ltacs')
+    try_remove_ltac(output_file_name, error_reg_string, temp_file_name)
+
+
+    # print('I will now attempt to recursively remove unused Lemmas, Remarks, Facts, Corollaries, Propositions')
+
+    if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)

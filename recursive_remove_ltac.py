@@ -12,7 +12,7 @@ def recursively_remove_ltac(statements, exclude_n=3):
     # probably 1 or 2, but I don't want to accidentally exclude the
     # line generating the bug, so I'm trying to be a bit safer
     rtn = list(reversed(statements))[:exclude_n]
-    for statement in reversed(statements)[exclude_n:]:
+    for statement in list(reversed(statements))[exclude_n:]:
         match = LTAC_REG.search(statement)
         if match:
             ltac_name = match.groups()[0]
