@@ -152,6 +152,32 @@ def try_remove_definitions(output_file_name, error_reg_string, temp_file_name, o
 
 
 
+HINT_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)Hint\s+', re.MULTILINE)
+def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num):
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    success = False
+    i = 0
+    while i < len(statements):
+        if HINT_REG.match(statements[i]):
+            try_statements = statements[:i] + statements[i + 1:]
+            output = diagnose_error.get_coq_output('\n'.join(try_statements))
+            if diagnose_error.has_error(output, error_reg_string):
+                success = True
+                statements = try_statements
+            else:
+                i += 1
+        else:
+            i += 1
+    if success:
+        print('Hint removal successful')
+        write_to_file(output_file_name, '\n'.join(statements))
+        return diagnose_error.get_error_line_number(output, error_reg_string)
+    else:
+        print('Hint removal unsuccessful.')
+        return old_line_num
+
+
 
 
 if __name__ == '__main__':
@@ -219,8 +245,11 @@ if __name__ == '__main__':
         print('\nI will now attempt to recursively remove unused Ltacs')
         new_line_num = try_remove_ltac(output_file_name, error_reg_string, temp_file_name, old_line_num)
 
-        print('I will now attempt to recursively remove unused Lemmas, Remarks, Facts, Corollaries, Propositions, Definitions, Examples, FixPoints, and CoFixpoints.')
+        print('\nI will now attempt to recursively remove unused Lemmas, Remarks, Facts, Corollaries, Propositions, Definitions, Examples, FixPoints, and CoFixpoints.')
         new_line_num = try_remove_definitions(output_file_name, error_reg_string, temp_file_name, new_line_num)
+
+        print('\nI will now attempt to remove hints.')
+        try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)
