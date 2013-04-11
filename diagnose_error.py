@@ -25,7 +25,7 @@ def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING):
 
     Precondition: has_error(output, reg_string)
     """
-    return int(re.search(reg_string, output).groups()[1])
+    return int(re.search(reg_string, output).groups()[0])
 
 @memoize
 def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING):
@@ -33,7 +33,7 @@ def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING):
 
     Precondition: has_error(output, reg_string)
     """
-    return re.search(reg_string, output).groups()[0]
+    return re.search(reg_string, output).groups()[1]
 
 @memoize
 def make_reg_string(output):
