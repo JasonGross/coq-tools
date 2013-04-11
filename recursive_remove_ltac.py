@@ -17,7 +17,7 @@ def recursively_remove_ltac(statements, exclude_n=3):
         if match:
             ltac_name = match.groups()[0]
             # search for the name of the tactic, by itself
-            reg = re.compile('\b%s\b' % ltac_name, re.MULTILINE)
+            reg = re.compile(r"(?<![\w'])%s(?![\w'])" % ltac_name, re.MULTILINE)
             if any(reg.search(other_statement) for other_statement in rtn):
                 rtn.append(statement)
         else:

@@ -4,6 +4,7 @@ from replace_imports import include_imports
 from strip_comments import strip_comments
 from split_file import split_coq_file_contents
 from recursive_remove_ltac import recursively_remove_ltac
+from recursive_remove_definitions import recursively_remove_definitions
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -119,7 +120,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
         print(output)
         write_to_file(temp_file_name, '\n'.join(new_statements))
 
-def try_remove_ltac(output_file_name, error_reg_string, temp_file_name):
+def try_remove_ltac(output_file_name, error_reg_string, temp_file_name, old_line_num):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     statements = recursively_remove_ltac(statements)
@@ -127,10 +128,29 @@ def try_remove_ltac(output_file_name, error_reg_string, temp_file_name):
     if diagnose_error.has_error(output, error_reg_string):
         print('Ltac removal successful')
         write_to_file(output_file_name, '\n'.join(statements))
+        return diagnose_error.get_error_line_number(output, error_reg_string)
     else:
         print('Ltac removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
         print(output)
         write_to_file(temp_file_name, '\n'.join(statements))
+        return old_line_num
+
+def try_remove_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num):
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    statements = recursively_remove_definitions(statements)
+    output = diagnose_error.get_coq_output('\n'.join(statements))
+    if diagnose_error.has_error(output, error_reg_string):
+        print('Definition removal successful')
+        write_to_file(output_file_name, '\n'.join(statements))
+        return diagnose_error.get_error_line_number(output, error_reg_string)
+    else:
+        print('Definition removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+        print(output)
+        write_to_file(temp_file_name, '\n'.join(statements))
+        return old_line_num
+
+
 
 
 
@@ -193,11 +213,14 @@ if __name__ == '__main__':
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name)
 
-    print('\nI will now attempt to recursively remove unused Ltacs')
-    try_remove_ltac(output_file_name, error_reg_string, temp_file_name)
+    old_line_num = line_num
+    new_line_num = -1
+    while old_line_num != new_line_num:
+        print('\nI will now attempt to recursively remove unused Ltacs')
+        new_line_num = try_remove_ltac(output_file_name, error_reg_string, temp_file_name, old_line_num)
 
-
-    # print('I will now attempt to recursively remove unused Lemmas, Remarks, Facts, Corollaries, Propositions')
+        print('I will now attempt to recursively remove unused Lemmas, Remarks, Facts, Corollaries, Propositions, Definitions, Examples, FixPoints, and CoFixpoints.')
+        new_line_num = try_remove_definitions(output_file_name, error_reg_string, temp_file_name, new_line_num)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)
