@@ -8,6 +8,9 @@ def recursively_remove_ltac(statements, exclude_n=3):
     """Removes any Ltac statement which is not used later in
     statements.  Does not remove any code in the last exclude_n
     statements."""
+    # TODO(jgross): Figure out what the optimal exclude_n is.  It's
+    # probably 1 or 2, but I don't want to accidentally exclude the
+    # line generating the bug, so I'm trying to be a bit safer
     rtn = list(reversed(statements))[:exclude_n]
     for statement in reversed(statements)[exclude_n:]:
         match = LTAC_REG.search(statement)
