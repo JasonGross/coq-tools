@@ -32,7 +32,7 @@ def has_colon_equals(statement):
     statement = re.sub(r"\blet\b\s*[\w']*\s*:=", '', statement)
     return ':=' in statement
 
-def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=False):
+def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3):
     """Removes any definition (anything matching type_reg) which is not
     used later in statements.  Does not remove any code in the last
     exclude_n statements."""
@@ -40,33 +40,18 @@ def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=
     reg = re.compile(r'^\s*%s(?:%s)\s+([^\s]+)' % (PREFIXES, type_reg), re.MULTILINE)
     definition_level = 0
     for statement in list(reversed(statements))[exclude_n:]:
-        if debug: print('Statement: %s' % statement)
         match = reg.search(statement)
         if match:
-            if debug: print('matches')
             name = match.groups()[0]
             # search for the name, by itself
             name_reg = re.compile(r"(?<![\w'])%s(?![\w'])" % name, re.MULTILINE)
-            if debug: print('name: %s' % name)
             if any(name_reg.search(other_statement) for other_statement in rtn):
-                if debug: print('name found')
-                if debug: print('appending statement')
                 rtn.append(statement)
             elif not has_colon_equals(statement):
-                if debug: print('name not found, not has :=')
                 definition_level += 1
-            else:
-                if debug:
-                    for other_statement in rtn:
-                        print(r're.search(r"(?<![\w\'])%s(?![\w\'])", %s, re.MULTILINE)' % (name, repr(other_statement)))
-                        print(re.search(r"(?<![\w'])%s(?![\w'])" % name, other_statement, re.MULTILINE))
-                        print(name_reg.search(other_statement, re.MULTILINE))
-                    print('name not found, has :=')
         elif definition_level > 0:
             if END_REG.search(statement):
-                if debug: print('end of definition')
                 definition_level -= 1
         else:
-            if debug: print('appending statement')
             rtn.append(statement)
     return list(reversed(rtn))
