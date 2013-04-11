@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse, tempfile, sys, os
 from replace_imports import include_imports
+import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
 parser.add_argument('--directory', '-d', metavar='DIRECTORY', dest='directory', type=str, default='.',
@@ -59,6 +60,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print('Now, I will attempt to coq the file, and find the error...')
+
 
 
     if os.path.exists(temp_file_name):

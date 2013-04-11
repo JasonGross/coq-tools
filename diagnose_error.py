@@ -2,7 +2,7 @@ from __future__ import with_statement
 import os, sys, tempfile, subprocess, re
 from memoize import memoize
 
-__all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output"]
+__all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string"]
 
 DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n([^\n]+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
