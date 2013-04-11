@@ -51,7 +51,7 @@ def get_imports(file_name, verbose=True, fast=False):
     if file_name not in file_imports_fast.keys():
         contents = get_file(file_name + '.v', verbose=verbose)
         imports_string = re.sub('\\s+', ' ', ' '.join(IMPORT_LINE_REG.findall(contents))).strip()
-        file_imports_fast[file_name] = tuple(sorted(set(imports_string.split(' '))))
+        file_imports_fast[file_name] = tuple(sorted(set(i for i in imports_string.split(' ') if i != '')))
     return file_imports_fast[file_name]
 
 def merge_imports(*imports):
@@ -128,7 +128,9 @@ def include_imports(file_name, verbose=True, fast=False):
             rtn += contents_without_imports(import_name, verbose=verbose) + '\n'
         else:
             remaining_imports.append(import_name)
-    rtn = 'Require Import %s.\n%s' % (' '.join(remaining_imports), rtn)
+    if len(remaining_imports) > 0:
+        print(remaining_imports)
+        rtn = 'Require Import %s.\n%s' % (' '.join(remaining_imports), rtn)
     return rtn
 
 if __name__ == "__main__":
