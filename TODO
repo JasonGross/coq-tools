@@ -1,0 +1,4 @@
+* Be smarter about admitting things
+  + Maybe admit all lemmas/theorems/qed things all at once to start off with
+* Replace [abstract foo] with [admit]
+* Remove notations
