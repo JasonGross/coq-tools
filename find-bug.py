@@ -184,6 +184,8 @@ def try_admit_definitions(output_file_name, error_reg_string, temp_file_name, ol
         output = diagnose_error.get_coq_output('\n'.join(try_statements))
         if diagnose_error.has_error(output, error_reg_string):
             write_to_file(output_file_name, '\n'.join(try_statements))
+            return True
+        return False
 
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
