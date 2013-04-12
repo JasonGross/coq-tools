@@ -153,7 +153,10 @@ def try_remove_definitions(output_file_name, error_reg_string, temp_file_name, o
 
 
 
-HINT_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)Hint\s+', re.MULTILINE)
+HINT_REG = re.compile(r'^\s*' +
+                      r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                      r'(?:Hint|Obligation\s+Tactic|Arguments|Notation|Tactic\s+Notation|Transparent|Opaque)\s+',
+                      re.MULTILINE)
 def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
