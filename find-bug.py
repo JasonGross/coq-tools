@@ -191,13 +191,17 @@ def try_admit_definitions(output_file_name, error_reg_string, temp_file_name, ol
     statements = split_coq_file_contents(contents)
     statements = admit_definitions(statements, check_statements, temp_file_name)
     output = diagnose_error.get_coq_output('\n'.join(statements))
-    new_line_num = diagnose_error.get_error_line_number(output, error_reg_string)
-    write_to_file(output_file_name, '\n'.join(statements))
-    if new_line_num != old_line_num:
-        print('Admits successful')
+    if diagnose_error.has_error(output, error_reg_string):
+        new_line_num = diagnose_error.get_error_line_number(output, error_reg_string)
+        write_to_file(output_file_name, '\n'.join(statements))
+        if new_line_num != old_line_num:
+            print('Admits successful')
+        else:
+            print('Admits unsuccessful.')
+        return new_line_num
     else:
-        print('Admits unsuccessful.')
-    return new_line_num
+        print('Terrible things.  The admit_definitions procedure failed.')
+        return old_line_num
 
 
 

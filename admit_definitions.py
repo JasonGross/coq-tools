@@ -111,4 +111,8 @@ def admit_definitions(statements, check_statements, type_reg=ALL, exclude_n=3, d
                 else:
                     if debug: print('no match')
                     rtn.append(statement)
+    while definition_level > 0:
+        rtn += most_recent_definition_statements[definition_level - 1]
+        most_recent_definition_statements[definition_level - 1] = []
+        definition_level -= 1
     return list(reversed(rtn))

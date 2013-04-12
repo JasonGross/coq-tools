@@ -53,7 +53,7 @@ def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=
             if debug: print('does not match end')
             if definition_level > 0:
                 if debug: print('in definition')
-                match = reg.search(statement)
+                match = reg.search(statement.replace(':=', ' := ').replace(':', ' : '))
                 if match:
                     name = match.groups()[0]
                     if debug: print('matches begin, name: %s' % name)

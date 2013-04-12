@@ -13,7 +13,7 @@ def recursively_remove_ltac(statements, exclude_n=3):
     # line generating the bug, so I'm trying to be a bit safer
     rtn = list(reversed(statements))[:exclude_n]
     for statement in list(reversed(statements))[exclude_n:]:
-        match = LTAC_REG.search(statement)
+        match = LTAC_REG.search(statement.replace(':=', ' := '))
         if match:
             ltac_name = match.groups()[0]
             # search for the name of the tactic, by itself
