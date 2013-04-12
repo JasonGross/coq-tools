@@ -152,18 +152,13 @@ def try_remove_definitions(output_file_name, error_reg_string, temp_file_name, o
         return old_line_num
 
 
-
-HINT_REG = re.compile(r'^\s*' +
-                      r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                      r'(?:Hint|Obligation\s+Tactic|Arguments|Notation|Tactic\s+Notation|Transparent|Opaque)\s+',
-                      re.MULTILINE)
-def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num):
+def try_remove_regexp(output_file_name, error_reg_string, temp_file_name, old_line_num, regexp, description):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     success = False
     i = 0
     while i < len(statements):
-        if HINT_REG.match(statements[i]):
+        if regexp.match(statements[i]):
             try_statements = statements[:i] + statements[i + 1:]
             output = diagnose_error.get_coq_output('\n'.join(try_statements))
             if diagnose_error.has_error(output, error_reg_string):
@@ -174,12 +169,31 @@ def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_lin
         else:
             i += 1
     if success:
-        print('Hint removal successful')
+        print(desciption + ' successful')
         write_to_file(output_file_name, '\n'.join(statements))
         return diagnose_error.get_error_line_number(output, error_reg_string)
     else:
-        print('Hint removal unsuccessful.')
+        print(description + ' unsuccessful.')
         return old_line_num
+
+
+HINT_REG = re.compile(r'^\s*' +
+                      r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                      r'(?:Hint|Obligation\s+Tactic|Arguments|Notation|Tactic\s+Notation|Transparent|Opaque)\s+',
+                      re.MULTILINE)
+def try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num):
+    return try_remove_regexp(output_file_name, error_reg_string, temp_file_name, old_line_num, HINT_REG, 'Hint removal')
+
+
+
+
+VARIABLE_REG = re.compile(r'^\s*' +
+                      r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                      r'(?:Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture)\s+',
+                      re.MULTILINE)
+def try_remove_variables(output_file_name, error_reg_string, temp_file_name, old_line_num):
+    return try_remove_regexp(output_file_name, error_reg_string, temp_file_name, old_line_num, VARIABLE_REG, 'Variable removal')
+
 
 
 def try_admit_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num):
@@ -278,6 +292,9 @@ if __name__ == '__main__':
 
         print('\nI will now attempt to remove hints.')
         try_remove_hints(output_file_name, error_reg_string, temp_file_name, old_line_num)
+
+        print('\nI will now attempt to remove variables.')
+        try_remove_variables(output_file_name, error_reg_string, temp_file_name, old_line_num)
 
         print('\nI will now attempt to admit definitions.')
         try_admit_definitions(output_file_name, error_reg_string, temp_file_name, old_line_num)
