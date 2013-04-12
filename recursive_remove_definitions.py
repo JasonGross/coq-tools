@@ -2,10 +2,10 @@ import re
 
 __all__ = ["recursively_remove_definitions", "LEMMAS", "DEFINITIONS", "ALL"]
 
-PREFIXES = '(?:Polymorphic\s+|Monomorphic\s+|Local\s+|Global\s+)?'
+PREFIXES = '(?:Polymorphic\s+|Monomorphic\s+|Local\s+|Global\s+|Program\s+)*'
 LEMMAS = 'Lemma|Remark|Fact|Corollary|Proposition'
 DEFINITIONS = 'Definition|Example|Fixpoint|CoFixpoint'
-ALL = '%s|%s' % (LEMMAS, DEFINITIONS)
+ALL = '%s|%s|Let|Instance' % (LEMMAS, DEFINITIONS)
 END_REG = re.compile(r'\b(?:Qed|Defined|Admitted)\s*\.\s*$', re.MULTILINE)
 
 def has_colon_equals(statement):
@@ -32,7 +32,7 @@ def has_colon_equals(statement):
     statement = re.sub(r"\blet\b\s*[\w']*\s*:=", '', statement)
     return ':=' in statement
 
-def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=False):
+def recursively_remove_definitions(statements, type_reg=ALL, exclude_n=3, debug=True):
     """Removes any definition (anything matching type_reg) which is not
     used later in statements.  Does not remove any code in the last
     exclude_n statements."""
