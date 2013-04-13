@@ -180,7 +180,7 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
     LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
- : ')))
+ : '))),
                                   'Ltac removal')
 
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name):
@@ -353,7 +353,9 @@ if __name__ == '__main__':
 
 
     old_definitions = []
-    while join_definitions(old_definitions) != join_definitions(definitions)
+    while join_definitions(old_definitions) != join_definitions(definitions):
+        old_definitions = list(definitions)
+
         print('\nI will now attempt to remove unused Ltacs')
         definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name)
 

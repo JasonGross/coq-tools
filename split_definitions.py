@@ -18,8 +18,8 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
     definitions_shared, definitions_added)"""
     old_definitions = [i for i in previous_definition_string.split('|') if i]
     new_definitions = [i for i in new_definition_string.split('|') if i]
-    return (tuple(i for i in old_definitions if i not in new_definitions)
-            tuple(i for i in old_definitions if i in new_definitions)
+    return (tuple(i for i in old_definitions if i not in new_definitions),
+            tuple(i for i in old_definitions if i in new_definitions),
             tuple(i for i in new_definitions if i not in old_definitions))
 
 
@@ -107,7 +107,7 @@ def split_statements_to_definitions(statements):
                     # we're at top level, so add this as a new
                     # definition
                     rtn.append({'statements':(statement,),
-                                'statement':statement
+                                'statement':statement,
                                 'terms_defined':tuple(terms_defined)})
 
             # now we handle the case where we have just opened a fresh

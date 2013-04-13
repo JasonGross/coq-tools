@@ -29,7 +29,7 @@ class Popen_async(object):
     else: # got line
     """
     def __init__(self, *args, **kwargs):
-        self._p = Popen(*args, **kwargs, bufsize=1, close_fds=ON_POSIX)
+        self._p = subprocess.Popen(*args, bufsize=1, close_fds=ON_POSIX, **kwargs)
         self.stdout = Queue()
         self.stderr = Queue()
         self._tout = Thread(target=enqueue_output, args=(self._p.stdout, self.stdout))
