@@ -149,6 +149,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         return definitions
     else:
         print(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
+        print('The output was:\n%s' % output)
         write_to_file(temp_file_name, join_definitions(definitions))
         return definitions
 
