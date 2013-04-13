@@ -99,6 +99,8 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     reverse-order.
 
     Returns updated definitions."""
+    print('try_transform_each')
+    original_definitions = list(definitions)
     # TODO(jgross): Use coqtop and [BackTo] to do incremental checking
     success = False
     i = len(definitions) - 1 - skip_n
@@ -120,14 +122,16 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 definitions = try_definitions
             else:
                 print('Change failed.  Output:\n%s' % output)
+        else:
+            print('No change to %s' % old_definition['statement'])
         i -= 1
     if success:
-        print(desciption + ' successful')
+        print(description + ' successful')
         write_to_file(output_file_name, join_definitions(definitions))
         return definitions
     else:
         print(description + ' unsuccessful.')
-        return definitions
+        return original_definitions
 
 
 def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3):
@@ -140,12 +144,21 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
     passed in is guaranteed to be reverse-order.
 
     Returns updated definitions."""
+    print('try_transform_reversed')
     definitions = list(definitions) # clone the list of definitions
+    original_definitions = list(definitions)
+    print(len(definitions))
+    print(definitions)
     for i in reversed(list(range(len(definitions) - skip_n))):
         new_definition = transformer(definitions[i], definitions[i + 1:])
         if new_definition:
+            if definitions[i] != new_definition:
+                print('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
+            else:
+                print('No change to %s' % new_definition['statement'])
             definitions[i] = new_definition
         else:
+            print('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):
@@ -156,7 +169,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         print(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
         print('The output was:\n%s' % output)
         write_to_file(temp_file_name, join_definitions(definitions))
-        return definitions
+        return original_definitions
 
 def try_remove_if_not_matches_transformer(definition_found_in):
     def transformer(cur_definition, rest_definitions):
@@ -195,8 +208,8 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           r'(?:Hint|Obligation\s+Tactic|Arguments|Notation|Tactic\s+Notation|Transparent|Opaque)\s+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              (lambda definition: (None if HINT_REG.search(definition['statement'])
-                                                   else definition)),
+                              (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
+                                                         else definition)),
                               'Hint removal')
 
 def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name):
@@ -362,6 +375,8 @@ if __name__ == '__main__':
     old_definitions = []
     while join_definitions(old_definitions) != join_definitions(definitions):
         old_definitions = list(definitions)
+        print('Definitions:')
+        print(definitions)
 
         print('\nI will now attempt to remove unused Ltacs')
         definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name)
