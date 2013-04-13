@@ -88,7 +88,7 @@ def split_statements_to_definitions(statements):
                 cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-            #print((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
+            print((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
 
 
             # first, we handle the case where we have just finished

@@ -162,7 +162,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):
-        print(desciption + ' successful')
+        print(description + ' successful')
         write_to_file(output_file_name, join_definitions(definitions))
         return definitions
     else:
@@ -175,9 +175,9 @@ def try_remove_if_not_matches_transformer(definition_found_in):
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
-            return None
-        else:
             return cur_definition
+        else:
+            return None
     return transformer
 
 def try_remove_if_name_not_found_in_transformer(get_names):
