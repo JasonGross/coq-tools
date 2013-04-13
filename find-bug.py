@@ -107,14 +107,19 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         new_definition = transformer(old_definition, definitions[i + 1:])
         if not new_definition or old_definition['statement'] != new_definition['statement']:
             if not new_definition or not new_definition['statement'].strip():
+                print('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
+                print('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
             output = diagnose_error.get_coq_output(join_definitions(try_definitions))
             if diagnose_error.has_error(output, error_reg_string):
+                print('Change succeeded')
                 success = True
                 write_to_file(output_file_name, join_definitions(try_definitions))
                 definitions = try_definitions
+            else:
+                print('Change failed.  Output:\n%s' % output)
         i -= 1
     if success:
         print(desciption + ' successful')
