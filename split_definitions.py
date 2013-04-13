@@ -11,7 +11,7 @@ def get_all_nowait_iter(q):
         pass
 
 def get_all_nowait(q):
-    return list(get_all_nowait_iter(q))
+    return ''.join(get_all_nowait_iter(q))
 
 def get_all_semiwait_iter(q):
     try:
@@ -24,7 +24,7 @@ def get_all_semiwait_iter(q):
         pass
 
 def get_all_semiwait(q):
-    return list(get_all_semiwait_iter(q))
+    return ''.join(get_all_semiwait_iter(q))
 
 def get_definitions_diff(previous_definition_string, new_definition_string):
     """Returns a triple of lists (definitions_removed,
@@ -47,7 +47,7 @@ def split_statements_to_definitions(statements):
     # goal_reg = re.compile(r'^\s*=+\s*$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     # clear stdout
-    get_all_nowait(p.stdout)
+    get_all_semiwait(p.stdout)
     # clear stderr
     # get_all_nowait(p.stderr)
 
@@ -58,13 +58,13 @@ def split_statements_to_definitions(statements):
         if not statement.strip():
             continue
         # print('Write: %s\n\nWait to read:' % statement)
-        print(statement)
+        #print(statement)
         p.stdin.write(statement + '\n\n')
-        stdout = ''.join(get_all_semiwait(p.stdout))
+        stdout = get_all_semiwait(p.stdout)
         stderr = stdout # ''.join(get_all_semiwait(p.stderr))
 
         terms_defined = defined_reg.findall(prompt_reg.sub('', stdout))
-        print((stdout, terms_defined))
+        # print((statement, stdout, terms_defined))
         prompt_match = prompt_reg.search(stderr)
 
         if not prompt_match:
@@ -80,13 +80,15 @@ def split_statements_to_definitions(statements):
                         'statement':statement})
         else:
             cur_name, line_num1, cur_definition_names, line_num2, unknown = prompt_reg.search(stderr).groups()
-            print(cur_definition_names)
             definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
 
             # first, to be on the safe side, we add the new
             # definitions key to the dict, if it wasn't already there.
             if cur_definition_names.strip('|') and cur_definition_names not in cur_definition:
                 cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
+
+
+            #print((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
 
 
             # first, we handle the case where we have just finished
@@ -114,8 +116,8 @@ def split_statements_to_definitions(statements):
                                 'statement':'\n'.join(cur_definition[last_definitions]['statements']),
                                 'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
                     del cur_definition[last_definitions]
-                    print('Adding:')
-                    print(rtn[-1])
+                    #print('Adding:')
+                    #print(rtn[-1])
             elif terms_defined:
                 if cur_definition_names.strip('|'):
                     # we are still inside a definition.  For now, we
@@ -136,7 +138,7 @@ def split_statements_to_definitions(statements):
             # definition.  We've already added the key to the
             # dictionary.
             elif definitions_added:
-                print(definitions_added)
+                #print(definitions_added)
                 cur_definition[cur_definition_names]['statements'].append(statement)
             else:
                 # if we're in a definition, append the statement to
@@ -148,13 +150,15 @@ def split_statements_to_definitions(statements):
                     rtn.append({'statements':(statement,),
                                 'statement':statement,
                                 'terms_defined':tuple()})
+        last_definitions = cur_definition_names
+
     if cur_definition_names.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),
                     'terms_defined':tuple(cur_definition[cur_definition_names]['terms_defined'])})
         del cur_definition[cur_definition_names]
-    for i in rtn:
-        print(i)
+    #for i in rtn:
+        #print(i)
     p.stdin.close()
     return rtn
 

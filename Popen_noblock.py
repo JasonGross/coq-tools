@@ -15,7 +15,7 @@ except ImportError:
 ON_POSIX = 'posix' in sys.builtin_module_names
 
 def enqueue_output(out, queue):
-    for line in iter(out.readline, b''):
+    for line in iter((lambda : out.read(1)), b''):
         # print('0: %s' % line)
         queue.put(line)
     out.close()
