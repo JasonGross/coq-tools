@@ -26,7 +26,7 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
 def split_statements_to_definitions(statements):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
-    p = Popen_aync(['coqtop', '-emacs'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+    p = Popen_async(['coqtop', '-emacs'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
     prompt_reg = re.compile(r'<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'))
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
     # aborted_reg = re.compile(r'^Current goal aborted$', re.MULTILINE)
@@ -41,7 +41,7 @@ def split_statements_to_definitions(statements):
     cur_definition = {}
     last_definitions = '||'
     for statement in statements:
-        p.stdin.write(statement + '\n')
+        p.stdin.write(statement + '\n\n')
         stdout = ''.join(get_all_nowait(p.stdout))
         stderr = ''.join(get_all_nowait(p.stdout))
 
@@ -50,8 +50,8 @@ def split_statements_to_definitions(statements):
 
         if not prompt_match:
             print('Likely fatal warning: I did not recognize the output from coqtop:')
-            print(stdout)
-            print("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work.")
+            print('stdout: %s\nstderr: %s' % (repr(stdout), repr(stderr)))
+            print("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work." % statement)
             rtn.append({'statements':(statement,),
                         'statement':statement})
         elif len(prompt_match.groups()) != 5:

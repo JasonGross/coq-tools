@@ -125,7 +125,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         return definitions
 
 
-def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description):
+def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
