@@ -212,8 +212,9 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
                     'terms_defined':cur_definition['terms_defined']}
         else:
             return cur_definition
-        return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  transformer, description)
+
+    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+                              transformer, description)
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", re.MULTILINE)
