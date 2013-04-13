@@ -1,6 +1,8 @@
 import re
 from Popen_noblock import Popen_async, PIPE, Empty
 
+__all__ = ["join_definitions", "split_statements_to_definitions"]
+
 def get_all_nowait_iter(q):
     try:
         while True:
@@ -10,6 +12,16 @@ def get_all_nowait_iter(q):
 
 def get_all_nowait(q):
     return list(get_all_nowait_iter(q))
+
+def get_definitions_diff(previous_definition_string, new_definition_string):
+    """Returns a triple of lists (definitions_removed,
+    definitions_shared, definitions_added)"""
+    old_definitions = [i for i in previous_definition_string.split('|') if i]
+    new_definitions = [i for i in new_definition_string.split('|') if i]
+    return (tuple(i for i in old_definitions if i not in new_definitions)
+            tuple(i for i in old_definitions if i in new_definitions)
+            tuple(i for i in new_definitions if i not in old_definitions))
+
 
 def split_statements_to_definitions(statements):
     """Splits a list of statements into chunks which make up
@@ -49,77 +61,72 @@ def split_statements_to_definitions(statements):
                         'statement':statement})
         else:
             cur_name, line_num1, cur_definition_names, line_num2, unknown = prompt_reg.search(stderr).groups()
-            if len(terms_defined) > 0:
-                if cur_definition_names == last_definitions: # one-line definitions
+            definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
+
+            # first, to be on the safe side, we add the new
+            # definitions key to the dict, if it wasn't already there.
+            if cur_definition_names.strip('|') and cur_definition_names not in cur_definition:
+                cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
+
+
+            # first, we handle the case where we have just finished
+            # defining something.  This should correspond to
+            # len(definitions_removed) > 0 and len(terms_defined) > 0.
+            # If only len(definitions_removed) > 0, then we have
+            # aborted something.  If only len(terms_defined) > 0, then
+            # we have defined something with a one-liner.
+            if definitions_removed:
+                cur_definition[last_definitions]['statements'].append(statement)
+                cur_definition[last_definitions]['terms_defined'] += terms_defined
+                if cur_definition_names.strip('|'):
+                    # we are still inside a definition.  For now, we
+                    # flatten all definitions.
+                    #
+                    # TODO(jgross): Come up with a better story for
+                    # nested definitions.
+                    cur_definition[cur_definition_names]['statements'] += cur_definition[last_definitions]['statements']
+                    cur_definition[cur_definition_names]['terms_defined'] += cur_definition[last_definitions]['terms_defined']
+                    del cur_definition[last_definitions]
+                else:
+                    # we're at top-level, so add this as a new
+                    # definition
+                    rtn.append({'statements':tuple(cur_definition[last_definitions]['statements']),
+                                'statement':'\n'.join(cur_definition[last_definitions]['statements']),
+                                'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
+                    del cur_definition[last_definitions]
+            elif terms_defined:
+                if cur_definition_names.strip('|'):
+                    # we are still inside a definition.  For now, we
+                    # flatten all definitions.
+                    #
+                    # TODO(jgross): Come up with a better story for
+                    # nested definitions.
+                    cur_definition[cur_definition_names]['statements'].append(statement)
+                    cur_definition[cur_definition_names]['terms_defined'] += terms_defined
+                else:
+                    # we're at top level, so add this as a new
+                    # definition
+                    rtn.append({'statements':(statement,),
+                                'statement':statement
+                                'terms_defined':tuple(terms_defined)})
+
+            # now we handle the case where we have just opened a fresh
+            # definition.  We've already added the key to the
+            # dictionary.
+            elif definitions_added:
+                cur_definition[cur_definition_names]['statements'].append(statement)
+            else:
+                # if we're in a definition, append the statement to
+                # the queue, otherwise, just add it as it's own
+                # statement
+                if cur_definition_names.strip('|'):
+                    cur_definition[cur_definition_names]['statements'].append(statement)
+                else:
                     rtn.append({'statements':(statement,),
                                 'statement':statement,
-                                'terms_defined':tuple(terms_defined)})
-                else:
-                    new_terms = cur_definition_names[1:] # should be shorter, since we just defined some things
-                    old_terms = last_definitions[1:-len(new_terms)] # should be longer
-                    if new_terms + old_terms != last_definitions[1:]:
-                        print("Likely fatal error: I could not parse the terms being defined")
-                        print("last_definitions: %s\ncur_definition_names: %s\nnew_terms: %s\nold_terms: %s" % (last_definitions, cur_definition_names, new_terms, old_terms))
-                        print("Some statements will likely be lost")
-                    elif cur_definition_names.strip('|'): # we've nested definitions
-                        # just drop down a level
-                        cur_definition[cur_definition_names]['statements'] += cur_definition[last_definitions]['statements'] + [statement]
-                        cur_definition[cur_definition_names]['terms_defined'] += cur_definition[last_definitions]['terms_defined'] + list(terms_defined)
-                        del cur_definition[last_definitions]
-                    else: # we just ended a top-level definition
-                        cur_definition[last_definitions]['statements'].append(statement)
-                        cur_definition[last_definitions]['terms_defined'] += list(terms_defined)
-                        rtn.append({'statements':tuple(cur_definition[last_definitions]['statements']),
-                                    'statement':'\n'.join(cur_definition[last_definitions]['statements']),
-                                    'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
-                        del cur_definition[last_definitions]
-            else: # we've not defined any terms here
-                if not cur_definition_names.strip('|'):
-                    # we're at top level, and haven't opened a
-                    # definition, so just append the statement
-                    rtn.append({'statements':(statement,),
-                                'statement':statement})
-                elif cur_definition_names == last_definitions:
-                    # we're not at top level, but we haven't changed
-                    # definitions, so append the statement to the
-                    # currently open definition
-                    cur_definition[cur_definition_names]['statements'].append(statement)
-                elif len(cur_definition_names) > len(last_definitions):
-                    # we've just opened a new definition term
-                    old_terms = last_definitions[1:] # should be shorter
-                    new_terms = cur_definition_names[1:-len(old_terms)] # should be longer, since we just added something
-                    if new_terms + old_terms != cur_definition_names[1:]
-                        print("Likely fatal error: I could not parse the terms being defined")
-                        print("last_definitions: %s\ncur_definition_names: %s\nnew_terms: %s\nold_terms: %s" % (last_definitions, cur_definition_names, new_terms, old_terms))
-                        print("Some statements will likely be lost")
-                    elif
-                    elif cur_definition_names.strip('|'): # we've nested definitions
-                        # just drop down a level
-                        cur_definition[cur_definition_names]['statements'] += cur_definition[last_definitions]['statements'] + [statement]
-                        cur_definition[cur_definition_names]['terms_defined'] += cur_definition[last_definitions]['terms_defined'] + list(terms_defined)
-                        del cur_definition[last_definitions]
-                    else: # we just ended a top-level definition
-                        cur_definition[last_definitions]['statements'].append(statement)
-                        cur_definition[last_definitions]['terms_defined'] += list(terms_defined)
-                        rtn.append({'statements':tuple(cur_definition[last_definitions]['statements']),
-                                    'statement':'\n'.join(cur_definition[last_definitions]['statements']),
-                                    'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
-                        del cur_definition[last_definitions]
+                                'terms_defined':tuple()})
+    p.stdin.close()
+    return rtn
 
-
-                if cur_definition_names == last_definitions:
-
-
-
-        if terms_defined:
-            if
-
-
-        if is_defining and len(terms_defined) > 0: # we were defining something, but now we're done
-            cur.append(statement)
-            rtn.append({'statement':'\n'.join(cur),
-                        'statements':tuple(cur),
-                        'terms_defined':tuple(terms_defined)})
-            cur = []
-            is_defining = False
-        elif is_defining and goal_aborted
+def join_definitions(definitions):
+    return '\n'.join(i['statement'] for i in definitions)
