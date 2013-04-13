@@ -1,11 +1,11 @@
 # from http://stackoverflow.com/questions/375427/non-blocking-read-on-a-subprocess-pipe-in-python
 
 import sys
-from subprocess import PIPE
-import subprocess
+from subprocess import PIPE, STDOUT
+import subprocess, time
 from threading  import Thread
 
-__all__ = ["Popen_async", "Empty", "PIPE"]
+__all__ = ["Popen_async", "Empty", "PIPE", "STDOUT"]
 
 try:
     from Queue import Queue, Empty
@@ -16,6 +16,7 @@ ON_POSIX = 'posix' in sys.builtin_module_names
 
 def enqueue_output(out, queue):
     for line in iter(out.readline, b''):
+        # print('0: %s' % line)
         queue.put(line)
     out.close()
 
@@ -33,9 +34,10 @@ class Popen_async(object):
         self.stdout = Queue()
         self.stderr = Queue()
         self._tout = Thread(target=enqueue_output, args=(self._p.stdout, self.stdout))
-        self._terr = Thread(target=enqueue_output, args=(self._p.stderr, self.stderr))
+        # self._terr = Thread(target=enqueue_output, args=(self._p.stderr, self.stderr))
         self._tout.daemon = True # thread dies with the program
-        self._terr.daemon = True # thread dies with the program
+        # self._terr.daemon = True # thread dies with the program
         self._tout.start()
-        self._terr.start()
+        # self._terr.start()
         self.stdin = self._p.stdin
+        time.sleep(0.1)
