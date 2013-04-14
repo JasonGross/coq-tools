@@ -279,13 +279,13 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
     cur_line_num = 0
     new_statements = statements
     for statement_num, statement in enumerate(statements):
-        cur_line_num += statement.count('\n')
+        cur_line_num += statement.count('\n') + 1 # +1 for the extra newline between each statement
         if cur_line_num > line_num:
             new_statements = statements[:statement_num + 1]
             break
     output = diagnose_error.get_coq_output('\n'.join(new_statements))
     if diagnose_error.has_error(output, error_reg_string):
-        print('Trimming successful.')
+        print('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         write_to_file(output_file_name, '\n'.join(new_statements))
     else:
         print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
