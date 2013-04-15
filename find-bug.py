@@ -19,7 +19,7 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=str,
 parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, default='',
                     help='a .v file which will be used to build up intermediate files while they are being tested')
 parser.add_argument('--verbose', '-v', dest='verbose',
-                    action='store_const', const=True, default=False,
+                    action='count',
                     help='display some extra information')
 parser.add_argument('--fast', dest='fast',
                     action='store_const', const=True, default=False,
@@ -273,23 +273,25 @@ def try_strip_comments(output_file_name, error_reg_string):
         print('Stripped comments file not saved.')
 
 
-def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name):
+def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=1):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
     new_statements = statements
     for statement_num, statement in enumerate(statements):
         cur_line_num += statement.count('\n') + 1 # +1 for the extra newline between each statement
-        if cur_line_num > line_num:
+        if cur_line_num >= line_num:
             new_statements = statements[:statement_num + 1]
             break
     output = diagnose_error.get_coq_output('\n'.join(new_statements))
     if diagnose_error.has_error(output, error_reg_string):
-        print('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
+        if verbose: print('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         write_to_file(output_file_name, '\n'.join(new_statements))
+        if verbose >= 2: print('Trimmed file:\n%s' % read_from_file(output_file_name))
     else:
-        print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-        print(output)
+        if verbose:
+            print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+            print(output)
         write_to_file(temp_file_name, '\n'.join(new_statements))
 
 
@@ -352,12 +354,13 @@ if __name__ == '__main__':
 
     print('\nI will now attempt to remove any lines after the line which generates the error.')
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
-    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name)
+    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=verbose)
 
 
     print('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
+    if verbose >= 3: print('I am using the following file: %s' % '\n'.join(statements))
     definitions = split_statements_to_definitions(statements)
     output = diagnose_error.get_coq_output(join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):

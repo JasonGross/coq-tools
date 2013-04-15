@@ -152,11 +152,12 @@ def split_statements_to_definitions(statements):
                                 'terms_defined':tuple()})
         last_definitions = cur_definition_names
 
-    if cur_definition_names.strip('||'):
+    print((last_definitions, cur_definition_names))
+    if last_definitions.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),
                     'terms_defined':tuple(cur_definition[cur_definition_names]['terms_defined'])})
-        del cur_definition[cur_definition_names]
+        del cur_definition[last_definitions]
     #for i in rtn:
         #print(i)
     p.stdin.close()
