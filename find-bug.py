@@ -206,7 +206,7 @@ def try_remove_if_name_not_found_in_transformer(get_names):
 
 def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', (,))),
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple())),
                                   'Description removal',
                                   verbose=verbose, log=log)
 
