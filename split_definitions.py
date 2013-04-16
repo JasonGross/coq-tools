@@ -3,6 +3,9 @@ from Popen_noblock import Popen_async, PIPE, STDOUT, Empty
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 
+def DEFAULT_LOG(text):
+    print(text)
+
 def get_all_nowait_iter(q):
     try:
         while True:
@@ -36,7 +39,7 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
             tuple(i for i in new_definitions if i not in old_definitions))
 
 
-def split_statements_to_definitions(statements):
+def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
     p = Popen_async(['coqtop', '-emacs'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
@@ -68,14 +71,16 @@ def split_statements_to_definitions(statements):
         prompt_match = prompt_reg.search(stderr)
 
         if not prompt_match:
-            print('Likely fatal warning: I did not recognize the output from coqtop:')
-            print('stdout: %s\nstderr: %s' % (repr(stdout), repr(stderr)))
-            print("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work." % statement)
+            if verbose:
+                log('Likely fatal warning: I did not recognize the output from coqtop:')
+                log('stdout: %s\nstderr: %s' % (repr(stdout), repr(stderr)))
+                log("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work." % statement)
             rtn.append({'statements':(statement,),
                         'statement':statement})
         elif len(prompt_match.groups()) != 5:
-            print("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
-            print("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
+            if verbose:
+                log("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
+                log("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
             rtn.append({'statements':(statement,),
                         'statement':statement})
         else:
@@ -152,7 +157,7 @@ def split_statements_to_definitions(statements):
                                 'terms_defined':tuple()})
         last_definitions = cur_definition_names
 
-    print((last_definitions, cur_definition_names))
+    if verbose: log((last_definitions, cur_definition_names))
     if last_definitions.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),

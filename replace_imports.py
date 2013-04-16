@@ -11,10 +11,13 @@ file_imports_slow = {}
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Import|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
-def get_file(file_name, verbose=True):
+def DEFAULT_LOG(text):
+    print(text)
+
+def get_file(file_name, verbose=True, log=DEFAULT_LOG):
     if file_name[-2:] != '.v': file_name += '.v'
     if file_name not in file_contents.keys() or file_mtimes[file_name] < os.stat(file_name).st_mtime:
-        if verbose: print(file_name)
+        if verbose: log(file_name)
         try:
             with open(file_name, 'r', encoding='UTF-8') as f:
                 file_contents[file_name] = f.read()
@@ -35,7 +38,7 @@ def make_globs(*file_names):
     (stdout, stderr) = p_make_makefile.communicate()
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
-def get_imports(file_name, verbose=True, fast=False):
+def get_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
     if file_name[-2:] == '.v': file_name = file_name[:-2]
     if not fast:
         if file_name not in file_imports_slow.keys():
@@ -49,7 +52,7 @@ def get_imports(file_name, verbose=True, fast=False):
                 return file_imports_slow[file_name]
     # making globs failed, or we want the fast way, fall back to regexp
     if file_name not in file_imports_fast.keys():
-        contents = get_file(file_name + '.v', verbose=verbose)
+        contents = get_file(file_name + '.v', verbose=verbose, log=log)
         imports_string = re.sub('\\s+', ' ', ' '.join(IMPORT_LINE_REG.findall(contents))).strip()
         file_imports_fast[file_name] = tuple(sorted(set(i for i in imports_string.split(' ') if i != '')))
     return file_imports_fast[file_name]
@@ -62,23 +65,23 @@ def merge_imports(*imports):
                 rtn.append(i)
     return rtn
 
-def recursively_get_imports(file_name, verbose=True, fast=False):
+def recursively_get_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
     if file_name[-2:] != '.v': file_name += '.v'
     if os.path.exists(file_name):
         imports = get_imports(file_name, verbose=verbose, fast=fast)
         if not fast: make_globs(*imports)
-        imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast) for i in imports]
+        imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast, log=log) for i in imports]
         return merge_imports(*imports_list) + [file_name[:-2]]
     return [file_name[:-2]]
 
-def contents_without_imports(file_name, verbose=True):
+def contents_without_imports(file_name, verbose=True, log=DEFAULT_LOG):
     if file_name[-2:] != '.v': file_name += '.v'
-    contents = get_file(file_name, verbose=verbose)
+    contents = get_file(file_name, verbose=verbose, log=log)
     if '(*' in ' '.join(IMPORT_LINE_REG.findall(contents)):
         print('Warning: There are comments in your Require/Import/Export lines in %s.' % file_name)
     return IMPORT_LINE_REG.sub('', contents)
 
-def include_imports(file_name, verbose=True, fast=False):
+def include_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
     """Return the contents of file_name, with any top-level imports inlined.
 
     This method requires access to the coqdep program if fast == False.
@@ -120,16 +123,16 @@ def include_imports(file_name, verbose=True, fast=False):
     >>> for name in names: os.remove(name)
     """
     if file_name[-2:] != '.v': file_name += '.v'
-    all_imports = recursively_get_imports(file_name, verbose=verbose, fast=fast)
+    all_imports = recursively_get_imports(file_name, verbose=verbose, fast=fast, log=log)
     remaining_imports = []
     rtn = ''
     for import_name in all_imports:
         if os.path.exists(import_name + '.v'):
-            rtn += contents_without_imports(import_name, verbose=verbose) + '\n'
+            rtn += contents_without_imports(import_name, verbose=verbose, log=log) + '\n'
         else:
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
-        print(remaining_imports)
+        if verbose: log(remaining_imports)
         rtn = 'Require Import %s.\n%s' % (' '.join(remaining_imports), rtn)
     return rtn
 

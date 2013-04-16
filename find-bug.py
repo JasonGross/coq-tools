@@ -4,9 +4,6 @@ from replace_imports import include_imports
 from strip_comments import strip_comments
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
-from recursive_remove_ltac import recursively_remove_ltac
-from recursive_remove_definitions import recursively_remove_definitions
-from admit_definitions import admit_definitions
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -24,6 +21,23 @@ parser.add_argument('--verbose', '-v', dest='verbose',
 parser.add_argument('--fast', dest='fast',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
+parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
+                    default=sys.stdout,
+                    help='The files to log output to.  Use - for stdout.')
+
+def DEFAULT_LOG(text):
+    print(text)
+
+DEFAULT_VERBOSITY=1
+
+def make_logger(log_files):
+    def log(text):
+        for i in log_files:
+            i.write(str(text) + '\n')
+            i.flush()
+            if i.fileno() > 1:
+                os.fsync(i.fileno())
+    return log
 
 def write_to_file(file_name, contents):
     try:
@@ -41,15 +55,14 @@ def read_from_file(file_name):
         with open(file_name, 'r') as f:
             return f.read()
 
-def get_error_reg_string(output_file_name):
+def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     error_reg_string = ''
     while error_reg_string == '':
-        print('\nCoqing the file...')
+        if verbose: log('\nCoqing the file...')
         contents = read_from_file(output_file_name)
         output = diagnose_error.get_coq_output(contents)
         result = ''
-        print("\nThis file produces the following output when Coq'ed:")
-        print(output)
+        log("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
         if result in ('n', 'no'):
@@ -59,15 +72,14 @@ def get_error_reg_string(output_file_name):
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            print("\nI think the error is '%s'." % error_string)
-            print("The corresponding regular expression is %s." % repr(error_reg_string))
+            log("\nI think the error is '%s'.\nThe corresponding regular expression is %s." % (error_string, repr(error_reg_string)))
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
             if result in ('no', 'n'):
                 error_reg_string = ''
         else:
-            print('\nThe current state of the file does not have a recognizable error.')
+            log('\nThe current state of the file does not have a recognizable error.')
 
         if error_reg_string == '':
             error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
@@ -76,11 +88,11 @@ def get_error_reg_string(output_file_name):
                and (not re.search(error_reg_string, output)
                     or len(re.search(error_reg_string, output).groups()) != 2)):
             if not re.search(error_reg_string, output):
-                print('\nThe given regular expression does not match the output.')
+                log('\nThe given regular expression does not match the output.')
             elif len(re.search(error_reg_string, output).groups()) != 2:
-                print('\nThe given regular expression does not have two groups.')
-                print('It must have one integer group which matches on the line number,')
-                print('and another group which matches on the error string.')
+                log('\nThe given regular expression does not have two groups.')
+                log('It must have one integer group which matches on the line number,')
+                log('and another group which matches on the error string.')
             error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file. ')
 
         if error_reg_string == '':
@@ -88,7 +100,8 @@ def get_error_reg_string(output_file_name):
 
     return error_reg_string
 
-def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3):
+def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3,
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -99,7 +112,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     reverse-order.
 
     Returns updated definitions."""
-    print('try_transform_each')
+    if verbose >= 3: log('try_transform_each')
     original_definitions = list(definitions)
     # TODO(jgross): Use coqtop and [BackTo] to do incremental checking
     success = False
@@ -109,32 +122,33 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         new_definition = transformer(old_definition, definitions[i + 1:])
         if not new_definition or old_definition['statement'] != new_definition['statement']:
             if not new_definition or not new_definition['statement'].strip():
-                print('Attempting to remove %s' % repr(old_definition['statement']))
+                if verbose >= 3: log('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
-                print('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
+                if verbose >= 3: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
             output = diagnose_error.get_coq_output(join_definitions(try_definitions))
             if diagnose_error.has_error(output, error_reg_string):
-                print('Change succeeded')
+                if verbose >= 3: log('Change succeeded')
                 success = True
                 write_to_file(output_file_name, join_definitions(try_definitions))
                 definitions = try_definitions
             else:
-                print('Change failed.  Output:\n%s' % output)
+                if verbose >= 3: log('Change failed.  Output:\n%s' % output)
         else:
-            print('No change to %s' % old_definition['statement'])
+            if verbose >= 3: log('No change to %s' % old_definition['statement'])
         i -= 1
     if success:
-        print(description + ' successful')
+        if verbose >= 1 : log(description + ' successful')
         write_to_file(output_file_name, join_definitions(definitions))
         return definitions
     else:
-        print(description + ' unsuccessful.')
+        if verbose >= 1: log(description + ' unsuccessful.')
         return original_definitions
 
 
-def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3):
+def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3,
+                           verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -144,30 +158,30 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
     passed in is guaranteed to be reverse-order.
 
     Returns updated definitions."""
-    print('try_transform_reversed')
+    if verbose >= 3: log('try_transform_reversed')
     definitions = list(definitions) # clone the list of definitions
     original_definitions = list(definitions)
-    print(len(definitions))
-    print(definitions)
+    if verbose >= 3: log(len(definitions))
+    if verbose >= 3: log(definitions)
     for i in reversed(list(range(len(definitions) - skip_n))):
         new_definition = transformer(definitions[i], definitions[i + 1:])
         if new_definition:
             if definitions[i] != new_definition:
-                print('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
+                if verbose >= 3: log('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
             else:
-                print('No change to %s' % new_definition['statement'])
+                if verbose >= 3: log('No change to %s' % new_definition['statement'])
             definitions[i] = new_definition
         else:
-            print('Removing %s' % definitions[i]['statement'])
+            if verbose >= 3: log('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):
-        print(description + ' successful')
+        if verbose >= 3: log(description + ' successful')
         write_to_file(output_file_name, join_definitions(definitions))
         return definitions
     else:
-        print(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
-        print('The output was:\n%s' % output)
+        if verbose >= 3: log(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
+        if verbose >= 3: log('The output was:\n%s' % output)
         write_to_file(temp_file_name, join_definitions(definitions))
         return original_definitions
 
@@ -190,19 +204,22 @@ def try_remove_if_name_not_found_in_transformer(get_names):
     return try_remove_if_not_matches_transformer(definition_found_in)
 
 
-def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition['terms_defined']),
-                                  'Description removal')
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', (,))),
+                                  'Description removal',
+                                  verbose=verbose, log=log)
 
-def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : '))),
-                                  'Ltac removal')
+                                  'Ltac removal',
+                                  verbose=verbose,
+                                  log=log)
 
-def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                           r'(?:Hint|Obligation\s+Tactic|Arguments|Notation|Tactic\s+Notation|Transparent|Opaque)\s+',
@@ -210,9 +227,11 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
                                                          else definition)),
-                              'Hint removal')
+                              'Hint removal',
+                              verbose=verbose,
+                              log=log)
 
-def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     VARIABLE_REG = re.compile(r'^\s*' +
                               r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                               r'(?:Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture)\s+' +
@@ -220,9 +239,11 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                               re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: VARIABLE_REG.findall(definition['statement'].replace(':', ' : '))),
-                                  'Variable removal')
+                                  'Variable removal',
+                                  verbose=verbose,
+                                  log=log)
 
-def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description):
+def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 1 and matcher(cur_definition):
             statements = (cur_definition['statements'][0], 'Admitted.')
@@ -233,47 +254,56 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
             return cur_definition
 
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              transformer, description)
+                              transformer, description,
+                              verbose=verbose,
+                              log=log)
 
-def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: QED_REG.search(definition['statement'])),
-                                          'Admitting Qeds')
+                                          'Admitting Qeds',
+                                          verbose=verbose,
+                                          log=log)
 
-def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     LEMMA_REG = re.compile(r'^\s*' +
                            r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
-                                          'Admitting lemmas')
+                                          'Admitting lemmas',
+                                          verbose=verbose,
+                                          log=log)
 
-def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name):
+def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: True),
-                                          'Admitting definitions')
+                                          'Admitting definitions',
+                                          verbose=verbose,
+                                          log=log)
 
 
 
 
 
 
-def try_strip_comments(output_file_name, error_reg_string):
+def try_strip_comments(output_file_name, error_reg_string, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     contents = strip_comments(contents)
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
-        print('\nSucceeded in stripping comments.')
+        if verbose >= 1: log('\nSucceeded in stripping comments.')
         write_to_file(output_file_name, contents)
     else:
-        print('\nNon-fatal error: Failed to strip comments and preserve the error.')
-        print('The new error was:')
-        print(output)
-        print('Stripped comments file not saved.')
+        if verbose >= 1:
+            log('\nNon-fatal error: Failed to strip comments and preserve the error.')
+            log('The new error was:')
+            log(output)
+            log('Stripped comments file not saved.')
 
 
-def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=1):
+def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
@@ -285,13 +315,13 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
             break
     output = diagnose_error.get_coq_output('\n'.join(new_statements))
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose: print('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
+        if verbose: log('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         write_to_file(output_file_name, '\n'.join(new_statements))
-        if verbose >= 2: print('Trimmed file:\n%s' % read_from_file(output_file_name))
+        if verbose >= 2: log('Trimmed file:\n%s' % read_from_file(output_file_name))
     else:
         if verbose:
-            print('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-            print(output)
+            log('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+            log(output)
         write_to_file(temp_file_name, '\n'.join(new_statements))
 
 
@@ -304,11 +334,14 @@ if __name__ == '__main__':
     temp_file_name = args.temp_file
     verbose = args.verbose
     fast = args.fast
+    log = make_logger(args.log_files)
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         sys.exit(1)
     if output_file_name[-2:] != '.v':
         print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
         sys.exit(1)
     remove_temp_file = False
     if temp_file_name == '':
@@ -318,59 +351,60 @@ if __name__ == '__main__':
         remove_temp_file = True
     if temp_file_name[-2:] != '.v':
         print('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
+        log('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
         sys.exit(1)
 
 
-    print('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast)
+    if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast, log=log)
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
     else:
-        print('Failed to inline inputs.')
+        if verbose >= 1: log('Failed to inline inputs.')
         sys.exit(1)
 
-    print('\nNow, I will attempt to coq the file, and find the error...')
-    error_reg_string = get_error_reg_string(output_file_name)
+    if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
+    error_reg_string = get_error_reg_string(output_file_name, verbose=verbose, log=log)
 
-    print('\nNow, I will try to strip the comments from this file...')
-    try_strip_comments(output_file_name, error_reg_string)
+    if verbose >= 1: log('\nNow, I will try to strip the comments from this file...')
+    try_strip_comments(output_file_name, error_reg_string, verbose=verbose, log=log)
 
 
 
     # TODO(jgross): Only display the warning if there seem to be periods in strings.
-    print('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+    if verbose >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     output = diagnose_error.get_coq_output('\n'.join(statements))
     if diagnose_error.has_error(output, error_reg_string):
-        print('Splitting successful.')
+        if verbose >= 1: log('Splitting successful.')
         write_to_file(output_file_name, '\n'.join(statements))
     else:
-        print('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
+        if verbose >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
         write_to_file(temp_file_name, '\n'.join(statements))
-        print('The output given was:')
-        print(output)
+        if verbose >= 1: log('The output given was:')
+        if verbose >= 1: log(output)
         sys.exit(1)
 
-    print('\nI will now attempt to remove any lines after the line which generates the error.')
+    if verbose >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
-    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=verbose)
+    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
 
-    print('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
+    if verbose >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
-    if verbose >= 3: print('I am using the following file: %s' % '\n'.join(statements))
-    definitions = split_statements_to_definitions(statements)
+    if verbose >= 3: log('I am using the following file: %s' % '\n'.join(statements))
+    definitions = split_statements_to_definitions(statements, verbose=verbose, log=log)
     output = diagnose_error.get_coq_output(join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):
-        print('Splitting to definitions successful.')
+        if verbose >= 1: log('Splitting to definitions successful.')
         write_to_file(output_file_name, join_definitions(definitions))
     else:
-        print('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
+        if verbose >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
         write_to_file(temp_file_name, join_definitions(definitions))
-        print('The output given was:')
-        print(output)
+        if verbose >= 1: log('The output given was:')
+        if verbose >= 1: log(output)
         sys.exit(1)
 
 
@@ -378,29 +412,29 @@ if __name__ == '__main__':
     old_definitions = []
     while join_definitions(old_definitions) != join_definitions(definitions):
         old_definitions = list(definitions)
-        print('Definitions:')
-        print(definitions)
+        if verbose >= 1: log('Definitions:')
+        if verbose >= 1: log(definitions)
 
-        print('\nI will now attempt to remove unused Ltacs')
-        definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to remove unused Ltacs')
+        definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to remove unused definitions')
-        definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to remove unused definitions')
+        definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to remove unused variables')
-        try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to remove unused variables')
+        try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to replace Qeds with Admitteds')
-        try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to replace Qeds with Admitteds')
+        try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to admit lemmas')
-        try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to admit lemmas')
+        try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to admit definitions')
-        try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to admit definitions')
+        try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        print('\nI will now attempt to remove hints')
-        try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name)
+        if verbose >= 1: log('\nI will now attempt to remove hints')
+        try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
 
     if os.path.exists(temp_file_name) and remove_temp_file:
