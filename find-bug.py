@@ -253,10 +253,23 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
         else:
             return cur_definition
 
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              transformer, description,
-                              verbose=verbose,
-                              log=log)
+    def do_call(method, definitions):
+        return method(definitions, output_file_name, error_reg_string, temp_file_name,
+                      transformer, description,
+                      verbose=verbose,
+                      log=log)
+
+    old_definitions = join_definitions(definitions) # for comparison,
+    # to see if things have changed first, try to do everything at
+    # once; python cycles are assumed to be cheap in comparison to coq
+    # cycles
+    definitions = do_call(try_transform_reversed, definitions)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        # we failed to do everything at once, try the simple thing and
+        # try to admit each individually
+         definitions = do_call(try_transform_each, definitions)
+    return definitions
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", re.MULTILINE)
