@@ -101,7 +101,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
 
     return error_reg_string
 
-def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3,
+def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
                        verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If

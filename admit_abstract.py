@@ -7,7 +7,7 @@ ABSTRACT_NO_PARENS_DOT = re.compile(r"(\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)
 
 def transform_abstract_to_admit_statement(statement, agressive=False):
     # remove the unparenthesized ones
-    statement = ABSTRACT_NO_PARENS_DOT.sub('admit', r'\1%s' % statement)
+    statement = ABSTRACT_NO_PARENS_DOT.sub('\1admit', statement)
 
     # now look at the parenthesized abstracts
     ready_for_abstract = True
@@ -52,7 +52,7 @@ def transform_abstract_to_admit_statement(statement, agressive=False):
                 rtn.append(term)
     rtn.append(''.join(cur))
 
-    return rtn
+    return ''.join(rtn)
 
 def transform_abstract_to_admit(cur_definition, rest_definitions, agressive=False):
     # shallow copy
