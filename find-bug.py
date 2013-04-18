@@ -4,6 +4,7 @@ from replace_imports import include_imports
 from strip_comments import strip_comments
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
+from admit_abstract import transform_abstract_to_admit
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -242,6 +243,37 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                                   'Variable removal',
                                   verbose=verbose,
                                   log=log)
+
+
+def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    def do_call(method, definitions, agressive):
+        return method(definitions, output_file_name, error_reg_string, temp_file_name,
+                      (lambda definition, rest_definitions: transform_abstract_to_admit(definition, rest_definitions, agressive=agressive)),
+                      description,
+                      verbose=verbose,
+                      log=log)
+
+    old_definitions = join_definitions(definitions)
+    # for comparison, to see if things have changed first, try to do
+    # everything at once; python cycles are assumed to be cheap in
+    # comparison to coq cycles
+    definitions = do_call(try_transform_reversed, definitions, True)
+    new_definitions = join_definitions(definitions)
+    if new_definitions != old_definitions: return definitions
+
+    # try the other options, each less agressive than the last
+    definitions = do_call(try_transform_reversed, definitions, False)
+    new_definitions = join_definitions(definitions)
+    if new_definitions != old_definitions: return definitions
+
+    definitions = do_call(try_transform_each, definitions, True)
+    new_definitions = join_definitions(definitions)
+    if new_definitions != old_definitions: return definitions
+
+    definitions = do_call(try_transform_each, definitions, False)
+    new_definitions = join_definitions(definitions)
+    return definitions
+
 
 def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def transformer(cur_definition, rest_definitions):
