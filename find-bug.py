@@ -420,6 +420,17 @@ if __name__ == '__main__':
         if verbose >= 1: log(output)
         sys.exit(1)
 
+    def try_recursive_remove(definitions):
+        if verbose >= 1: log('\nI will now attempt to remove unused Ltacs')
+        definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        if verbose >= 1: log('\nI will now attempt to remove unused definitions')
+        definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        if verbose >= 1: log('\nI will now attempt to remove unused variables')
+        definitions = try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        return definitions
 
 
     old_definitions = []
@@ -428,17 +439,13 @@ if __name__ == '__main__':
         if verbose >= 1: log('Definitions:')
         if verbose >= 1: log(definitions)
 
-        if verbose >= 1: log('\nI will now attempt to remove unused Ltacs')
-        definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused definitions')
-        definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused variables')
-        try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_recursive_remove(definitions)
 
         if verbose >= 1: log('\nI will now attempt to replace Qeds with Admitteds')
         try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        # we've probably just removed a lot, so try to remove definitions again
+        definitions = try_recursive_remove(definitions)
 
         if verbose >= 1: log('\nI will now attempt to admit lemmas')
         try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
