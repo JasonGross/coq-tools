@@ -3,13 +3,11 @@ import re
 __all__ = ["transform_abstract_to_admit"]
 
 TERM_CHAR = r"[\w']"
-ABSTRACT = re.compile(r"(<=\.\s+|;\s*)abstract[\s\(]", re.MULTILINE)
-ABSTRACT_PARENS = re.compile(r"(<=\.\s+|;\s*)abstract\s*(\(.+\))\s*(?=\.\s)", re.MULTILINE)
-ABSTRACT_NO_PARENS_DOT = re.compile(r"(?<=\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s)" % TERM_CHAR, re.MULTILINE)
+ABSTRACT_NO_PARENS_DOT = re.compile(r"(\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s)" % TERM_CHAR, re.MULTILINE)
 
 def transform_abstract_to_admit_statement(statement, agressive=False):
     # remove the unparenthesized ones
-    statement = ABSTRACT_NO_PARENS_DOT.sub('admit', statement)
+    statement = ABSTRACT_NO_PARENS_DOT.sub('admit', r'\1%s' % statement)
 
     # now look at the parenthesized abstracts
     ready_for_abstract = True
