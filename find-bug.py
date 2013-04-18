@@ -245,11 +245,11 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                                   log=log)
 
 
-def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def do_call(method, definitions, agressive):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       (lambda definition, rest_definitions: transform_abstract_to_admit(definition, rest_definitions, agressive=agressive)),
-                      description,
+                      '[abstract ...] admits',
                       verbose=verbose,
                       log=log)
 
@@ -475,6 +475,12 @@ if __name__ == '__main__':
 
         if verbose >= 1: log('\nI will now attempt to replace Qeds with Admitteds')
         try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        # we've probably just removed a lot, so try to remove definitions again
+        definitions = try_recursive_remove(definitions)
+
+        if verbose >= 1: log('\nI will now attempt to admit [abstract ...]s')
+        try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         # we've probably just removed a lot, so try to remove definitions again
         definitions = try_recursive_remove(definitions)
