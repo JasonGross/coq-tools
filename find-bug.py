@@ -233,6 +233,15 @@ def try_remove_each_definition(definitions, output_file_name, error_reg_string, 
                               'Definition removal',
                               verbose=verbose, log=log)
 
+def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
+    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+                                  (lambda definition, rest:
+                                       None if ABORT_REG.search(definition['statement']) else definition),
+                                  'Aborted removal',
+                                  verbose=verbose,
+                                  log=log)
+
 def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
@@ -482,6 +491,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     def try_recursive_remove(definitions):
+        if verbose >= 1: log('\nI will now attempt to remove goals ending in [Abort.]')
+        definitions = try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
         if verbose >= 1: log('\nI will now attempt to remove unused Ltacs')
         definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
