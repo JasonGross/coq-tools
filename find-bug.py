@@ -205,11 +205,30 @@ def try_remove_if_name_not_found_in_transformer(get_names):
     return try_remove_if_not_matches_transformer(definition_found_in)
 
 
+def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    def get_names(definition):
+        if re.search(r"(?<![\w'])Instance\s", definition['statements'][0]):
+            return tuple()
+        elif re.search(r"(?<![\w'])Canonical\s+Structure\s", definition['statements'][0]):
+            return tuple()
+        else:
+            return definition.get('terms_defined', tuple())
+    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+                                  try_remove_if_name_not_found_in_transformer(get_names),
+                                  'Non-instance definition removal',
+                                  verbose=verbose, log=log)
+
 def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple())),
-                                  'Description removal',
+                                  'Definition removal',
                                   verbose=verbose, log=log)
+
+def try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+                              try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple())),
+                              'Definition removal',
+                              verbose=verbose, log=log)
 
 def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
@@ -459,6 +478,9 @@ if __name__ == '__main__':
         if verbose >= 1: log('\nI will now attempt to remove unused definitions')
         definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
+        if verbose >= 1: log('\nI will now attempt to remove unused non-instance, non-canonical structures')
+        definitions = try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
         if verbose >= 1: log('\nI will now attempt to remove unused variables')
         definitions = try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
@@ -484,6 +506,9 @@ if __name__ == '__main__':
 
         # we've probably just removed a lot, so try to remove definitions again
         definitions = try_recursive_remove(definitions)
+
+        if verbose >= 1: log('\nI will now attempt to remove unused definitions, one at a time')
+        definitions = try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         if verbose >= 1: log('\nI will now attempt to admit lemmas')
         try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
