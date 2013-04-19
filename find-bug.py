@@ -195,10 +195,13 @@ def try_remove_if_not_matches_transformer(definition_found_in):
             return None
     return transformer
 
+# don't count things like [Section ...], [End ...]
+EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
+                           r"|^\s*End\s+[^\.]+\.\s*$")
 def try_remove_if_name_not_found_in_transformer(get_names):
     def definition_found_in(cur_definition, future_definition):
         names = get_names(cur_definition)
-        if len(names) == 0:
+        if len(names) == 0 or EXCLUSION_REG.search(future_definition['statement']):
             return True
         return any(re.search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
                    for name in names)
