@@ -357,7 +357,11 @@ def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_
 
 def try_strip_comments(output_file_name, error_reg_string, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
+    old_contents = contents
     contents = strip_comments(contents)
+    if contents == old_contents:
+        if verbose >= 1: log('\nNo strippable comments.')
+        return
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping comments.')
@@ -380,6 +384,9 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
         if cur_line_num >= line_num:
             new_statements = statements[:statement_num + 1]
             break
+    if new_statements == statements:
+        if verbose: log('No lines to trim')
+        return
     output = diagnose_error.get_coq_output('\n'.join(new_statements))
     if diagnose_error.has_error(output, error_reg_string):
         if verbose: log('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
