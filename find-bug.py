@@ -294,7 +294,8 @@ def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_fi
 def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def do_call(method, definitions, agressive):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
-                      (lambda definition, rest_definitions: transform_abstract_to_admit(definition, rest_definitions, agressive=agressive)),
+                      (lambda definition, rest_definitions:
+                           transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=verbose, log=log)),
                       '[abstract ...] admits',
                       verbose=verbose,
                       log=log)
