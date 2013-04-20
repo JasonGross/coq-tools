@@ -257,7 +257,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           r'(?:Hint|Obligation\s+Tactic|Arguments|Implicit\s+Arguments' +
                           r'|Notation|Tactic\s+Notation|Infix|Transparent|Opaque|Coercion' +
                           r'|Identity\s+Coercion|Delimit\s+Scope|Set|Unset|Generalizable' +
-                          r'|Bind\s+Scope)\s+',
+                          r'|Bind\s+Scope|Create\s+HintDb|Existing\s+Instance)\s+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
