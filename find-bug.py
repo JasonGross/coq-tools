@@ -257,7 +257,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           r'(?:Hint|Obligation\s+Tactic|Arguments|Implicit\s+Arguments' +
                           r'|Notation|Tactic\s+Notation|Infix|Transparent|Opaque|Coercion' +
                           r'|Identity\s+Coercion|Delimit\s+Scope|Set|Unset|Generalizable' +
-                          r'|Bind\s+Scope|Create\s+HintDb|Existing\s+Instance)\s+',
+                          r'|Bind\s+Scope|Create\s+HintDb|Existing\s+Instance|Context)\s+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
@@ -275,6 +275,18 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: VARIABLE_REG.findall(definition['statement'].replace(':', ' : '))),
                                   'Variable removal',
+                                  verbose=verbose,
+                                  log=log)
+
+
+def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    CONTEXT_REG = re.compile(r'^\s*' +
+                              r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                              r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
+                              re.MULTILINE)
+    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : '))),
+                                  'Context removal',
                                   verbose=verbose,
                                   log=log)
 
@@ -508,6 +520,9 @@ if __name__ == '__main__':
 
         if verbose >= 1: log('\nI will now attempt to remove unused variables')
         definitions = try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+        if verbose >= 1: log('\nI will now attempt to remove unused contexts')
+        definitions = try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         return definitions
 
