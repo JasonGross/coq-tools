@@ -1,4 +1,1 @@
-* Be smarter about admitting things
-  + Maybe admit all lemmas/theorems/qed things all at once to start off with
-* Remove notations
-* Remove [Abort]s
+* Try using delta-debugging, and being smarter about ordering of removals
