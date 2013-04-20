@@ -6,7 +6,7 @@ def DEFAULT_LOG(text):
     print(text)
 
 TERM_CHAR = r"[\w']"
-ABSTRACT_NO_PARENS_DOT = re.compile(r"(\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s)" % TERM_CHAR, re.MULTILINE)
+ABSTRACT_NO_PARENS_DOT = re.compile(r"(^\s*|\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s)" % TERM_CHAR, re.MULTILINE)
 
 def transform_abstract_to_admit_statement(statement, agressive=False, verbose=1, log=DEFAULT_LOG):
     # remove the unparenthesized ones
