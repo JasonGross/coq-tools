@@ -10,7 +10,7 @@ ABSTRACT_NO_PARENS_DOT = re.compile(r"(\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)
 
 def transform_abstract_to_admit_statement(statement, agressive=False, verbose=1, log=DEFAULT_LOG):
     # remove the unparenthesized ones
-    statement = ABSTRACT_NO_PARENS_DOT.sub('\1admit', statement)
+    statement = ABSTRACT_NO_PARENS_DOT.sub(r'\1admit', statement)
 
     # now look at the parenthesized abstracts
     ready_for_abstract = True
