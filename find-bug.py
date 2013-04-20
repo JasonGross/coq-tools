@@ -254,7 +254,9 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                          r'(?:Hint|Obligation\s+Tactic|Arguments|Implicit\s+Arguments|Notation|Tactic\s+Notation|Infix|Transparent|Opaque|Coercion|Identity\s+Coercion)\s+',
+                          r'(?:Hint|Obligation\s+Tactic|Arguments|Implicit\s+Arguments' +
+                          r'|Notation|Tactic\s+Notation|Infix|Transparent|Opaque|Coercion' +
+                          r'|Identity\s+Coercion|Delimit\s+Scope|Set|Unset|Generalizable)\s+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
