@@ -200,10 +200,13 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         write_to_file(temp_file_name, join_definitions(definitions))
         return original_definitions
 
-def try_remove_if_not_matches_transformer(definition_found_in):
+def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
+            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s' % (definition, [future_definition
+                                                                                        for future_definition in rest_definitions
+                                                                                        if definition_found_in(cur_definition, future_definition)][0]))
             return cur_definition
         else:
             return None
@@ -212,14 +215,14 @@ def try_remove_if_not_matches_transformer(definition_found_in):
 # don't count things like [Section ...], [End ...]
 EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
                            r"|^\s*End\s+[^\.]+\.\s*$")
-def try_remove_if_name_not_found_in_transformer(get_names):
+def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def definition_found_in(cur_definition, future_definition):
         names = get_names(cur_definition)
         if len(names) == 0 or EXCLUSION_REG.search(future_definition['statement']):
             return True
         return any(re.search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
                    for name in names)
-    return try_remove_if_not_matches_transformer(definition_found_in)
+    return try_remove_if_not_matches_transformer(definition_found_in, verbose=verbose, log=log)
 
 
 def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
@@ -231,19 +234,21 @@ def try_remove_non_instance_definitions(definitions, output_file_name, error_reg
         else:
             return definition.get('terms_defined', tuple())
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(get_names),
+                                  try_remove_if_name_not_found_in_transformer(get_names, verbose=verbose, log=log),
                                   'Non-instance definition removal',
                                   verbose=verbose, log=log)
 
 def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple())),
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()),
+                                                                              verbose=verbose, log=log),
                                   'Definition removal',
                                   verbose=verbose, log=log)
 
 def try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple())),
+                              try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()),
+                                                                          verbose=verbose, log=log),
                               'Definition removal',
                               verbose=verbose, log=log)
 
@@ -260,7 +265,8 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
     LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
- : '))),
+ : ')),
+                                                                              verbose=verbose, log=log),
                                   'Ltac removal',
                                   verbose=verbose,
                                   log=log)
@@ -287,7 +293,8 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                               r'([^\s]+)',
                               re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: VARIABLE_REG.findall(definition['statement'].replace(':', ' : '))),
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: VARIABLE_REG.findall(definition['statement'].replace(':', ' : ')),
+                                                                              verbose=verbose, log=log),
                                   'Variable removal',
                                   verbose=verbose,
                                   log=log)
@@ -299,7 +306,8 @@ def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_fi
                               r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
                               re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : '))),
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')),
+                                                                              verbose=verbose, log=log),
                                   'Context removal',
                                   verbose=verbose,
                                   log=log)
