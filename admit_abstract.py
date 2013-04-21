@@ -26,7 +26,7 @@ def transform_abstract_to_admit_statement(statement, agressive=False, verbose=1,
             log('in_abstract: %d; abstract_paren_level: %d; agressive: %d; ready_for_abstract: %d;\n^term: %s' %
                 (in_abstract, abstract_paren_level, agressive, ready_for_abstract, term))
         if in_abstract:
-            if abstract_paren_level == 0 and term in ';.':
+            if abstract_paren_level == 0 and term in tuple(';.'):
                 if term == ';':
                     if agressive:
                         rtn.append(' admit;')
@@ -66,7 +66,7 @@ def transform_abstract_to_admit_statement(statement, agressive=False, verbose=1,
                     log('Warning: abstract_paren_level messed up before abstract on statement %s' % repr(statement))
                     abstract_paren_level = 0
             else:
-                if term in '.;':
+                if term in tuple('.;'):
                     if verbose >= 3: log("Found %s (appending to rtn), ready for abstract" % repr(term))
                     ready_for_abstract = True
                 elif term.strip():
