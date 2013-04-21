@@ -204,9 +204,10 @@ def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_V
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
-            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s' % (definition, [future_definition
-                                                                                        for future_definition in rest_definitions
-                                                                                        if definition_found_in(cur_definition, future_definition)][0]))
+            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s' % (cur_definition,
+                                                                           [future_definition['statement']
+                                                                            for future_definition in rest_definitions
+                                                                            if definition_found_in(cur_definition, future_definition)][0]))
             return cur_definition
         else:
             return None
