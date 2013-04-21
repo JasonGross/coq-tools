@@ -53,7 +53,7 @@ def transform_abstract_to_admit_statement(statement, agressive=False, verbose=1,
                 elif term == ')':
                     abstract_paren_level -= 1
                 cur.append(term)
-                if verbose >= 3: log("Setting abstract_paren_level to %d and\nappending %s to cur" % abstract_paren_level, repr(term))
+                if verbose >= 3: log("Setting abstract_paren_level to %d and\nappending %s to cur" % (abstract_paren_level, repr(term)))
         else:
             if ready_for_abstract and term.strip() == 'abstract':
                 cur.append(term)
