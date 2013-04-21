@@ -144,7 +144,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 write_to_file(output_file_name, join_definitions(try_definitions))
                 definitions = try_definitions
                 # make a copy for saving
-                save_definitions = [dict(i) for i in try_definitions]
+                save_definitions = [dict(defn) for defn in try_definitions]
             else:
                 if verbose >= 3: log('Change failed.  Output:\n%s' % output)
         else:
