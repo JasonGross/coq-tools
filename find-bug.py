@@ -47,7 +47,7 @@ def backup(file_name, ext='.bak'):
         backup(file_name + ext)
         os.rename(file_name, file_name + ext)
 
-def write_to_file(file_name, contents, do_backup=True):
+def write_to_file(file_name, contents, do_backup=False):
     if do_backup:
         backup(file_name)
     try:
