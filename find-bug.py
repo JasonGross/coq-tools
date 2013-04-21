@@ -40,7 +40,16 @@ def make_logger(log_files):
                 os.fsync(i.fileno())
     return log
 
-def write_to_file(file_name, contents):
+def backup(file_name, ext='.bak'):
+    if not ext:
+        raise ValueError
+    if os.path.exists(file_name):
+        backup(file_name + ext)
+        os.rename(file_name, file_name + ext)
+
+def write_to_file(file_name, contents, do_backup=True):
+    if do_backup:
+        backup(file_name)
     try:
         with open(file_name, 'w', encoding='UTF-8') as f:
             f.write(contents)
@@ -114,7 +123,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
 
     Returns updated definitions."""
     if verbose >= 3: log('try_transform_each')
-    original_definitions = list(definitions)
+    original_definitions = [dict(i) for i in definitions]
     # TODO(jgross): Use coqtop and [BackTo] to do incremental checking
     success = False
     i = len(definitions) - 1 - skip_n
@@ -134,6 +143,8 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 success = True
                 write_to_file(output_file_name, join_definitions(try_definitions))
                 definitions = try_definitions
+                # make a copy for saving
+                save_definitions = [dict(i) for i in try_definitions]
             else:
                 if verbose >= 3: log('Change failed.  Output:\n%s' % output)
         else:
@@ -141,7 +152,10 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         i -= 1
     if success:
         if verbose >= 1 : log(description + ' successful')
-        write_to_file(output_file_name, join_definitions(definitions))
+        if join_definitions(save_definitions) != join_definitions(definitions):
+            log('Probably fatal error: definitions != save_definitions')
+        else:
+            write_to_file(output_file_name, join_definitions(definitions))
         return definitions
     else:
         if verbose >= 1: log(description + ' unsuccessful.')
