@@ -332,19 +332,33 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
     # comparison to coq cycles
     definitions = do_call(try_transform_reversed, definitions, True)
     new_definitions = join_definitions(definitions)
-    if new_definitions != old_definitions: return definitions
+    if new_definitions != old_definitions:
+        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_reversed, agressive: True, definitions:\n%s'
+                             % new_definitions)
+        return definitions
 
     # try the other options, each less agressive than the last
     definitions = do_call(try_transform_reversed, definitions, False)
     new_definitions = join_definitions(definitions)
-    if new_definitions != old_definitions: return definitions
+    if new_definitions != old_definitions:
+        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_reversed, agressive: False, definitions:\n%s'
+                             % new_definitions)
+        return definitions
 
     definitions = do_call(try_transform_each, definitions, True)
     new_definitions = join_definitions(definitions)
-    if new_definitions != old_definitions: return definitions
+    if new_definitions != old_definitions:
+        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_each, agressive: True, definitions:\n%s'
+                             % new_definitions)
+        return definitions
 
     definitions = do_call(try_transform_each, definitions, False)
     new_definitions = join_definitions(definitions)
+    if new_definitions != old_definitions:
+        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_each, agressive: False, definitions:\n%s'
+                             % new_definitions)
+    else:
+        if verbose >= 3: log('Failure with [abstract ...] admits.')
     return definitions
 
 
