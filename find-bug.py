@@ -218,8 +218,11 @@ EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
 def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def definition_found_in(cur_definition, future_definition):
         names = get_names(cur_definition)
-        if len(names) == 0 or EXCLUSION_REG.search(future_definition['statement']):
+        if len(names) == 0:
             return True
+        elif EXCLUSION_REG.search(future_definition['statement']):
+            return False # we don't care if the name is found in a
+                         # statement like [Section ...] or [End ...]
         return any(re.search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
                    for name in names)
     return try_remove_if_not_matches_transformer(definition_found_in, verbose=verbose, log=log)
