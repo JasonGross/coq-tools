@@ -162,7 +162,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         return original_definitions
 
 
-def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=3,
+def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
                            verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
