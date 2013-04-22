@@ -301,6 +301,8 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
                                   verbose=verbose,
                                   log=log)
 
+DEFINITION_ISH = r'Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture'
+
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     # alphabetized by
     #
@@ -315,15 +317,11 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
     #     print("r'%s' +" % i)
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                          r'(?:' +
-                          r'Arguments|Bind|Close|Coercion|Context' +
-                          r'|Create|Delimit|Existing|Export' +
-                          r'|Generalizable|Hint|Identity|Implicit' +
-                          r'|Import|Infix|Notation|Obligation|Opaque' +
-                          r'|Open|Require|Reserved|Set|Tactic' +
-                          r'|Transparent|Unset' +
-                          r')\s+',
-                          re.MULTILINE)
+                          r'(?!(?:' +
+                          r'Definition|Fixpoint|Record|Inductive' +
+                          r'|Coinductive|CoFixpoint|Section|End' +
+                          DEFINITION_ISH +
+                          r')\s+)')
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
                                                          else definition)),
@@ -334,7 +332,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
 def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     VARIABLE_REG = re.compile(r'^\s*' +
                               r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                              r'(?:Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture)\s+' +
+                              r'(?:' + DEFINITION_ISH + r')\s+' +
                               r'([^\.:]+)',
                               re.MULTILINE)
 
