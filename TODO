@@ -15,3 +15,6 @@
   removing a quick-path instance).  Maybe make a tuning parameter for
   how much size needs to be reduced to accept a given reduction in
   speed.
+
+* Use `coqtop -time -emacs` rather than `coqtop -emacs`, and remove
+  the need to split into statements.
