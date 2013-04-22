@@ -323,8 +323,11 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           DEFINITION_ISH +
                           r')\s+)')
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
-                                                         else definition)),
+                              (lambda definition, rest:
+                                   (None
+                                    if len(definition['statements']) == 1 and \
+                                        HINT_REG.match(definition['statement'])
+                                    else definition)),
                               'Hint removal',
                               verbose=verbose,
                               log=log)
