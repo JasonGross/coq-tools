@@ -204,10 +204,11 @@ def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_V
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
-            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s' % (cur_definition,
-                                                                           [future_definition['statement']
-                                                                            for future_definition in rest_definitions
-                                                                            if definition_found_in(cur_definition, future_definition)][0]))
+            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s'
+                                 % (cur_definition,
+                                    [future_definition['statement']
+                                     for future_definition in rest_definitions
+                                     if definition_found_in(cur_definition, future_definition)][0]))
             return cur_definition
         else:
             return None
@@ -227,6 +228,31 @@ def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBO
         return any(re.search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
                    for name in names)
     return try_remove_if_not_matches_transformer(definition_found_in, verbose=verbose, log=log)
+
+
+def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    SECTION_BEGIN_REG = re.compile(r'^\s*Section\s+[^\.]+\.\s*$')
+    SECTION_END_REG = re.compile(r'^\s*End\s+[^\.]+\.\s*$')
+    def transformer(cur_definition, rest_definitions):
+        names = get_names(cur_definition)
+        if len(names) == 0:
+            return cur_definition
+        section_level = 0
+        for future_definition in rest_definitions:
+            if section_level < 0:
+                break
+            if SECTION_BEGIN_REG.match(future_definition['statement']):
+                section_level += 1
+            elif SECTION_END_REG.match(future_definition['statement']):
+                section_level -= 1
+            elif any(re.search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
+                     for name in names):
+                return cur_definition
+        # we didn't find the name, so we can safely remove it
+        return None
+
+    return transformer
+
 
 
 def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
@@ -299,11 +325,18 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
     VARIABLE_REG = re.compile(r'^\s*' +
                               r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                               r'(?:Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture)\s+' +
-                              r'([^\s]+)',
+                              r'([^\.:]+)',
                               re.MULTILINE)
+
+    def get_names(definition):
+        terms = VARIABLE_REG.findall(definition['statement'])
+        return [i for i in sorted(set(j
+                                      for term in terms
+                                      for j in term.split(' ')))]
+
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: VARIABLE_REG.findall(definition['statement'].replace(':', ' : ')),
-                                                                              verbose=verbose, log=log),
+                                  try_remove_if_name_not_found_in_section_transformer(get_names,
+                                                                                      verbose=verbose, log=log),
                                   'Variable removal',
                                   verbose=verbose,
                                   log=log)
