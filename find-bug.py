@@ -286,7 +286,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           r'|Infix|Notation|Obligation\s+Tactic|Opaque' +
                           r'|Reserved\s+Infix|Reserved\s+Notation|Set' +
                           r'|Tactic\s+Notation|Transparent|Unset' +
-                          r')s\+'
+                          r')s\+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest: (None if HINT_REG.search(definition['statement'])
