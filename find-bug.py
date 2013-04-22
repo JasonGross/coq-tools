@@ -23,7 +23,7 @@ parser.add_argument('--fast', dest='fast',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
-                    default=sys.stdout,
+                    default=[sys.stdout],
                     help='The files to log output to.  Use - for stdout.')
 
 def DEFAULT_LOG(text):
