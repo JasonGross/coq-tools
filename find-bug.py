@@ -465,6 +465,29 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
 
 
 
+def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    reg = re.compile(r'(\.\s+|^\s*)Section\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', re.MULTILINE)
+    contents = read_from_file(output_file_name)
+    old_contents = contents
+    new_contents = re.sub(r'\1', old_contents)
+    while new_contents != old_contents:
+        old_contents, new_contents = new_contents, re.sub(r'\1', new_contents)
+
+    if new_contents == contents:
+        if verbose: log('No empty sections to remove')
+        return
+    output = diagnose_error.get_coq_output(new_contents)
+    if diagnose_error.has_error(output, error_reg_string):
+        if verbose: log('Empty section removal successful.')
+        write_to_file(output_file_name, new_contents)
+    else:
+        if verbose:
+            log('Empty section removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+            log(output)
+        write_to_file(temp_file_name, new_contents)
+
+
+
 if __name__ == '__main__':
     args = parser.parse_args()
     os.chdir(args.directory)
@@ -599,6 +622,9 @@ if __name__ == '__main__':
 
         if verbose >= 1: log('\nI will now attempt to remove hints')
         try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+
+    if verbose >= 1: log('\nI will now attempt to remove empty sections')
+    try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
 
     if os.path.exists(temp_file_name) and remove_temp_file:
