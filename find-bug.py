@@ -369,8 +369,8 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
 
 def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def transformer(cur_definition, rest_definitions):
-        if len(cur_definition['statements']) > 1 and matcher(cur_definition):
-            statements = (cur_definition['statements'][0], 'Admitted.')
+        if len(cur_definition['statements']) > 2 and matcher(cur_definition):
+            statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
             return {'statements':statements,
                     'statement':'\n'.join(statements),
                     'terms_defined':cur_definition['terms_defined']}
