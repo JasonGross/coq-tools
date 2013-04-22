@@ -302,16 +302,29 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
                                   log=log)
 
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    # alphabetized by
+    #
+    # a = list(sorted('...'.split('|')))
+    # lines = [a[0]]
+    # for i in a[1:]:
+    #     if len(i) + 1 + len(lines[-1]) <= line_len:
+    #         lines[-1] += '|' + i
+    #     else:
+    #         lines.append('|' + i)
+    # for i in lines:
+    #     print("r'%s' +" % i)
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                           r'(?:' +
                           r'Arguments|Bind\s+Scope|Coercion|Context' +
                           r'|Create\s+HintDb|Delimit\s+Scope' +
-                          r'|Existing\s+Instance|Generalizable|Hint' +
-                          r'|Identity\s+Coercion|Implicit\s+Arguments' +
-                          r'|Infix|Notation|Obligation\s+Tactic|Opaque' +
-                          r'|Reserved\s+Infix|Reserved\s+Notation|Set' +
-                          r'|Tactic\s+Notation|Transparent|Unset' +
+                          r'|Existing\s+Instance|Export|Generalizable' +
+                          r'|Hint|Identity\s+Coercion' +
+                          r'|Implicit\s+Arguments|Import|Infix' +
+                          r'|Notation|Obligation\s+Tactic|Opaque' +
+                          r'|Require|Reserved\s+Infix' +
+                          r'|Reserved\s+Notation|Set|Tactic\s+Notation' +
+                          r'|Transparent|Unset' +
                           r')\s+',
                           re.MULTILINE)
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
