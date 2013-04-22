@@ -8,3 +8,5 @@
 
 * Remember timing information for definitions, so we can be smart
   about prioritizing things that take a long time.
+
+* Separate things into more files
