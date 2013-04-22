@@ -618,59 +618,36 @@ if __name__ == '__main__':
         if verbose >= 1: log(output)
         sys.exit(1)
 
-    def try_recursive_remove(definitions):
-        if verbose >= 1: log('\nI will now attempt to remove goals ending in [Abort.]')
-        definitions = try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+    recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
+                       ('remove unused Ltacs', try_remove_ltac),
+                       ('remove unused definitions', try_remove_definitions),
+                       ('remove unused non-instance, non-canonical structure definitions', try_remove_non_instance_definitions),
+                       ('remove unused variables', try_remove_variables),
+                       ('remove unused contexts', try_remove_contexts))
 
-        if verbose >= 1: log('\nI will now attempt to remove unused Ltacs')
-        definitions = try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused definitions')
-        definitions = try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused non-instance, non-canonical structures')
-        definitions = try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused variables')
-        definitions = try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused contexts')
-        definitions = try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        return definitions
+    tasks = (recursive_tasks +
+             (('replace Qeds with Admitteds', try_admit_qeds),) +
+             # we've probably just removed a lot, so try to remove definitions again
+             recursive_tasks +
+             (('admit [abstract ...]s', try_admit_abstracts),) +
+             # we've probably just removed a lot, so try to remove definitions again
+             recursive_tasks +
+             (('remove unused definitions, one at a time', try_remove_each_definition),
+              ('admit lemmas', try_admit_lemmas),
+              ('admit definitions', try_admit_definitions),
+              ('remove hints', try_remove_hints)))
 
 
-    old_definitions = []
-    while join_definitions(old_definitions) != join_definitions(definitions):
-        old_definitions = list(definitions)
+    old_definitions = ''
+    while old_definitions != join_definitions(definitions):
+        old_definitions = join_definitions(definitions)
         if verbose >= 1: log('Definitions:')
         if verbose >= 1: log(definitions)
 
-        definitions = try_recursive_remove(definitions)
+        for description, task in tasks:
+            if verbose >= 1: log('\nI will now attempt to %s' % description)
+            definitions = task(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
-        if verbose >= 1: log('\nI will now attempt to replace Qeds with Admitteds')
-        definitions = try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        # we've probably just removed a lot, so try to remove definitions again
-        definitions = try_recursive_remove(definitions)
-
-        if verbose >= 1: log('\nI will now attempt to admit [abstract ...]s')
-        definitions = try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        # we've probably just removed a lot, so try to remove definitions again
-        definitions = try_recursive_remove(definitions)
-
-        if verbose >= 1: log('\nI will now attempt to remove unused definitions, one at a time')
-        definitions = try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to admit lemmas')
-        definitions = try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to admit definitions')
-        definitions = try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
-
-        if verbose >= 1: log('\nI will now attempt to remove hints')
-        definitions = try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
     if verbose >= 1: log('\nI will now attempt to remove empty sections')
     try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
