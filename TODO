@@ -1,3 +1,6 @@
+* Only display the warning about periods in strings if there are
+  actually periods in strings.
+
 * Try using delta-debugging, and being smarter about ordering of
   removals
 
