@@ -316,14 +316,11 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                           r'(?:' +
-                          r'Arguments|Bind\s+Scope|Coercion|Context' +
-                          r'|Create\s+HintDb|Delimit\s+Scope' +
-                          r'|Existing\s+Instance|Export|Generalizable' +
-                          r'|Hint|Identity\s+Coercion' +
-                          r'|Implicit\s+Arguments|Import|Infix' +
-                          r'|Notation|Obligation\s+Tactic|Opaque' +
-                          r'|Require|Reserved\s+Infix' +
-                          r'|Reserved\s+Notation|Set|Tactic\s+Notation' +
+                          r'Arguments|Bind|Close|Coercion|Context' +
+                          r'|Create|Delimit|Existing|Export' +
+                          r'|Generalizable|Hint|Identity|Implicit' +
+                          r'|Import|Infix|Notation|Obligation|Opaque' +
+                          r'|Open|Require|Reserved|Set|Tactic' +
                           r'|Transparent|Unset' +
                           r')\s+',
                           re.MULTILINE)
