@@ -469,9 +469,9 @@ def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name,
     reg = re.compile(r'(\.\s+|^\s*)Section\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', re.MULTILINE)
     contents = read_from_file(output_file_name)
     old_contents = contents
-    new_contents = re.sub(r'\1', old_contents)
+    new_contents = reg.sub(r'\1', old_contents)
     while new_contents != old_contents:
-        old_contents, new_contents = new_contents, re.sub(r'\1', new_contents)
+        old_contents, new_contents = new_contents, reg.sub(r'\1', new_contents)
 
     if new_contents == contents:
         if verbose: log('No empty sections to remove')
