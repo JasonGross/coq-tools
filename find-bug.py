@@ -348,8 +348,8 @@ def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_fi
                               r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
                               re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')),
-                                                                              verbose=verbose, log=log),
+                                  try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')),
+                                                                                      verbose=verbose, log=log),
                                   'Context removal',
                                   verbose=verbose,
                                   log=log)
