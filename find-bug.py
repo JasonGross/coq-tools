@@ -600,13 +600,13 @@ if __name__ == '__main__':
         definitions = try_recursive_remove(definitions)
 
         if verbose >= 1: log('\nI will now attempt to replace Qeds with Admitteds')
-        try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         # we've probably just removed a lot, so try to remove definitions again
         definitions = try_recursive_remove(definitions)
 
         if verbose >= 1: log('\nI will now attempt to admit [abstract ...]s')
-        try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         # we've probably just removed a lot, so try to remove definitions again
         definitions = try_recursive_remove(definitions)
@@ -615,13 +615,13 @@ if __name__ == '__main__':
         definitions = try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         if verbose >= 1: log('\nI will now attempt to admit lemmas')
-        try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         if verbose >= 1: log('\nI will now attempt to admit definitions')
-        try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
         if verbose >= 1: log('\nI will now attempt to remove hints')
-        try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
+        definitions = try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
 
     if verbose >= 1: log('\nI will now attempt to remove empty sections')
     try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=verbose, log=log)
