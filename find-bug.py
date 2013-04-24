@@ -318,16 +318,18 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
     #     print("r'%s' +" % i)
     HINT_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                          r'(?!(?:' +
+                          r'(?:' +
                           r'Definition|Fixpoint|Record|Inductive' +
                           r'|Coinductive|CoFixpoint|Section|End' +
-                          DEFINITION_ISH +
-                          r')\s+)')
+                          r'|Set\s+Universe\s+Polymorphism' +
+                          r'|Unet\s+Universe\s+Polymorphism' +
+                          r'|' + DEFINITION_ISH +
+                          r')\s+')
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest:
                                    (None
                                     if len(definition['statements']) == 1 and \
-                                        HINT_REG.match(definition['statement'])
+                                        not HINT_REG.match(definition['statement'])
                                     else definition)),
                               'Hint removal',
                               verbose=verbose,
