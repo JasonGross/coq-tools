@@ -68,7 +68,7 @@ def read_from_file(file_name):
 def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     error_reg_string = ''
     while error_reg_string == '':
-        if verbose: log('\nCoqing the file...')
+        if verbose: log('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         output = diagnose_error.get_coq_output(contents)
         result = ''
@@ -103,7 +103,8 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
                 log('\nThe given regular expression does not have two groups.')
                 log('It must have one integer group which matches on the line number,')
                 log('and another group which matches on the error string.')
-            error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file. ')
+            error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).'
+                                         % output_file_name)
 
         if error_reg_string == '':
             continue
