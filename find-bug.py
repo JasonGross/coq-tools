@@ -92,7 +92,16 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
             log('\nThe current state of the file does not have a recognizable error.')
 
         if error_reg_string == '':
-            error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
+            success = False
+            while not success:
+                error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
+                try:
+                    re.compile(error_reg_string)
+                except e:
+                    print('\nThat regular expression does not compile: %s' % e)
+                    success = False
+                else:
+                    success = True
 
         while (error_reg_string != ''
                and (not re.search(error_reg_string, output)
