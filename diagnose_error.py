@@ -4,7 +4,7 @@ from memoize import memoize
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string"]
 
-DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n([^\n]+)'
+DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(Error:\s*[^\n]+|[^\n]+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
 
 @memoize
@@ -42,7 +42,7 @@ def make_reg_string(output):
 
     Precondition: has_error(output)
     """
-    return DEFAULT_ERROR_REG_STRING_GENERIC % get_error_string(output)
+    return DEFAULT_ERROR_REG_STRING_GENERIC % re.escape(get_error_string(output))
 
 @memoize
 def get_coq_output(contents):
