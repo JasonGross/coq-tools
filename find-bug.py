@@ -73,12 +73,12 @@ def read_from_file(file_name):
             return f.read()
 
 @memoize
-def re_compile_printf(pattern_string, values, *args):
-    return re.compile(pattern_string % values, *args)
+def re_compile(pattern, *args):
+    return re.compile(pattern, *args)
 
 # memoize the compilation
 def re_search(pattern, string, flags=0):
-    return re_compile_printf(pattern, flags).search(string)
+    return re_compile(pattern, flags).search(string)
 
 def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     error_reg_string = ''
