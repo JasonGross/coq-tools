@@ -226,6 +226,7 @@ def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_V
 
 # don't count things like [Section ...], [End ...]
 EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
+                           r"|^\s*Module\s+[^\.]+\.\s*$" +
                            r"|^\s*End\s+[^\.]+\.\s*$")
 def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def definition_found_in(cur_definition, future_definition):
@@ -241,7 +242,7 @@ def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBO
 
 
 def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    SECTION_BEGIN_REG = re.compile(r'^\s*Section\s+[^\.]+\.\s*$')
+    SECTION_BEGIN_REG = re.compile(r'^\s*(?:Section|Module)\s+[^\.]+\.\s*$')
     SECTION_END_REG = re.compile(r'^\s*End\s+[^\.]+\.\s*$')
     def transformer(cur_definition, rest_definitions):
         names = get_names(cur_definition)
@@ -527,7 +528,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
 
 
 def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    reg = re.compile(r'(\.\s+|^\s*)Section\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', re.MULTILINE)
+    reg = re.compile(r'(\.\s+|^\s*)(?:Section|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', re.MULTILINE)
     contents = read_from_file(output_file_name)
     old_contents = contents
     new_contents = reg.sub(r'\1', old_contents)

@@ -81,8 +81,25 @@ def contents_without_imports(file_name, verbose=True, log=DEFAULT_LOG):
         print('Warning: There are comments in your Require/Import/Export lines in %s.' % file_name)
     return IMPORT_LINE_REG.sub('', contents)
 
-def include_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
+def contents_as_module_without_require(file_name, verbose=True, log=DEFAULT_LOG):
+    if file_name[-2:] != '.v': file_name += '.v'
+    contents = get_file(file_name, verbose=verbose, log=log)
+    contents = re.sub(r'^\s*Require\s+((?:Import|Export)\s+[^\.]+\.(?:\s|$))',
+                      r'\1',
+                      contents,
+                      re.MULTILINE)
+    contents = re.sub(r'^\s*Require\s+((?!Import\s+|Export\s+)[^\.]+\.(?:\s|$))',
+                      r'',
+                      contents,
+                      re.MULTILINE)
+    module_name = os.path.basename(file_name)[:-2]
+    contents = 'Module %s.\n%s\nEnd %s.\n' % (module_name, contents, module_name)
+    return contents
+
+def include_imports(file_name, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG):
     """Return the contents of file_name, with any top-level imports inlined.
+
+    If as_modules == True, then the imports will be wrapped in modules.
 
     This method requires access to the coqdep program if fast == False.
     Without it, it will fall back to manual parsing of the imports,
@@ -96,7 +113,7 @@ def include_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
     >>> g.write(r"Require Export Ascii String.\n\nInductive q := c | d.")
     >>> f.close()
     >>> g.close()
-    >>> print(include_imports(f.name, verbose=False))
+    >>> print(include_imports(f.name, as_modules=False, verbose=False))
     Require Import Coq.Arith.Arith Coq.Bool.Bool Coq.Init.Logic Coq.PArith.PArith Coq.QArith.QArith Coq.Setoids.Setoid Coq.ZArith.ZArith Coq.Strings.Ascii Coq.Strings.String.
 
     Inductive q := c | d.
@@ -107,7 +124,7 @@ def include_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
 
     (*asdf*)
 
-    >>> print(include_imports(f.name, fast=True, verbose=False))
+    >>> print(include_imports(f.name, as_modules=False, fast=True, verbose=False))
     Require Import Arith Bool Coq.Init.Logic PArith QArith Setoid ZArith Ascii String.
 
     Inductive q := c | d.
@@ -128,7 +145,10 @@ def include_imports(file_name, verbose=True, fast=False, log=DEFAULT_LOG):
     rtn = ''
     for import_name in all_imports:
         if os.path.exists(import_name + '.v'):
-            rtn += contents_without_imports(import_name, verbose=verbose, log=log) + '\n'
+            if as_modules:
+                rtn += contents_as_module_without_require(import_name, verbose=verbose, log=log) + '\n'
+            else:
+                rtn += contents_without_imports(import_name, verbose=verbose, log=log) + '\n'
         else:
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
