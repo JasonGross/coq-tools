@@ -9,7 +9,7 @@ file_imports_fast = {}
 file_imports_slow = {}
 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
-IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Import|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
+IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
 def DEFAULT_LOG(text):
     print(text)
