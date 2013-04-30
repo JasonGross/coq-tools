@@ -226,7 +226,10 @@ def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_V
 
 # don't count things like [Section ...], [End ...]
 EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
-                           r"|^\s*End\s+[^\.]+\.\s*$")
+                           r"|^\s*End\s+[^\.]+\.\s*$" +
+                           r"|^\s*(?:Global\s+|Local\s+)?Set\s+Universe\s+Polymorphism\s*\.\s*$" +
+                           r"|^\s*(?:Global\s+|Local\s+)?Unset\s+Universe\s+Polymorphism\s*\.\s*$",
+                           re.MULTILINE)
 def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def definition_found_in(cur_definition, future_definition):
         names = get_names(cur_definition)
