@@ -21,3 +21,5 @@
   . -time -verbose -dump-globs foo.glob foo`
 
 * Deal with [Load] better
+
+* Handle subdirectories better
