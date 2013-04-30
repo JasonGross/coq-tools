@@ -333,7 +333,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                           r'|Set\s+Universe\s+Polymorphism' +
                           r'|Unet\s+Universe\s+Polymorphism' +
                           r'|' + DEFINITION_ISH +
-                          r')\s+')
+                          r')\.?(?:\s+|$)')
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest:
                                    (None
