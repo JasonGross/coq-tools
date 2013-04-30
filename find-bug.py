@@ -602,9 +602,14 @@ if __name__ == '__main__':
 
 
 
-    # TODO(jgross): Only display the warning if there seem to be periods in strings.
-    if verbose >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.  If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
     contents = read_from_file(output_file_name)
+    if verbose >= 1:
+        log('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
+        strings = re.findall(r'"[^"]+"', contents)
+        bad_strings = [i for i in strings if re.search(r'\.\s', i)]
+        if bad_strings:
+            log('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+            log('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
     statements = split_coq_file_contents(contents)
     output = diagnose_error.get_coq_output('\n'.join(statements))
     if diagnose_error.has_error(output, error_reg_string):
