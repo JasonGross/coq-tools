@@ -19,3 +19,5 @@
 * Use `coqtop -time -emacs` rather than `coqtop -emacs`, and remove
   the need to split into statements.  Alternatively, use `coqc -q -I
   . -time -verbose -dump-globs foo.glob foo`
+
+* Deal with [Load] better
