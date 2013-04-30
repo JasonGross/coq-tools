@@ -84,14 +84,14 @@ def contents_without_imports(file_name, verbose=True, log=DEFAULT_LOG):
 def contents_as_module_without_require(file_name, verbose=True, log=DEFAULT_LOG):
     if file_name[-2:] != '.v': file_name += '.v'
     contents = get_file(file_name, verbose=verbose, log=log)
-    contents = re.sub(r'^\s*Require\s+((?:Import|Export)\s+[^\.]+\.(?:\s|$))',
+    contents = re.sub(r'^\s*Require\s+((?:Import|Export)\s)',
                       r'\1',
                       contents,
-                      re.MULTILINE)
+                      flags=re.MULTILINE)
     contents = re.sub(r'^\s*Require\s+((?!Import\s+|Export\s+)[^\.]+\.(?:\s|$))',
                       r'',
                       contents,
-                      re.MULTILINE)
+                      flags=re.MULTILINE)
     module_name = os.path.basename(file_name)[:-2]
     contents = 'Module %s.\n%s\nEnd %s.\n' % (module_name, contents, module_name)
     return contents
