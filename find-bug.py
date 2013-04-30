@@ -25,6 +25,12 @@ parser.add_argument('--fast', dest='fast',
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
                     default=[sys.stdout],
                     help='The files to log output to.  Use - for stdout.')
+parser.add_argument('--no-wrap-modules', dest='wrap_modules',
+                    action='store_const', const=False, default=True,
+                    help=("Don't wrap imports in Modules.  By default, the" +
+                          "contents of each file is wrapped in its own" +
+                          "module to deal with renaming issues.  This" +
+                          "can cause issues with subdirectories."))
 
 def DEFAULT_LOG(text):
     print(text)
@@ -559,6 +565,7 @@ if __name__ == '__main__':
     verbose = args.verbose
     fast = args.fast
     log = make_logger(args.log_files)
+    as_modules = args.wrap_modules
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -580,7 +587,7 @@ if __name__ == '__main__':
 
 
     if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast, log=log)
+    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast, log=log, as_modules=as_modules)
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
     else:
