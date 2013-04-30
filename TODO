@@ -4,8 +4,6 @@
 * Try using delta-debugging, and being smarter about ordering of
   removals
 
-* Make look-ahead for variables section-specific
-
 * Remember timing information for definitions, so we can be smart
   about prioritizing things that take a long time.
 
