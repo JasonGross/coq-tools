@@ -39,6 +39,21 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
             tuple(i for i in new_definitions if i not in old_definitions))
 
 
+#def split_coq_code_to_definitions(code, verbose=1, log=DEFAULT_LOG):
+#    """Splits coq code into chunks which make up
+#    independent definitions/hints/etc, of the form
+#
+#    {
+#     'statements': <list of runnable statements>,
+#     'statement':  <entire chunk of code>,
+#     'terms_defined': <tuple of terms defined by this chunk of code>,
+#     'times': <a list of times for each statement>
+#     'output': <a string of the response from coqtop>
+#    }"""
+#    p = Popen_async(['coqtop', '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+#    time.sleep(1)
+
+
 def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
