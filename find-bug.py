@@ -5,6 +5,7 @@ from strip_comments import strip_comments
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
+from memoize import memoize
 import diagnose_error
 
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
@@ -70,6 +71,10 @@ def read_from_file(file_name):
     except TypeError:
         with open(file_name, 'r') as f:
             return f.read()
+
+@memoize
+def re_compile_printf(pattern_string, values, *args):
+    return re.compile(pattern_string % values, *args)
 
 def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     error_reg_string = ''
@@ -271,12 +276,13 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAU
     return transformer
 
 
-
+INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
+CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
 def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     def get_names(definition):
-        if re.search(r"(?<![\w'])Instance\s", definition['statements'][0]):
+        if INSTANCE_REG.search(definition['statements'][0]):
             return tuple()
-        elif re.search(r"(?<![\w'])Canonical\s+Structure\s", definition['statements'][0]):
+        elif CANONICAL_STRUCTURE_REG.search(definition['statements'][0]):
             return tuple()
         else:
             return definition.get('terms_defined', tuple())
@@ -299,8 +305,8 @@ def try_remove_each_definition(definitions, output_file_name, error_reg_string, 
                               'Definition removal',
                               verbose=verbose, log=log)
 
+ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
 def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   (lambda definition, rest:
                                        None if ABORT_REG.search(definition['statement']) else definition),
@@ -308,8 +314,8 @@ def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_fil
                                   verbose=verbose,
                                   log=log)
 
+LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', flags=re.MULTILINE)
 def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : ')),
@@ -319,28 +325,16 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
                                   log=log)
 
 DEFINITION_ISH = r'Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture'
-
+HINT_REG = re.compile(r'^\s*' +
+                      r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                      r'(?:' +
+                      r'Definition|Fixpoint|Record|Inductive' +
+                      r'|Coinductive|CoFixpoint|Section|End' +
+                      r'|Set\s+Universe\s+Polymorphism' +
+                      r'|Unet\s+Universe\s+Polymorphism' +
+                      r'|' + DEFINITION_ISH +
+                      r')\.?(?:\s+|$)')
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    # alphabetized by
-    #
-    # a = list(sorted('...'.split('|')))
-    # lines = [a[0]]
-    # for i in a[1:]:
-    #     if len(i) + 1 + len(lines[-1]) <= line_len:
-    #         lines[-1] += '|' + i
-    #     else:
-    #         lines.append('|' + i)
-    # for i in lines:
-    #     print("r'%s' +" % i)
-    HINT_REG = re.compile(r'^\s*' +
-                          r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                          r'(?:' +
-                          r'Definition|Fixpoint|Record|Inductive' +
-                          r'|Coinductive|CoFixpoint|Section|End' +
-                          r'|Set\s+Universe\s+Polymorphism' +
-                          r'|Unet\s+Universe\s+Polymorphism' +
-                          r'|' + DEFINITION_ISH +
-                          r')\.?(?:\s+|$)')
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest:
                                    (None
@@ -351,13 +345,12 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                               verbose=verbose,
                               log=log)
 
+VARIABLE_REG = re.compile(r'^\s*' +
+                          r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                          r'(?:' + DEFINITION_ISH + r')\s+' +
+                          r'([^\.:]+)',
+                          flags=re.MULTILINE)
 def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    VARIABLE_REG = re.compile(r'^\s*' +
-                              r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                              r'(?:' + DEFINITION_ISH + r')\s+' +
-                              r'([^\.:]+)',
-                              re.MULTILINE)
-
     def get_names(definition):
         terms = VARIABLE_REG.findall(definition['statement'])
         return [i for i in sorted(set(j
@@ -372,11 +365,11 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                                   log=log)
 
 
+CONTEXT_REG = re.compile(r'^\s*' +
+                         r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
+                         r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
+                         flags=re.MULTILINE)
 def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    CONTEXT_REG = re.compile(r'^\s*' +
-                              r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                              r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
-                              re.MULTILINE)
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')),
                                                                                       verbose=verbose, log=log),
@@ -459,7 +452,7 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
     return definitions
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", re.MULTILINE)
+    QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: QED_REG.search(definition['statement'])),
                                           'Admitting Qeds',
@@ -469,7 +462,7 @@ def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_na
 def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     LEMMA_REG = re.compile(r'^\s*' +
                            r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
-                           r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', re.MULTILINE)
+                           r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
                                           'Admitting lemmas',
@@ -533,13 +526,13 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
 
 
 
+EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
 def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
-    reg = re.compile(r'(\.\s+|^\s*)(?:Section|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', re.MULTILINE)
     contents = read_from_file(output_file_name)
     old_contents = contents
-    new_contents = reg.sub(r'\1', old_contents)
+    new_contents = EMPTY_SECTION_REG.sub(r'\1', old_contents)
     while new_contents != old_contents:
-        old_contents, new_contents = new_contents, reg.sub(r'\1', new_contents)
+        old_contents, new_contents = new_contents, EMPTY_SECTION_REG.sub(r'\1', new_contents)
 
     if new_contents == contents:
         if verbose: log('No empty sections to remove')
