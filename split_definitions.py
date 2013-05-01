@@ -86,19 +86,21 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
         # print((statement, stdout, terms_defined))
         prompt_match = prompt_reg.search(stderr)
 
-        if not prompt_match:
-            if verbose:
-                log('Likely fatal warning: I did not recognize the output from coqtop:')
-                log('stdout: %s\nstderr: %s' % (repr(stdout), repr(stderr)))
-                log("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work." % statement)
-            rtn.append({'statements':(statement,),
-                        'statement':statement})
-        elif len(prompt_match.groups()) != 5:
-            if verbose:
-                log("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
-                log("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
-            rtn.append({'statements':(statement,),
-                        'statement':statement})
+        if not prompt_match or len(prompt_match.groups()) != 5:
+            if not prompt_match:
+                if verbose:
+                    log('Likely fatal warning: I did not recognize the output from coqtop:')
+                    log('stdout: %s\nstderr: %s' % (repr(stdout), repr(stderr)))
+                    log("I will append the current statement (%s) to the list of definitions as-is, but I don't expect this to work." % statement)
+            else:
+                if verbose:
+                    log("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
+                    log("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
+            if cur_definition_names.strip('|'):
+                cur_definition[cur_definition_names]['statements'].append(statement)
+            else:
+                rtn.append({'statements':(statement,),
+                            'statement':statement})
         else:
             cur_name, line_num1, cur_definition_names, line_num2, unknown = prompt_reg.search(stderr).groups()
             definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
@@ -109,7 +111,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                 cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-            print((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
+            if verbose: log((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
 
 
             # first, we handle the case where we have just finished
