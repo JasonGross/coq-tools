@@ -72,6 +72,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     rtn = []
     cur_definition = {}
     last_definitions = '||'
+    cur_definition_names = '||'
     for statement in statements:
         if not statement.strip():
             continue
