@@ -42,7 +42,14 @@ def make_reg_string(output):
 
     Precondition: has_error(output)
     """
-    return DEFAULT_ERROR_REG_STRING_GENERIC % re.escape(get_error_string(output))
+    error_string = get_error_string(output)
+    if 'Universe inconsistency' in error_string:
+        re_string = re.sub(r'(\s)[^\s]+?\.[0-9]+',
+                           r'\1[^\s]+?\.[0-9]+',
+                           re.escape(error_string))
+    else:
+        re_string = re.escape(error_string)
+    return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
 @memoize
 def get_coq_output(contents):

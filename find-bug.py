@@ -97,7 +97,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            log("\nI think the error is '%s'.\nThe corresponding regular expression is %s." % (error_string, repr(error_reg_string)))
+            log("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string))
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
@@ -109,10 +109,10 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
         if error_reg_string == '':
             success = False
             while not success:
-                error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file. ')
+                error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file.\n')
                 try:
                     re.compile(error_reg_string)
-                except e:
+                except Exception as e:
                     print('\nThat regular expression does not compile: %s' % e)
                     success = False
                 else:
@@ -127,7 +127,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
                 log('\nThe given regular expression does not have two groups.')
                 log('It must have one integer group which matches on the line number,')
                 log('and another group which matches on the error string.')
-            error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).'
+            error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
                                          % output_file_name)
 
         if error_reg_string == '':
