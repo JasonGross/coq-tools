@@ -153,7 +153,11 @@ def include_imports(file_name, as_modules=True, verbose=True, fast=False, log=DE
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
         if verbose: log(remaining_imports)
-        rtn = 'Require Import %s.\n%s' % (' '.join(remaining_imports), rtn)
+        if as_modules:
+            pattern = 'Require %s.\n%s'
+        else:
+            pattern = 'Require Import %s.\n%s'
+        rtn = pattern % (' '.join(remaining_imports), rtn)
     return rtn
 
 if __name__ == "__main__":
