@@ -546,7 +546,11 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
 
 
 
-EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
+EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^\.]+)\.' +
+                               r'(?:\s' +
+                               r'|Global\s|Local\s'
+                               r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
+                               r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
 def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     old_contents = contents
