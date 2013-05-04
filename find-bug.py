@@ -333,7 +333,7 @@ HINT_REG = re.compile(r'^\s*' +
                       r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                       r'(?:' +
                       r'Definition|Fixpoint|Record|Inductive' +
-                      r'|Coinductive|CoFixpoint|Section|End' +
+                      r'|Coinductive|CoFixpoint' +
                       r'|Set\s+Universe\s+Polymorphism' +
                       r'|Unet\s+Universe\s+Polymorphism' +
                       r'|' + DEFINITION_ISH +
