@@ -481,6 +481,22 @@ def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_
                                           log=log)
 
 
+MODULE_REG = re.compile(r'^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$')
+def try_export_modules(definitions, output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    def transformer(cur_definition, rest_definitions):
+        if (len(cur_definition['statements']) > 1 or
+            not MODULE_REG.match(cur_definition['statement'])):
+            return cur_definition
+        else:
+            new_statement = MODULE_REG.sub(r'\1 Export\2', cur_definition['statement'])
+            rtn = dict(cur_definition)
+            rtn['statement'] = new_statement
+            rtn['statements'] = (new_statement, )
+            return rtn
+    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+                              transformer,
+                              'Module exportation',
+                              verbose=verbose, log=log)
 
 
 
@@ -530,7 +546,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
 
 
 
-EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
+EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^\.]+)\.\s+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
 def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     old_contents = contents
@@ -657,7 +673,8 @@ if __name__ == '__main__':
              (('remove unused definitions, one at a time', try_remove_each_definition),
               ('admit lemmas', try_admit_lemmas),
               ('admit definitions', try_admit_definitions),
-              ('remove hints', try_remove_hints)))
+              ('remove hints', try_remove_hints),
+              ('export modules', try_export_modules)))
 
 
     old_definitions = ''
