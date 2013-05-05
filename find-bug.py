@@ -155,7 +155,8 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     while i >= 0:
         old_definition = definitions[i]
         new_definition = transformer(old_definition, definitions[i + 1:])
-        if not new_definition or old_definition['statement'] != new_definition['statement']:
+        if not new_definition or \
+                re.sub(r'\s+', ' ', old_definition['statement']) != re.sub(r'\s+', ' ', new_definition['statement']):
             if not new_definition or not new_definition['statement'].strip():
                 if verbose >= 3: log('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
