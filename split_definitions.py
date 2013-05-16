@@ -96,11 +96,15 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                 if verbose:
                     log("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
                     log("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
+
+            if verbose: log((statement, terms_defined, cur_definition_names, cur_definition.get(cur_definition_names, [])))
             if cur_definition_names.strip('|'):
                 cur_definition[cur_definition_names]['statements'].append(statement)
+                cur_definition[cur_definition_names]['terms_defined'] += terms_defined
             else:
                 rtn.append({'statements':(statement,),
-                            'statement':statement})
+                            'statement':statement,
+                            'terms_defined':tuple(terms_defined)})
         else:
             cur_name, line_num1, cur_definition_names, line_num2, unknown = prompt_reg.search(stderr).groups()
             definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
