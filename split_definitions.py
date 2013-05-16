@@ -15,6 +15,11 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
             tuple(i for i in old_definitions if i in new_definitions),
             tuple(i for i in new_definitions if i not in old_definitions))
 
+def strip_newlines(string):
+    if not string: return string
+    if string[0] == '\n': return string[1:]
+    if string[-1] == '\n': return string[:-1]
+    return string
 
 def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     """Splits a list of statements into chunks which make up
@@ -38,7 +43,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     responses = split_reg.findall(stdout)
     for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
         char_start, char_end = int(char_start), int(char_end)
-        statement = statements_string[last_char_end+1:char_end+1]
+        statement = strip_newlines(statements_string[last_char_end+1:char_end+1])
         last_char_end = char_end
 
         terms_defined = defined_reg.findall(response_text)
@@ -125,8 +130,9 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
 
     if last_char_end + 1 < len(statements_string):
         if verbose: log('Appending end of code from %d to %d: %s' % (last_char_end + 1, len(statements_string), statements_string[last_char_end+1:]))
-        rtn.append({'statements':tuple(statements_string[last_char_end+1:],),
-                    'statement':statements_string[last_char_end+1:],
+        last_statement = strip_newlines(statements_string[last_char_end+1:])
+        rtn.append({'statements':tuple(last_statement,),
+                    'statement':last_statement,
                     'terms_defined':tuple()})
 
     return rtn
