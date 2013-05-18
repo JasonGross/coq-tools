@@ -1,5 +1,6 @@
 import re, time
 from subprocess import Popen, PIPE, STDOUT
+import split_definitions_old
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 
@@ -32,6 +33,10 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
     statements_string = '\n\n'.join(statements) + '\n\n'
     if verbose: log('Sending statements to coqtop...')
     (stdout, stderr) = p.communicate(input=statements_string)
+    if 'know what to do with -time' in stdout.strip().split('\n'):
+        # we're using a version of coqtop that doesn't support -time
+        if verbose: log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
+        return split_definitions_old.split_statements_to_definitions(statements, verbose=verbose, log=log)
     if verbose: log('Done.  Splitting to definitions...')
 
     rtn = []
