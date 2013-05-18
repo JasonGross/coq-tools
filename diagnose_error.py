@@ -7,6 +7,9 @@ __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_out
 DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
 
+def clean_output(output):
+    return output.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
+
 @memoize
 def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING):
     """Returns True if the coq output encoded in output has an error
@@ -58,8 +61,8 @@ def get_coq_output(contents):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    p = subprocess.Popen(['coqc', '-q', file_name], stderr=subprocess.PIPE)
+    p = subprocess.Popen(['coqc', '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     if os.path.exists(file_name):
         os.remove(file_name)
-    return stderr
+    return clean_output(stdout)
