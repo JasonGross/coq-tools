@@ -30,7 +30,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                            flags=re.DOTALL)
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
-    statements_string = '\n\n'.join(statements) + '\n\n'
+    statements_string = '\n'.join(statements) + '\n\n'
     if verbose: log('Sending statements to coqtop...')
     (stdout, stderr) = p.communicate(input=statements_string)
     if 'know what to do with -time' in stdout.strip().split('\n'):
