@@ -47,7 +47,7 @@ parser.add_argument('--header', dest='header', nargs='?', type=str,
                           "variables original_line_count and " +
                           "final_line_count will be available for " +
                           "substitution.  The default is " +
-                          "`(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)'"))
+                          "`(* File reduced by coq-bug-finder from %%(original_line_count)d lines to %%(final_line_count)d lines. *)'"))
 parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
