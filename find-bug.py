@@ -2,6 +2,7 @@
 import argparse, tempfile, sys, os, re
 from replace_imports import include_imports
 from strip_comments import strip_comments
+from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
@@ -32,6 +33,13 @@ parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                           "contents of each file is wrapped in its own " +
                           "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
+parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
+                    metavar='N', nargs='?', type=int, default=-1,
+                    help=("Passing `--strip-newlines N` will cause the " +
+                          "program to, for all M > N, replace any " +
+                          "instances of M consecutive newlines with N " +
+                          "consecutive newlines.  The result will be a " +
+                          "file with no more than N consecutive newlines."))
 
 def DEFAULT_LOG(text):
     print(text)
@@ -524,6 +532,28 @@ def try_strip_comments(output_file_name, error_reg_string, verbose=DEFAULT_VERBO
             log('Stripped comments file not saved.')
 
 
+
+
+def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    contents = read_from_file(output_file_name)
+    old_contents = contents
+    contents = strip_newlines(contents, max_consecutive_newlines)
+    if contents == old_contents:
+        if verbose >= 1: log('\nNo strippable newlines.')
+        return
+    output = diagnose_error.get_coq_output(contents)
+    if diagnose_error.has_error(output, error_reg_string):
+        if verbose >= 1: log('\nSucceeded in stripping newline.')
+        write_to_file(output_file_name, contents)
+    else:
+        if verbose >= 1:
+            log('\nNon-fatal error: Failed to strip newlines and preserve the error.')
+            log('The new error was:')
+            log(output)
+            log('Stripped comments file not saved.')
+
+
+
 def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
@@ -587,6 +617,7 @@ if __name__ == '__main__':
     fast = args.fast
     log = make_logger(args.log_files)
     as_modules = args.wrap_modules
+    max_consecutive_newlines = args.max_consecutive_newlines
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -618,7 +649,11 @@ if __name__ == '__main__':
     if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name, verbose=verbose, log=log)
 
-    if verbose >= 1: log('\nNow, I will try to strip the comments from this file...')
+    if max_consecutive_newlines >= 0:
+        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines from this file...')
+        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, verbose=verbose, log=log)
+
+    if verbose >= 1: log('\nNow, I will attempt to strip the comments from this file...')
     try_strip_comments(output_file_name, error_reg_string, verbose=verbose, log=log)
 
 
