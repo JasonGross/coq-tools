@@ -153,6 +153,12 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
 
 def prepend_header(contents, header='', header_dict={}):
     """Fills in the variables in the header for output files"""
+    if header[:2] == '(*' and header[-2:] == '*)' and '*)' not in header[2:-2]:
+        pre_header = header[:header.index('%')]
+        if contents[:len(pre_header)] == pre_header:
+            # strip the old header
+            contents = contents[contents.index('*)')+2:]
+            if contents[0] == '\n': contents = contents[1:]
     final_line_count = len(contents.split('\n'))
     header_dict = dict(header_dict) # clone the dict
     header_dict['final_line_count'] = final_line_count
@@ -570,7 +576,6 @@ def try_strip_comments(output_file_name, error_reg_string, header='', header_dic
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping comments.')
-        contents = prepend_header(contents, header, header_dict)
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1:
