@@ -21,7 +21,7 @@ parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, defau
 parser.add_argument('--verbose', '-v', dest='verbose',
                     action='count',
                     help='display some extra information')
-parser.add_argument('--fast', dest='fast',
+parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
@@ -679,7 +679,7 @@ if __name__ == '__main__':
     output_file_name = args.output_file
     temp_file_name = args.temp_file
     verbose = args.verbose
-    fast = args.fast
+    fast_merge_imports = args.fast_merge_imports
     log = make_logger(args.log_files)
     as_modules = args.wrap_modules
     max_consecutive_newlines = args.max_consecutive_newlines
@@ -706,7 +706,7 @@ if __name__ == '__main__':
 
 
     if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast, log=log, as_modules=as_modules)
+    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast_merge_imports, log=log, as_modules=as_modules)
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
     else:
