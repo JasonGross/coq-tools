@@ -28,9 +28,9 @@ parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argpar
                     help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                     action='store_const', const=False, default=True,
-                    help=("Don't wrap imports in Modules.  By default, the" +
-                          "contents of each file is wrapped in its own" +
-                          "module to deal with renaming issues.  This" +
+                    help=("Don't wrap imports in Modules.  By default, the " +
+                          "contents of each file is wrapped in its own " +
+                          "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
 
 def DEFAULT_LOG(text):
