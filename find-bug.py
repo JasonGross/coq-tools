@@ -48,6 +48,10 @@ parser.add_argument('--header', dest='header', nargs='?', type=str,
                           "final_line_count will be available for " +
                           "substitution.  The default is " +
                           "`(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)'"))
+parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
+                    action='store_const', const=False, default=True,
+                    help=("Don't strip trailing spaces.  By default, " +
+                          "trailing spaces on each line are removed."))
 
 def DEFAULT_LOG(text):
     print(text)
@@ -587,20 +591,23 @@ def try_strip_comments(output_file_name, error_reg_string, header='', header_dic
 
 
 
-def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space,
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     old_contents = contents
+    if strip_trailing_space:
+        contents = '\n'.join(map(str.rstrip, contents.split('\n')))
     contents = strip_newlines(contents, max_consecutive_newlines)
     if contents == old_contents:
-        if verbose >= 1: log('\nNo strippable newlines.')
+        if verbose >= 1: log('\nNo strippable newlines or spaces.')
         return
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log('\nSucceeded in stripping newline.')
+        if verbose >= 1: log('\nSucceeded in stripping newlines and spaces.')
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1:
-            log('\nNon-fatal error: Failed to strip newlines and preserve the error.')
+            log('\nNon-fatal error: Failed to strip newlines and spaces and preserve the error.')
             log('The new error was:')
             log(output)
             log('Stripped comments file not saved.')
@@ -677,6 +684,7 @@ if __name__ == '__main__':
     as_modules = args.wrap_modules
     max_consecutive_newlines = args.max_consecutive_newlines
     header = args.header
+    strip_trailing_space = args.strip_trailing_space
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -708,9 +716,9 @@ if __name__ == '__main__':
     if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name, verbose=verbose, log=log)
 
-    if max_consecutive_newlines >= 0:
-        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines from this file...')
-        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, verbose=verbose, log=log)
+    if max_consecutive_newlines >= 0 or strip_trailing_space:
+        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, verbose=verbose, log=log)
 
     contents = read_from_file(output_file_name)
     original_line_count = len(contents.split('\n'))
