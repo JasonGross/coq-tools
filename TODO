@@ -20,3 +20,9 @@
 * Handle subdirectories better
 
 * Rename "hint removal" to something more accurate
+
+* Add info about how many files were combined to the header, and keep
+  track of original line count across multiple runs (e.g., turn the
+  header into "(* File reduced by coq-bug-finder from $n lines,
+  originally $m files and $o lines, to $p lines. *)", and parse it to
+  preserve the "originally ...," part).
