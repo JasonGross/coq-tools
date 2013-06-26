@@ -200,7 +200,8 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
             if diagnose_error.has_error(output, error_reg_string):
                 if verbose >= 3: log('Change succeeded')
                 success = True
-                write_to_file(output_file_name, join_definitions(try_definitions))
+                contents = prepend_header(join_definitions(try_definitions), header, header_dict)
+                write_to_file(output_file_name, contents)
                 definitions = try_definitions
                 # make a copy for saving
                 save_definitions = [dict(defn) for defn in try_definitions]
@@ -580,6 +581,7 @@ def try_strip_comments(output_file_name, error_reg_string, header='', header_dic
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping comments.')
+        contents = prepend_header(contents, header, header_dict)
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1:
@@ -592,7 +594,7 @@ def try_strip_comments(output_file_name, error_reg_string, header='', header_dic
 
 
 def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
@@ -604,6 +606,7 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
     output = diagnose_error.get_coq_output(contents)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping newlines and spaces.')
+        contents = prepend_header(contents, header, header_dict)
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1:
@@ -708,6 +711,7 @@ if __name__ == '__main__':
     if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
     inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast_merge_imports, log=log, as_modules=as_modules)
     if inlined_contents:
+        inlined_contents = prepend_header(inlined_contents, header, {'original_line_count':0})
         write_to_file(output_file_name, inlined_contents)
     else:
         if verbose >= 1: log('Failed to inline inputs.')
