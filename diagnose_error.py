@@ -52,6 +52,9 @@ def make_reg_string(output):
                            re.escape(error_string))
     else:
         re_string = re.escape(error_string)
+    re_string = re.sub(r'[0-9]+',
+                       r'[0-9]+',
+                       re_string)
     return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
 @memoize
