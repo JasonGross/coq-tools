@@ -34,12 +34,14 @@ parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                           "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
 parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
-                    metavar='N', nargs='?', type=int, default=-1,
+                    metavar='N', nargs='?', type=int, default=2,
                     help=("Passing `--strip-newlines N` will cause the " +
                           "program to, for all M > N, replace any " +
                           "instances of M consecutive newlines with N " +
                           "consecutive newlines.  The result will be a " +
-                          "file with no more than N consecutive newlines."))
+                          "file with no more than N consecutive newlines.  " +
+                          "Passing a negative number will disable this option. " +
+                          "(Default: 2)"))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)',
                     help=("A line to be placed at the top of the " +
