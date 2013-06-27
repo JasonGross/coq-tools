@@ -813,6 +813,9 @@ if __name__ == '__main__':
     if verbose >= 1: log('\nI will now attempt to remove empty sections')
     try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, header=header, header_dict=dict(header_dict), verbose=verbose, log=log)
 
+    if max_consecutive_newlines >= 0 or strip_trailing_space:
+        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, verbose=verbose, log=log)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)
