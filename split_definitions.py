@@ -4,6 +4,8 @@ import split_definitions_old
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 
+DEFAULT_VERBOSITY=1
+
 def DEFAULT_LOG(text):
     print(text)
 
@@ -22,7 +24,7 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
-def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
+def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
     p = Popen(['coqtop', '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
@@ -61,7 +63,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
             cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-        if verbose: log((statement, (char_start, char_end), terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text))
+        if verbose >= 2: log((statement, (char_start, char_end), terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text))
 
 
         # first, we handle the case where we have just finished
@@ -126,7 +128,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
 
         last_definitions = cur_definition_names
 
-    if verbose: log((last_definitions, cur_definition_names))
+    if verbose >= 2: log((last_definitions, cur_definition_names))
     if last_definitions.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),
@@ -134,7 +136,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
         del cur_definition[last_definitions]
 
     if last_char_end + 1 < len(statements_string):
-        if verbose: log('Appending end of code from %d to %d: %s' % (last_char_end + 1, len(statements_string), statements_string[last_char_end+1:]))
+        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end + 1, len(statements_string), statements_string[last_char_end+1:]))
         last_statement = strip_newlines(statements_string[last_char_end+1:])
         rtn.append({'statements':tuple(last_statement,),
                     'statement':last_statement,

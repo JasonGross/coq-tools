@@ -3,6 +3,8 @@ from Popen_noblock import Popen_async, PIPE, STDOUT, Empty
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 
+DEFAULT_VERBOSITY=1
+
 def DEFAULT_LOG(text):
     print(text)
 
@@ -54,7 +56,7 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
 #    time.sleep(1)
 
 
-def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
+def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
     p = Popen_async(['coqtop', '-emacs'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
@@ -97,7 +99,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                     log("Crazy things are happening; the number of groups isn't what it should be (should be 5 groups):")
                     log("prompt_match.groups(): %s\nstdout: %s\nstderr: %s\nstatement: %s\n" % (repr(prompt_match.groups()), repr(stdout), repr(stderr), repr(statement)))
 
-            if verbose: log((statement, terms_defined, cur_definition_names, cur_definition.get(cur_definition_names, [])))
+            if verbose >= 2: log((statement, terms_defined, cur_definition_names, cur_definition.get(cur_definition_names, [])))
             if cur_definition_names.strip('|'):
                 cur_definition[cur_definition_names]['statements'].append(statement)
                 cur_definition[cur_definition_names]['terms_defined'] += terms_defined
@@ -115,7 +117,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                 cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-            if verbose: log((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
+            if verbose >= 2: log((statement, terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, [])))
 
 
             # first, we handle the case where we have just finished
@@ -179,7 +181,7 @@ def split_statements_to_definitions(statements, verbose=True, log=DEFAULT_LOG):
                                 'terms_defined':tuple()})
         last_definitions = cur_definition_names
 
-    if verbose: log((last_definitions, cur_definition_names))
+    if verbose >= 2: log((last_definitions, cur_definition_names))
     if last_definitions.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),
