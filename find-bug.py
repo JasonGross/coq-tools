@@ -804,8 +804,8 @@ if __name__ == '__main__':
     old_definitions = ''
     while old_definitions != join_definitions(definitions):
         old_definitions = join_definitions(definitions)
-        if verbose >= 1: log('Definitions:')
-        if verbose >= 1: log(definitions)
+        if verbose >= 2: log('Definitions:')
+        if verbose >= 2: log(definitions)
 
         for description, task in tasks:
             if verbose >= 1: log('\nI will now attempt to %s' % description)
