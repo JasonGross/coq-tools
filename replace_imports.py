@@ -36,7 +36,7 @@ def lib_of_filename(filename, topname='__TOP__', exts=('.v', '.glob')):
 def get_file(filename, verbose=True, log=DEFAULT_LOG):
     if filename[-2:] != '.v': filename += '.v'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        if verbose: log(filename)
+        if verbose: log('getting %s' % filename)
         try:
             with open(filename, 'r', encoding='UTF-8') as f:
                 file_contents[filename] = f.read()
@@ -54,19 +54,22 @@ def get_all_v_files(directory, exclude=tuple()):
                       if os.path.normpath(name) not in exclude]
     return all_files
 
-def make_globs(libnames, verbose=True, topname='__TOP__'):
-    if len(libnames) == 0: return
-    filenames_v = [filename_of_lib(i, topname=topname, ext='.v') for i in libnames]
-    filenames_glob = [filename_of_lib(i, topname=topname, ext='.glob') for i in libnames]
+def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG):
+    extant_libnames = [i for i in libnames
+                       if os.path.exists(filename_of_lib(i, topname=topname, ext='.v'))]
+    if len(extant_libnames) == 0: return
+    filenames_v = [filename_of_lib(i, topname=topname, ext='.v') for i in extant_libnames]
+    filenames_glob = [filename_of_lib(i, topname=topname, ext='.glob') for i in extant_libnames]
     extra_filenames_v = get_all_v_files('.', filenames_v)
+    if verbose:
+        log(' '.join(['coq_makefile', '-R', '.', topname] + filenames_v + extra_filenames_v))
     p_make_makefile = subprocess.Popen(['coq_makefile', '-R', '.', topname] + filenames_v + extra_filenames_v,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
-    p_make = subprocess.Popen(['make', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    if verbose:
-        print(' '.join(['coq_makefile', '-R', '.', topname] + filenames_v + extra_filenames_v))
-        print(' '.join(['make', '-f', '-'] + filenames_glob))
     (stdout, stderr) = p_make_makefile.communicate()
+    if verbose:
+        log(' '.join(['make', '-k', '-f', '-'] + filenames_glob))
+    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
 def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__'):
@@ -75,7 +78,7 @@ def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__
     if not fast:
         if lib not in lib_imports_slow.keys():
             if not os.path.exists(glob_name):
-                make_globs([lib], verbose=verbose, topname=topname)
+                make_globs([lib], verbose=verbose, topname=topname, log=log)
             if os.path.exists(glob_name): # making succeeded
                 with open(glob_name, 'r') as f:
                     contents = f.read()
@@ -90,7 +93,7 @@ def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__
     return lib_imports_fast[lib]
 
 def norm_libname(lib, topname='__TOP__'):
-    if lib[:len(topname + '.')] != topname + '.':
+    if lib[:len(topname + '.')] != topname + '.' and os.path.exists(filename_of_lib(lib, topname=topname)):
         return topname + '.' + lib
     return lib
 
@@ -107,7 +110,7 @@ def recursively_get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topn
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if os.path.exists(v_name):
         imports = get_imports(lib, verbose=verbose, fast=fast, topname=topname)
-        if not fast: make_globs(imports, verbose=verbose, topname=topname)
+        if not fast: make_globs(imports, verbose=verbose, topname=topname, log=log)
         imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast, log=log, topname=topname)
                         for i in imports]
         return merge_imports(imports_list + [[lib]], topname=topname)
@@ -231,7 +234,9 @@ def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEF
         except IOError:
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
-        if verbose: log(remaining_imports)
+        if verbose:
+            log('remaining imports:')
+            log(remaining_imports)
         if as_modules:
             pattern = 'Require %s.\n%s'
         else:

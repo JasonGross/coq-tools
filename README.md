@@ -19,3 +19,7 @@ Currently, the program does not work well with non-flat file layouts.
 If you want me to add this feature, email me or create an issue on
 github with a link to a non-flat repo, and a file in that repo with a
 bug, and I will work to make my script work with that file.
+
+Note that this program fails in mysterious ways when run using Windows
+Python 2.7 under cygwin; it seems that buffering and stdin and stderr
+and Popen are screwed up.
