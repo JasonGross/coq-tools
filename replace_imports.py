@@ -163,10 +163,11 @@ def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEF
                       r'\1',
                       contents,
                       flags=re.MULTILINE)
-    contents = re.sub(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s$))+\.(?:\s|$))',
+    contents = re.sub(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))',
                       r'',
                       contents,
                       flags=re.MULTILINE)
+    print(contents)
     module_name = escape_lib(lib)
     existing_imports = recreate_path_structure([(i, escape_lib(i)) for i in other_imports],
                                                uid=module_name,

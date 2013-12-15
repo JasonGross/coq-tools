@@ -67,7 +67,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     # goal_reg = re.compile(r'^\s*=+\s*$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     # clear stdout
-    get_all_semiwait(p.stdout)
+    print(get_all_semiwait(p.stdout))
     # clear stderr
     # get_all_nowait(p.stderr)
 
@@ -78,8 +78,8 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     for statement in statements:
         if not statement.strip():
             continue
-        # print('Write: %s\n\nWait to read:' % statement)
-        #print(statement)
+        if verbose >= 4:
+            log('Write: %s\n\nWait to read...' % statement)
         p.stdin.write(statement + '\n\n')
         stdout = get_all_semiwait(p.stdout)
         stderr = stdout # ''.join(get_all_semiwait(p.stderr))
