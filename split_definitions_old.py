@@ -67,7 +67,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     # goal_reg = re.compile(r'^\s*=+\s*$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     # clear stdout
-    print(get_all_semiwait(p.stdout))
+    get_all_semiwait(p.stdout)
     # clear stderr
     # get_all_nowait(p.stderr)
 
