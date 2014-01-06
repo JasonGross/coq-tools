@@ -58,13 +58,13 @@ def make_reg_string(output):
     return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
 @memoize
-def get_coq_output(contents):
+def get_coq_output(coqc, contents):
     """Returns the coqc output of running through the given
     contents."""
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    p = subprocess.Popen(['coqc', '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     if os.path.exists(file_name):
         os.remove(file_name)

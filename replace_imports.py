@@ -54,7 +54,7 @@ def get_all_v_files(directory, exclude=tuple()):
                       if os.path.normpath(name) not in exclude]
     return all_files
 
-def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG):
+def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG, coqc='coqc'):
     extant_libnames = [i for i in libnames
                        if os.path.exists(filename_of_lib(i, topname=topname, ext='.v'))]
     if len(extant_libnames) == 0: return
@@ -62,8 +62,8 @@ def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG):
     filenames_glob = [filename_of_lib(i, topname=topname, ext='.glob') for i in extant_libnames]
     extra_filenames_v = get_all_v_files('.', filenames_v)
     if verbose:
-        log(' '.join(['coq_makefile', '-R', '.', topname] + filenames_v + extra_filenames_v))
-    p_make_makefile = subprocess.Popen(['coq_makefile', '-R', '.', topname] + filenames_v + extra_filenames_v,
+        log(' '.join(['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + filenames_v + extra_filenames_v))
+    p_make_makefile = subprocess.Popen(['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + filenames_v + extra_filenames_v,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
     (stdout, stderr) = p_make_makefile.communicate()
@@ -72,13 +72,13 @@ def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG):
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
-def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__'):
+def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
     glob_name = filename_of_lib(lib, topname=topname, ext='.glob')
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if not fast:
         if lib not in lib_imports_slow.keys():
             if not os.path.exists(glob_name):
-                make_globs([lib], verbose=verbose, topname=topname, log=log)
+                make_globs([lib], verbose=verbose, topname=topname, log=log, coqc=coqc)
             if os.path.exists(glob_name): # making succeeded
                 with open(glob_name, 'r') as f:
                     contents = f.read()
@@ -105,13 +105,13 @@ def merge_imports(imports, topname='__TOP__'):
                 rtn.append(norm_libname(i, topname=topname))
     return rtn
 
-def recursively_get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__'):
+def recursively_get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
     glob_name = filename_of_lib(lib, topname=topname, ext='.glob')
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if os.path.exists(v_name):
-        imports = get_imports(lib, verbose=verbose, fast=fast, topname=topname)
-        if not fast: make_globs(imports, verbose=verbose, topname=topname, log=log)
-        imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast, log=log, topname=topname)
+        imports = get_imports(lib, verbose=verbose, fast=fast, topname=topname, coqc=coqc)
+        if not fast: make_globs(imports, verbose=verbose, topname=topname, log=log, coqc=coqc)
+        imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc)
                         for i in imports]
         return merge_imports(imports_list + [[lib]], topname=topname)
     return [lib]
@@ -176,7 +176,7 @@ def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEF
     return contents
 
 
-def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__'):
+def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -221,7 +221,7 @@ def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEF
     """
     if filename[-2:] != '.v': filename += '.v'
     lib = lib_of_filename(filename)
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname)
+    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc)
     remaining_imports = []
     rtn = ''
     imports_done = []
