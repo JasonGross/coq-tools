@@ -457,7 +457,7 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
     def do_call(method, definitions, agressive):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       (lambda definition, rest_definitions:
-                           transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=verbose, log=log, coqc=coqc)),
+                           transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=verbose, log=log)),
                       '[abstract ...] admits',
                       header=header, header_dict=dict(header_dict),
                       verbose=verbose,
