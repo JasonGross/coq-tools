@@ -64,10 +64,8 @@ def get_coq_output(coqc, contents):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    print(' '.join([coqc, '-q', file_name]))
     p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    raw_input()
     if os.path.exists(file_name):
         os.remove(file_name)
     return clean_output(stdout)
