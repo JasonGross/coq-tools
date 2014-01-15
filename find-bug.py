@@ -58,6 +58,8 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default='coqtop',
                     help='The path to the coqtop program.')
+parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
+                    help='The name to bind to the current directory using -R .')
 
 def DEFAULT_LOG(text):
     print(text)
@@ -693,6 +695,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     os.chdir(args.directory)
     bug_file_name = args.bug_file.name
+    topname = args.topname
     output_file_name = args.output_file
     temp_file_name = args.temp_file
     verbose = args.verbose
@@ -725,7 +728,7 @@ if __name__ == '__main__':
 
 
     if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast_merge_imports, log=log, as_modules=as_modules, coqc=coqc)
+    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast_merge_imports, log=log, as_modules=as_modules, coqc=coqc, topname=topname)
     if inlined_contents:
         inlined_contents = prepend_header(inlined_contents, header, {'original_line_count':0})
         write_to_file(output_file_name, inlined_contents)

@@ -220,7 +220,7 @@ def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEF
     >>> for name in names: os.remove(name)
     """
     if filename[-2:] != '.v': filename += '.v'
-    lib = lib_of_filename(filename)
+    lib = lib_of_filename(filename, topname=topname)
     all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc)
     remaining_imports = []
     rtn = ''
