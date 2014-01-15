@@ -461,7 +461,8 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
                       '[abstract ...] admits',
                       header=header, header_dict=dict(header_dict),
                       verbose=verbose,
-                      log=log)
+                      log=log,
+                      coqc=coqc)
 
     old_definitions = join_definitions(definitions)
     # for comparison, to see if things have changed first, try to do
@@ -515,7 +516,8 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
                       transformer, description,
                       header=header, header_dict=dict(header_dict),
                       verbose=verbose,
-                      log=log)
+                      log=log,
+                      coqc=coqc)
 
     old_definitions = join_definitions(definitions) # for comparison,
     # to see if things have changed first, try to do everything at
