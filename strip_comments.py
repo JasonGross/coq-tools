@@ -30,4 +30,4 @@ def strip_comments(contents):
             rtn.append(token)
         else:
             rtn.append(token)
-    return ' '.join(rtn)
+    return ' '.join(rtn).strip('\n\t ')

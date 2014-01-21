@@ -638,14 +638,21 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
 def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, header='', header_dict={},
                           verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
     contents = read_from_file(output_file_name)
+    print(contents)
     statements = split_coq_file_contents(contents)
+    for i in enumerate('\n'.join(statements).split('\n')): print(i)
     cur_line_num = 0
+    log('line_num: ' + str(line_num))
     new_statements = statements
     for statement_num, statement in enumerate(statements):
         cur_line_num += statement.count('\n') + 1 # +1 for the extra newline between each statement
         if cur_line_num >= line_num:
             new_statements = statements[:statement_num + 1]
             break
+    print('old')
+    for i in enumerate(statements): print(i)
+    print('new')
+    for i in enumerate(new_statements): print(i)
     if new_statements == statements:
         if verbose: log('No lines to trim')
         return
@@ -659,6 +666,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
         if verbose:
             log('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
             log(output)
+            raw_input()
         new_contents = prepend_header('\n'.join(new_statements), header, header_dict)
         write_to_file(temp_file_name, new_contents)
 
@@ -777,6 +785,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if verbose >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
+    log(output)
+    for i in enumerate('\n'.join(statements).split('\n')): print(i)
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, header=header, header_dict=dict(header_dict), verbose=verbose, log=log, coqc=coqc)
 
