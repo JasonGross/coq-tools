@@ -1,5 +1,6 @@
 from __future__ import with_statement
 import os, subprocess, re, sys, glob
+from memoize import memoize
 
 __all__ = ["include_imports"]
 
@@ -54,19 +55,26 @@ def get_all_v_files(directory, exclude=tuple()):
                       if os.path.normpath(name) not in exclude]
     return all_files
 
+@memoize
+def get_makefile_contents(coqc, topname, v_files, verbose, log):
+    cmds = ['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + list(v_files)
+    if verbose:
+        log(' '.join(cmds))
+    p_make_makefile = subprocess.Popen(cmds,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+    return p_make_makefile.communicate()
+
 def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG, coqc='coqc'):
     extant_libnames = [i for i in libnames
                        if os.path.exists(filename_of_lib(i, topname=topname, ext='.v'))]
     if len(extant_libnames) == 0: return
     filenames_v = [filename_of_lib(i, topname=topname, ext='.v') for i in extant_libnames]
     filenames_glob = [filename_of_lib(i, topname=topname, ext='.glob') for i in extant_libnames]
+    if all(os.path.exists(glob_name) for glob_name in filenames_glob):
+        return
     extra_filenames_v = get_all_v_files('.', filenames_v)
-    if verbose:
-        log(' '.join(['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + filenames_v + extra_filenames_v))
-    p_make_makefile = subprocess.Popen(['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + filenames_v + extra_filenames_v,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-    (stdout, stderr) = p_make_makefile.communicate()
+    (stdout, stderr) = get_makefile_contents(coqc, topname, tuple(sorted(filenames_v + extra_filenames_v)), verbose, log)
     if verbose:
         log(' '.join(['make', '-k', '-f', '-'] + filenames_glob))
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
