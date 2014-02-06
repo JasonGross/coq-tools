@@ -167,14 +167,10 @@ def recreate_path_structure(lib_libname_pairs, uid='', topname='__TOP__'):
 def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_name, verbose=verbose, log=log)
-    contents = re.sub(r'^\s*Require\s+((?:Import|Export)\s)',
-                      r'\1',
-                      contents,
-                      flags=re.MULTILINE)
-    contents = re.sub(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))',
-                      r'',
-                      contents,
-                      flags=re.MULTILINE)
+    reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
+    contents = reg1.sub(r'\1', contents)
+    reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
+    contents = reg2.sub(r'', contents)
     print(contents)
     module_name = escape_lib(lib)
     existing_imports = recreate_path_structure([(i, escape_lib(i)) for i in other_imports],
