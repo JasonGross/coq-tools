@@ -42,6 +42,13 @@ parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
                           "file with no more than N consecutive newlines.  " +
                           "Passing a negative number will disable this option. " +
                           "(Default: 2)"))
+parser.add_argument('--no-admit-opaque', dest='admit_opaque',
+                    action='store_const', const=False, default=True,
+                    help=("Don't try to replace opaque things ([Qed] and [abstract])" +
+                          "with [admit]s."))
+parser.add_argument('--no-admit-transparent', dest='admit_transparent',
+                    action='store_const', const=False, default=True,
+                    help=("Don't try to replace transparent things with [admit]s."))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)',
                     help=("A line to be placed at the top of the " +
@@ -528,7 +535,13 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
     if new_definitions == old_definitions:
         # we failed to do everything at once, try the simple thing and
         # try to admit each individually
-         definitions = do_call(try_transform_each, definitions)
+        if verbose >= 1: log('Failed to do everything at once; trying one at a time.')
+        definitions = do_call(try_transform_each, definitions)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        if verbose >= 1: log('No successful changes.')
+    else:
+        if verbose >= 1: log('Success!')
     return definitions
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, header='', header_dict={},
@@ -709,6 +722,8 @@ if __name__ == '__main__':
     max_consecutive_newlines = args.max_consecutive_newlines
     header = args.header
     strip_trailing_space = args.strip_trailing_space
+    admit_opaque = args.admit_opaque
+    admit_transparent = args.admit_transparent
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -806,18 +821,23 @@ if __name__ == '__main__':
                        ('remove unused variables', try_remove_variables),
                        ('remove unused contexts', try_remove_contexts))
 
-    tasks = (recursive_tasks +
-             (('replace Qeds with Admitteds', try_admit_qeds),) +
-             # we've probably just removed a lot, so try to remove definitions again
-             recursive_tasks +
-             (('admit [abstract ...]s', try_admit_abstracts),) +
-             # we've probably just removed a lot, so try to remove definitions again
-             recursive_tasks +
-             (('remove unused definitions, one at a time', try_remove_each_definition),
-              ('admit lemmas', try_admit_lemmas),
-              ('admit definitions', try_admit_definitions),
-              ('remove hints', try_remove_hints),
-              ('export modules', try_export_modules)))
+    tasks = recursive_tasks
+    if admit_opaque:
+        tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks +
+                  (('admit [abstract ...]s', try_admit_abstracts),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks)
+
+    tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
+
+    if admit_transparent:
+        tasks += (('admit lemmas', try_admit_lemmas),
+                  ('admit definitions', try_admit_definitions))
+
+    tasks += (('remove hints', try_remove_hints),
+              ('export modules', try_export_modules))
 
 
     old_definitions = ''
