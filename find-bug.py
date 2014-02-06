@@ -267,12 +267,12 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(coqc, join_definitions(definitions))
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 3: log(description + ' successful')
+        if verbose >= 1: log(description + ' successful')
         contents = prepend_header(join_definitions(definitions), header, header_dict)
         write_to_file(output_file_name, contents)
         return definitions
     else:
-        if verbose >= 3: log(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
+        if verbose >= 1: log(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
         if verbose >= 3: log('The output was:\n%s' % output)
         contents = prepend_header(join_definitions(definitions), header, header_dict)
         write_to_file(temp_file_name, contents)
