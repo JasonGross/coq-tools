@@ -307,7 +307,7 @@ def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBO
         elif EXCLUSION_REG.search(future_definition['statement']):
             return False # we don't care if the name is found in a
                          # statement like [Section ...] or [End ...]
-        return any(re_search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
+        return any(re_search(r"(?<![\w'])%s(?![\w'])" % re.escape(name), future_definition['statement'])
                    for name in names)
     return try_remove_if_not_matches_transformer(definition_found_in, verbose=verbose, log=log, coqc=coqc)
 
@@ -327,7 +327,7 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAU
                 section_level += 1
             elif SECTION_END_REG.match(future_definition['statement']):
                 section_level -= 1
-            elif any(re_search(r"(?<![\w'])%s(?![\w'])" % name, future_definition['statement'])
+            elif any(re_search(r"(?<![\w'])%s(?![\w'])" % re.escape(name), future_definition['statement'])
                      for name in names):
                 return cur_definition
         # we didn't find the name, so we can safely remove it
