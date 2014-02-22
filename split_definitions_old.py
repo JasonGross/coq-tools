@@ -18,18 +18,22 @@ def get_all_nowait_iter(q):
 def get_all_nowait(q):
     return ''.join(get_all_nowait_iter(q))
 
-def get_all_semiwait_iter(q):
+def get_all_semiwait_iter(q, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    def log_and_return(val):
+        if verbose >= 5:
+            log(val)
+        return val
     try:
         # this is blocking; TODO(jgross): Figure out how to get coqtop
         # to tell us if it's finished computing
-        yield q.get(True)
+        yield log_and_return(q.get(True))
         while True:
-            yield q.get(True, 0.1)
+            yield log_and_return(q.get(True, 0.1))
     except Empty:
         pass
 
-def get_all_semiwait(q):
-    return ''.join(get_all_semiwait_iter(q))
+def get_all_semiwait(q, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG):
+    return ''.join(get_all_semiwait_iter(q, verbose=verbose, log=log))
 
 def get_definitions_diff(previous_definition_string, new_definition_string):
     """Returns a triple of lists (definitions_removed,
@@ -67,7 +71,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     # goal_reg = re.compile(r'^\s*=+\s*$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     # clear stdout
-    get_all_semiwait(p.stdout)
+    get_all_semiwait(p.stdout, verbose=verbose, log=log)
     # clear stderr
     # get_all_nowait(p.stderr)
 
@@ -81,7 +85,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         if verbose >= 4:
             log('Write: %s\n\nWait to read...' % statement)
         p.stdin.write(statement + '\n\n')
-        stdout = get_all_semiwait(p.stdout)
+        stdout = get_all_semiwait(p.stdout, verbose=verbose, log=log)
         stderr = stdout # ''.join(get_all_semiwait(p.stderr))
 
         terms_defined = defined_reg.findall(prompt_reg.sub('', stdout))
