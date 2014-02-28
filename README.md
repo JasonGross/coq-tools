@@ -19,7 +19,12 @@ Currently, the program does not work well with non-flat file layouts.
 If you want me to add this feature, email me or create an issue on
 github with a link to a non-flat repo, and a file in that repo with a
 bug, and I will work to make my script work with that file.
+Currently, getting this to work well is blocking on [having better
+namespacing](https://coq.inria.fr/bugs/show_bug.cgi?id=3171).
 
-Note that this program fails in mysterious ways when run using Windows
-Python 2.7 under cygwin; it seems that buffering and stdin and stderr
-and Popen are screwed up.
+Note that this program can fail in mysterious ways when run using
+Windows Python 2.7 under cygwin; it seems that buffering and stdin and
+stderr and Popen are screwed up.  To work around this, there is a
+coqtop.bat file which is chosen as the default coqtop program.
+Somehow running via a .bat file makes things work.  You will probably
+have to use a similar wrapper if you use a custom coqtop executable.

@@ -9,6 +9,12 @@ from admit_abstract import transform_abstract_to_admit
 from memoize import memoize
 import diagnose_error
 
+# {Windows,Python,coqtop} is terrible; we fail to write to (or read
+# from?) coqtop.  But we can wrap it in a batch scrip, and it works
+# fine.
+SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
+
 parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
 parser.add_argument('--directory', '-d', metavar='DIRECTORY', dest='directory', type=str, default='.',
                     help='The directory in which to execute')
@@ -63,8 +69,8 @@ parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                           "trailing spaces on each line are removed."))
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
-parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default='coqtop',
-                    help='The path to the coqtop program.')
+parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
+                    help=('The path to the coqtop program (default: %s).' % DEFAULT_COQTOP))
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
                     help='The name to bind to the current directory using -R .')
 
