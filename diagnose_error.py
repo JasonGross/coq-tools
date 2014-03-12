@@ -47,9 +47,12 @@ def make_reg_string(output):
     """
     error_string = get_error_string(output)
     if 'Universe inconsistency' in error_string:
+        re_string = re.sub(r'(Universe\\ inconsistency.*) because(.|\n)*',
+                           r'\1 because.*',
+                           re.escape(error_string))
         re_string = re.sub(r'(\s)[^\s]+?\.([0-9]+)',
                            r'\1[^\s]+?\.\2',
-                           re.escape(error_string))
+                           re_string)
     else:
         re_string = re.escape(error_string)
     re_string = re.sub(r'[0-9]+',
