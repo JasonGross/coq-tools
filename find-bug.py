@@ -67,6 +67,11 @@ parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
                           "trailing spaces on each line are removed."))
+parser.add_argument('--without-timeout', dest='use_timeout',
+                    action='store_const', const=False, default=True,
+                    help=("Don't use a timeout.  By default, Coq is " +
+                          "killed after running twice as long as the " +
+                          "previous invocation"))
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
@@ -121,12 +126,12 @@ def re_compile(pattern, *args):
 def re_search(pattern, string, flags=0):
     return re_compile(pattern, flags).search(string)
 
-def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     error_reg_string = ''
     while error_reg_string == '':
         if verbose: log('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
-        output = diagnose_error.get_coq_output(coqc, contents)
+        output = diagnose_error.get_coq_output(coqc, contents, use_timeout)
         result = ''
         log("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
@@ -190,7 +195,7 @@ def prepend_header(contents, header='', header_dict={}):
     return '%s\n%s' % (header % header_dict, contents)
 
 def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -217,7 +222,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
             else:
                 if verbose >= 3: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
-            output = diagnose_error.get_coq_output(coqc, join_definitions(try_definitions))
+            output = diagnose_error.get_coq_output(coqc, join_definitions(try_definitions), use_timeout)
             if diagnose_error.has_error(output, error_reg_string):
                 if verbose >= 3: log('Change succeeded')
                 success = True
@@ -245,7 +250,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
 
 
 def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                           header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                           header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -271,7 +276,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         else:
             if verbose >= 3: log('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
-    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions))
+    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions), use_timeout)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log(description + ' successful')
         contents = prepend_header(join_definitions(definitions), header, header_dict)
@@ -284,7 +289,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         write_to_file(temp_file_name, contents)
         return original_definitions
 
-def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
@@ -305,7 +310,7 @@ EXCLUSION_REG = re.compile(r"^\s*Section\s+[^\.]+\.\s*$" +
                            r"|^\s*Require\s+[^\.]+\.\s*$" +
                            r"|^\s*Import\s+[^\.]+\.\s*$" +
                            r"|^\s*Export\s+[^\.]+\.\s*$")
-def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+def try_remove_if_name_not_found_in_transformer(get_names, **kwargs):
     def definition_found_in(cur_definition, future_definition):
         names = get_names(cur_definition)
         if len(names) == 0:
@@ -315,10 +320,10 @@ def try_remove_if_name_not_found_in_transformer(get_names, verbose=DEFAULT_VERBO
                          # statement like [Section ...] or [End ...]
         return any(re_search(r"(?<![\w'])%s(?![\w'])" % re.escape(name), future_definition['statement'])
                    for name in names)
-    return try_remove_if_not_matches_transformer(definition_found_in, verbose=verbose, log=log, coqc=coqc)
+    return try_remove_if_not_matches_transformer(definition_found_in, **kwargs)
 
 
-def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     SECTION_BEGIN_REG = re.compile(r'^\s*(?:Section|Module)\s+[^\.]+\.\s*$')
     SECTION_END_REG = re.compile(r'^\s*End\s+[^\.]+\.\s*$')
     def transformer(cur_definition, rest_definitions):
@@ -345,7 +350,7 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAU
 INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
 CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
 def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                                        header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                                        header='', header_dict={}, **kwargs):
     def get_names(definition):
         if INSTANCE_REG.search(definition['statements'][0]):
             return tuple()
@@ -354,53 +359,47 @@ def try_remove_non_instance_definitions(definitions, output_file_name, error_reg
         else:
             return definition.get('terms_defined', tuple())
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(get_names, verbose=verbose, log=log, coqc=coqc),
+                                  try_remove_if_name_not_found_in_transformer(get_names, **kwargs),
                                   'Non-instance definition removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose, log=log, coqc=coqc)
+                                  **kwargs)
 
 def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                           header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                           header='', header_dict={}, **kwargs):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()),
-                                                                              verbose=verbose, log=log, coqc=coqc),
+                                  try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                                   'Definition removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose, log=log, coqc=coqc)
+                                  **kwargs)
 
 def try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name,
-                               header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                               header='', header_dict={}, **kwargs):
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
-                              try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()),
-                                                                          verbose=verbose, log=log, coqc=coqc),
+                              try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                               'Definition removal',
                               header=header, header_dict=dict(header_dict),
-                              verbose=verbose, log=log, coqc=coqc)
+                              verbose=verbose, log=log, coqc=coqc, use_timeout=True)
 
 ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
 def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name,
-                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                       header='', header_dict={}, **kwargs):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   (lambda definition, rest:
                                        None if ABORT_REG.search(definition['statement']) else definition),
                                   'Aborted removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose,
-                                  log=log,
-                                  coqc=coqc)
+                                  **kwargs)
 
 LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', flags=re.MULTILINE)
 def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name,
-                    header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                    header='', header_dict={}, **kwargs):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : ')),
                                                                               verbose=verbose, log=log, coqc=coqc),
                                   'Ltac removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose,
-                                  log=log,
-                                  coqc=coqc)
+                                  **kwargs)
 
 DEFINITION_ISH = r'Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture'
 HINT_REG = re.compile(r'^\s*' +
@@ -413,7 +412,7 @@ HINT_REG = re.compile(r'^\s*' +
                       r'|' + DEFINITION_ISH +
                       r')\.?(?:\s+|$)')
 def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name,
-                     header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                     header='', header_dict={}, **kwargs):
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               (lambda definition, rest:
                                    (None
@@ -422,9 +421,7 @@ def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_
                                     else definition)),
                               'Hint removal',
                               header=header, header_dict=dict(header_dict),
-                              verbose=verbose,
-                              log=log,
-                              coqc=coqc)
+                              **kwargs)
 
 VARIABLE_REG = re.compile(r'^\s*' +
                           r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
@@ -432,7 +429,7 @@ VARIABLE_REG = re.compile(r'^\s*' +
                           r'([^\.:]+)',
                           flags=re.MULTILINE)
 def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name,
-                         header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                         header='', header_dict={}, **kwargs):
     def get_names(definition):
         terms = VARIABLE_REG.findall(definition['statement'])
         return [i for i in sorted(set(j
@@ -440,13 +437,10 @@ def try_remove_variables(definitions, output_file_name, error_reg_string, temp_f
                                       for j in term.split(' ')))]
 
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_section_transformer(get_names,
-                                                                                      verbose=verbose, log=log, coqc=coqc),
+                                  try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs),
                                   'Variable removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose,
-                                  log=log,
-                                  coqc=coqc)
+                                  **kwargs)
 
 
 CONTEXT_REG = re.compile(r'^\s*' +
@@ -454,19 +448,16 @@ CONTEXT_REG = re.compile(r'^\s*' +
                          r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
                          flags=re.MULTILINE)
 def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name,
-                        header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                        header='', header_dict={}, **kwargs):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
-                                  try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')),
-                                                                                      verbose=verbose, log=log, coqc=coqc),
+                                  try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')), **kwargs),
                                   'Context removal',
                                   header=header, header_dict=dict(header_dict),
-                                  verbose=verbose,
-                                  log=log,
-                                  coqc=coqc)
+                                  **kwargs)
 
 
 def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name,
-                        header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                        header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     def do_call(method, definitions, agressive):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       (lambda definition, rest_definitions:
@@ -475,7 +466,7 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
                       header=header, header_dict=dict(header_dict),
                       verbose=verbose,
                       log=log,
-                      coqc=coqc)
+                      **kwargs)
 
     old_definitions = join_definitions(definitions)
     # for comparison, to see if things have changed first, try to do
@@ -514,7 +505,7 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
 
 
 def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description,
-                                   header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                                   header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 2 and matcher(cur_definition):
             statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
@@ -528,9 +519,9 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       transformer, description,
                       header=header, header_dict=dict(header_dict),
-                      verbose=verbose,
+                      verbse=verbose,
                       log=log,
-                      coqc=coqc)
+                      **kwargs)
 
     old_definitions = join_definitions(definitions) # for comparison,
     # to see if things have changed first, try to do everything at
@@ -551,18 +542,16 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
     return definitions
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name, header='', header_dict={},
-                   verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                   **kwargs):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: QED_REG.search(definition['statement'])),
                                           'Admitting Qeds',
                                           header=header, header_dict=dict(header_dict),
-                                          verbose=verbose,
-                                          log=log,
-                                          coqc=coqc)
+                                          **kwargs)
 
 def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name, header='', header_dict={},
-                     verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                     **kwargs):
     LEMMA_REG = re.compile(r'^\s*' +
                            r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
@@ -570,24 +559,20 @@ def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
                                           'Admitting lemmas',
                                           header=header, header_dict=dict(header_dict),
-                                          verbose=verbose,
-                                          log=log,
-                                          coqc=coqc)
+                                          **kwargs)
 
 def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name, header='', header_dict={},
-                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                          **kwargs):
     return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                                           (lambda definition: True),
                                           'Admitting definitions',
                                           header=header, header_dict=dict(header_dict),
-                                          verbose=verbose,
-                                          log=log,
-                                          coqc=coqc)
+                                          **kwargs)
 
 
 MODULE_REG = re.compile(r'^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$')
 def try_export_modules(definitions, output_file_name, error_reg_string, temp_file_name, header='', header_dict={},
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                       **kwargs):
     def transformer(cur_definition, rest_definitions):
         if (len(cur_definition['statements']) > 1 or
             not MODULE_REG.match(cur_definition['statement'])):
@@ -602,20 +587,20 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
                               transformer,
                               'Module exportation',
                               header=header, header_dict=dict(header_dict),
-                              verbose=verbose, log=log, coqc=coqc)
+                              **kwargs)
 
 
 
 
 def try_strip_comments(output_file_name, error_reg_string, header='', header_dict={},
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     contents = strip_comments(contents)
     if contents == old_contents:
         if verbose >= 1: log('\nNo strippable comments.')
         return
-    output = diagnose_error.get_coq_output(coqc, contents)
+    output = diagnose_error.get_coq_output(coqc, contents, use_timeout)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping comments.')
         contents = prepend_header(contents, header, header_dict)
@@ -631,7 +616,7 @@ def try_strip_comments(output_file_name, error_reg_string, header='', header_dic
 
 
 def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space,
-                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                       header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
@@ -640,7 +625,7 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
     if contents == old_contents:
         if verbose >= 1: log('\nNo strippable newlines or spaces.')
         return
-    output = diagnose_error.get_coq_output(coqc, contents)
+    output = diagnose_error.get_coq_output(coqc, contents, use_timeout)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping newlines and spaces.')
         contents = prepend_header(contents, header, header_dict)
@@ -655,7 +640,7 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
 
 
 def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, header='', header_dict={},
-                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True, **kwargs):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
@@ -668,7 +653,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
     if new_statements == statements:
         if verbose: log('No lines to trim')
         return
-    output = diagnose_error.get_coq_output(coqc, '\n'.join(new_statements))
+    output = diagnose_error.get_coq_output(coqc, '\n'.join(new_statements), use_timeout)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose: log('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         new_contents = prepend_header('\n'.join(new_statements), header, header_dict)
@@ -688,7 +673,8 @@ EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\
                                r'|Global\s|Local\s'
                                r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
                                r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
-def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc'):
+def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, header='', header_dict={}, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', use_timeout=True,
+                             **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     new_contents = EMPTY_SECTION_REG.sub(r'\1', old_contents)
@@ -698,7 +684,7 @@ def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name,
     if new_contents == contents:
         if verbose: log('No empty sections to remove')
         return
-    output = diagnose_error.get_coq_output(coqc, new_contents)
+    output = diagnose_error.get_coq_output(coqc, new_contents, use_timeout)
     if diagnose_error.has_error(output, error_reg_string):
         if verbose: log('Empty section removal successful.')
         new_contents = prepend_header(new_contents, header, header_dict)
@@ -716,20 +702,27 @@ if __name__ == '__main__':
     args = parser.parse_args()
     os.chdir(args.directory)
     bug_file_name = args.bug_file.name
-    topname = args.topname
     output_file_name = args.output_file
     temp_file_name = args.temp_file
     verbose = args.verbose
-    fast_merge_imports = args.fast_merge_imports
     log = make_logger(args.log_files)
     coqc = args.coqc
-    coqtop = args.coqtop
-    as_modules = args.wrap_modules
-    max_consecutive_newlines = args.max_consecutive_newlines
-    header = args.header
-    strip_trailing_space = args.strip_trailing_space
     admit_opaque = args.admit_opaque
     admit_transparent = args.admit_transparent
+    env = {
+        'topname': args.topname,
+        'verbose': args.verbose,
+        'fast_merge_imports': args.fast_merge_imports,
+        'log': log,
+        'coqc': args.coqc,
+        'coqtop': args.coqtop,
+        'as_modules': args.wrap_modules,
+        'max_consecutive_newlines': args.max_consecutive_newlines,
+        'header': args.header,
+        'strip_trailing_space': args.strip_trailing_space,
+        'use_timeout': args.use_timeout,
+        'header_dict':{'original_line_count':0}
+        }
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -751,27 +744,27 @@ if __name__ == '__main__':
 
 
     if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-    inlined_contents = include_imports(bug_file_name, verbose=verbose, fast=fast_merge_imports, log=log, as_modules=as_modules, coqc=coqc, topname=topname)
+    inlined_contents = include_imports(bug_file_name, **env)
     if inlined_contents:
-        inlined_contents = prepend_header(inlined_contents, header, {'original_line_count':0})
+        inlined_contents = prepend_header(inlined_contents, env['header'], {'original_line_count':0})
         write_to_file(output_file_name, inlined_contents)
     else:
         if verbose >= 1: log('Failed to inline inputs.')
         sys.exit(1)
 
     if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
-    error_reg_string = get_error_reg_string(output_file_name, verbose=verbose, log=log, coqc=coqc)
+    error_reg_string = get_error_reg_string(output_file_name, **env)
 
-    if max_consecutive_newlines >= 0 or strip_trailing_space:
+    if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
         if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, verbose=verbose, log=log, coqc=coqc)
+        try_strip_newlines(output_file_name, error_reg_string, **env)
 
     contents = read_from_file(output_file_name)
     original_line_count = len(contents.split('\n'))
-    header_dict = {'original_line_count':original_line_count}
+    env['header_dict'] = {'original_line_count':original_line_count}
 
     if verbose >= 1: log('\nNow, I will attempt to strip the comments from this file...')
-    try_strip_comments(output_file_name, error_reg_string, header=header, header_dict=dict(header_dict), verbose=verbose, log=log, coqc=coqc)
+    try_strip_comments(output_file_name, error_reg_string, **env)
 
 
 
@@ -784,14 +777,14 @@ if __name__ == '__main__':
             log('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
             log('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
     statements = split_coq_file_contents(contents)
-    output = diagnose_error.get_coq_output(coqc, '\n'.join(statements))
+    output = diagnose_error.get_coq_output(coqc, '\n'.join(statements), env['use_timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('Splitting successful.')
-        contents = prepend_header('\n'.join(statements), header, header_dict)
+        contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header('\n'.join(statements), header, header_dict)
+        contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
         write_to_file(temp_file_name, contents)
         if verbose >= 1: log('The output given was:')
         if verbose >= 1: log(output)
@@ -799,22 +792,22 @@ if __name__ == '__main__':
 
     if verbose >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
-    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, header=header, header_dict=dict(header_dict), verbose=verbose, log=log, coqc=coqc)
+    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, **env)
 
 
     if verbose >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     if verbose >= 3: log('I am using the following file: %s' % '\n'.join(statements))
-    definitions = split_statements_to_definitions(statements, verbose=verbose, log=log, coqtop=coqtop)
-    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions))
+    definitions = split_statements_to_definitions(statements, **env)
+    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions), env['use_timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('Splitting to definitions successful.')
-        contents = prepend_header(join_definitions(definitions), header, header_dict)
+        contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
         write_to_file(output_file_name, contents)
     else:
         if verbose >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header(join_definitions(definitions), header, header_dict)
+        contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
         write_to_file(temp_file_name, contents)
         if verbose >= 1: log('The output given was:')
         if verbose >= 1: log(output)
@@ -854,15 +847,15 @@ if __name__ == '__main__':
 
         for description, task in tasks:
             if verbose >= 1: log('\nI will now attempt to %s' % description)
-            definitions = task(definitions, output_file_name, error_reg_string, temp_file_name, header=header, header_dict=dict(header_dict), verbose=verbose, log=log, coqc=coqc)
+            definitions = task(definitions, output_file_name, error_reg_string, temp_file_name, **env)
 
 
     if verbose >= 1: log('\nI will now attempt to remove empty sections')
-    try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, header=header, header_dict=dict(header_dict), verbose=verbose, log=log, coqc=coqc)
+    try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, **env)
 
-    if max_consecutive_newlines >= 0 or strip_trailing_space:
+    if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
         if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-        try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, verbose=verbose, log=log, coqc=coqc)
+        try_strip_newlines(output_file_name, error_reg_string, **env)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)

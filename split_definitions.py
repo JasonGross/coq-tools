@@ -24,7 +24,7 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
-def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop'):
+def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', **kwargs):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
     p = Popen([coqtop, '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
@@ -34,6 +34,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = '\n'.join(statements) + '\n\n'
     if verbose: log('Sending statements to coqtop...')
+    if verbose >= 3: log(statements_string)
     (stdout, stderr) = p.communicate(input=statements_string)
     if 'know what to do with -time' in stdout.strip().split('\n')[0]:
         # we're using a version of coqtop that doesn't support -time

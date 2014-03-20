@@ -180,7 +180,7 @@ def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEF
     return contents
 
 
-def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
+def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
