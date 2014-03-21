@@ -67,9 +67,9 @@ parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
                           "trailing spaces on each line are removed."))
-parser.add_argument('--without-timeout', dest='use_timeout',
-                    action='store_const', const=False, default=True,
-                    help=("Don't use a timeout.  By default, Coq is " +
+parser.add_argument('--with-timeout', dest='use_timeout',
+                    action='store_const', const=True, default=False,
+                    help=("Use a timeout; make sure Coq is " +
                           "killed after running twice as long as the " +
                           "previous invocation"))
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
