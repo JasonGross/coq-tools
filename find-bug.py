@@ -39,6 +39,15 @@ parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                           "contents of each file is wrapped in its own " +
                           "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
+parser.add_argument('--use-include', dest='module_include',
+                    action='store_const', const='Include', default='Export',
+                    help=("Use 'Export' rather than 'Include' for nesting modules. " +
+                          "Coq doesn't support namespacing/mix-in modules " +
+                          "(see https://coq.inria.fr/bugs/show_bug.cgi?id=3171 and related bugs) " +
+                          "so we need to pick from two bad options.  'Include' tends " +
+                          "to break by duplicating Inductive definitions, while " +
+                          "'Export' tends to break by getting qualified names " +
+                          "wrong."))
 parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
                     metavar='N', nargs='?', type=int, default=2,
                     help=("Passing `--strip-newlines N` will cause the " +
@@ -717,6 +726,7 @@ if __name__ == '__main__':
         'coqc': args.coqc,
         'coqtop': args.coqtop,
         'as_modules': args.wrap_modules,
+        'module_include': args.module_include,
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,

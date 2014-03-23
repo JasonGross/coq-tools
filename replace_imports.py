@@ -141,7 +141,7 @@ def group_by_first_component(lib_libname_pairs):
         rtn[split_lib[0]].append(('.'.join(split_lib[1:]), libname))
     return rtn
 
-def recreate_path_structure(lib_libname_pairs, uid='', topname='__TOP__'):
+def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include', topname='__TOP__'):
     '''Takes a list of (<dotted name, escaped name>) pairs, and turns it into a nested module structure'''
     rtn = ''
     lib_libname_pairs = [(lib[len(topname + '.'):]
@@ -154,17 +154,17 @@ def recreate_path_structure(lib_libname_pairs, uid='', topname='__TOP__'):
     lib_libname_pairs = [(lib, libname) for lib, libname in lib_libname_pairs
                          if lib != '']
     for top_libname in top_libnames:
-        rtn += 'Include %s.\n' % top_libname
+        rtn += '%s %s.\n' % (module_include, top_libname)
     for cur_lib, lib_list in group_by_first_component(lib_libname_pairs).items():
         rtn += 'Module %s.\n' % cur_lib
-        rtn += recreate_path_structure(lib_list, topname='')
+        rtn += recreate_path_structure(lib_list, module_include=module_include, topname='')
         if cur_lib in [other_lib for other_lib, other_libname in lib_list] and cur_lib not in top_libnames:
-            rtn += 'Include %s.\n' % cur_lib
+            rtn += '%s %s.\n' % (module_include, cur_lib)
         rtn += 'End %s.\n' % cur_lib
     if topname != '': rtn += 'End %s%s.\n' % (uid, topname)
     return rtn
 
-def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEFAULT_LOG, topname='__TOP__'):
+def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=True, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_name, verbose=verbose, log=log)
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
@@ -174,13 +174,14 @@ def contents_as_module_without_require(lib, other_imports, verbose=True, log=DEF
     print(contents)
     module_name = escape_lib(lib)
     existing_imports = recreate_path_structure([(i, escape_lib(i)) for i in other_imports],
+                                               module_include=module_include,
                                                uid=module_name,
                                                topname=topname)
     contents = 'Module %s.\n%s\n%s\nEnd %s.\n' % (module_name, existing_imports, contents, module_name)
     return contents
 
 
-def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
+def include_imports(filename, as_modules=True, module_include='Include', verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -232,7 +233,7 @@ def include_imports(filename, as_modules=True, verbose=True, fast=False, log=DEF
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, topname=topname) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, module_include=module_include, verbose=verbose, log=log, topname=topname) + '\n'
             else:
                 rtn += contents_without_imports(import_name, verbose=verbose, log=log, topname=topname) + '\n'
             imports_done.append(import_name)
