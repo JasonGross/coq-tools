@@ -9,6 +9,8 @@ file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
+DEFAULT_VERBOSE=1
+
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
@@ -34,7 +36,7 @@ def lib_of_filename(filename, topname='__TOP__', exts=('.v', '.glob')):
         print("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return topname + '.' + filename.replace(os.sep, '.')
 
-def get_file(filename, verbose=True, log=DEFAULT_LOG):
+def get_file(filename, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG):
     if filename[-2:] != '.v': filename += '.v'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         if verbose: log('getting %s' % filename)
@@ -65,7 +67,7 @@ def get_makefile_contents(coqc, topname, v_files, verbose, log):
                                        stderr=subprocess.PIPE)
     return p_make_makefile.communicate()
 
-def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG, coqc='coqc'):
+def make_globs(libnames, verbose=DEFAULT_VERBOSE, topname='__TOP__', log=DEFAULT_LOG, coqc='coqc'):
     extant_libnames = [i for i in libnames
                        if os.path.exists(filename_of_lib(i, topname=topname, ext='.v'))]
     if len(extant_libnames) == 0: return
@@ -80,7 +82,8 @@ def make_globs(libnames, verbose=True, topname='__TOP__', log=DEFAULT_LOG, coqc=
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
-def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
+def get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
+    lib = norm_libname(lib, topname=topname)
     glob_name = filename_of_lib(lib, topname=topname, ext='.glob')
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if not fast:
@@ -91,19 +94,24 @@ def get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__
                 with open(glob_name, 'r') as f:
                     contents = f.read()
                 lines = contents.split('\n')
-                lib_imports_slow[lib] = tuple(sorted(set(IMPORT_REG.findall(contents))))
+                lib_imports_slow[lib] = tuple(sorted(set(norm_libname(name, topname=topname)
+                                                         for name in IMPORT_REG.findall(contents))))
                 return lib_imports_slow[lib]
     # making globs failed, or we want the fast way, fall back to regexp
     if lib not in lib_imports_fast.keys():
         contents = get_file(v_name, verbose=verbose, log=log)
         imports_string = re.sub('\\s+', ' ', ' '.join(IMPORT_LINE_REG.findall(contents))).strip()
-        lib_imports_fast[lib] = tuple(sorted(set(i for i in imports_string.split(' ') if i != '')))
+        lib_imports_fast[lib] = tuple(sorted(set(norm_libname(i, topname=topname)
+                                                 for i in imports_string.split(' ') if i != '')))
     return lib_imports_fast[lib]
 
 def norm_libname(lib, topname='__TOP__'):
-    if lib[:len(topname + '.')] != topname + '.' and os.path.exists(filename_of_lib(lib, topname=topname)):
-        return topname + '.' + lib
-    return lib
+    filename = filename_of_lib(lib, topname=topname)
+    # TODO: Cache this lookup, if it's a bottleneck?
+    if os.path.exists(filename):
+        return lib_of_filename(filename, topname=topname)
+    else:
+        return lib
 
 def merge_imports(imports, topname='__TOP__'):
     rtn = []
@@ -113,7 +121,8 @@ def merge_imports(imports, topname='__TOP__'):
                 rtn.append(norm_libname(i, topname=topname))
     return rtn
 
-def recursively_get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
+def recursively_get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc'):
+    lib = norm_libname(lib, topname=topname)
     glob_name = filename_of_lib(lib, topname=topname, ext='.glob')
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if os.path.exists(v_name):
@@ -124,7 +133,7 @@ def recursively_get_imports(lib, verbose=True, fast=False, log=DEFAULT_LOG, topn
         return merge_imports(imports_list + [[lib]], topname=topname)
     return [lib]
 
-def contents_without_imports(lib, verbose=True, log=DEFAULT_LOG, topname='__TOP__'):
+def contents_without_imports(lib, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
     v_file = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_file, verbose=verbose, log=log)
     if '(*' in ' '.join(IMPORT_LINE_REG.findall(contents)):
@@ -164,14 +173,14 @@ def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include',
     if topname != '': rtn += 'End %s%s.\n' % (uid, topname)
     return rtn
 
-def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=True, log=DEFAULT_LOG, topname='__TOP__'):
+def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_name, verbose=verbose, log=log)
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
     contents = reg1.sub(r'\1', contents)
     reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
     contents = reg2.sub(r'', contents)
-    print(contents)
+    if verbose > 1: log(contents)
     module_name = escape_lib(lib)
     existing_imports = recreate_path_structure([(i, escape_lib(i)) for i in other_imports],
                                                module_include=module_include,
@@ -181,7 +190,7 @@ def contents_as_module_without_require(lib, other_imports, module_include='Inclu
     return contents
 
 
-def include_imports(filename, as_modules=True, module_include='Include', verbose=True, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
+def include_imports(filename, as_modules=True, module_include='Include', verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
