@@ -158,31 +158,25 @@ def group_by_first_component(lib_libname_pairs):
         rtn[split_lib[0]].append(('.'.join(split_lib[1:]), libname))
     return rtn
 
-def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include', topname='__TOP__'):
-    '''Takes a list of (<dotted name, escaped name>) pairs, and turns it into a nested module structure'''
-    rtn = ''
-    lib_libname_pairs = [(lib[len(topname + '.'):]
-                          if lib[:len(topname + '.')] == topname + '.'
-                          else lib,
-                          libname)
-                         for lib, libname in lib_libname_pairs]
-    if topname != '': rtn += 'Module Import %s%s.\n' % (uid, topname)
-    top_libnames = [libname for lib, libname in lib_libname_pairs if lib == '']
-    lib_libname_pairs = [(lib, libname) for lib, libname in lib_libname_pairs
-                         if lib != '']
-    for top_libname in top_libnames:
-        rtn += '%s %s.\n' % (module_include, top_libname)
-    for cur_lib, lib_list in group_by_first_component(lib_libname_pairs).items():
-        if all(lib == '' for lib, libname in lib_list):
-            rtn += 'Module %s.\n' % cur_lib
-        else:
-            rtn += 'Module Export %s.\n' % cur_lib
-        rtn += recreate_path_structure(lib_list, module_include=module_include, topname='')
-        if cur_lib in [other_lib for other_lib, other_libname in lib_list] and cur_lib not in top_libnames:
-            rtn += '%s %s.\n' % (module_include, cur_lib)
-        rtn += 'End %s.\n' % cur_lib
-    if topname != '': rtn += 'End %s%s.\n' % (uid, topname)
-    return rtn
+def nest_iter_up_to(iterator):
+    so_far = []
+    for i in iterator:
+        so_far.append(i)
+        yield tuple(so_far)
+
+
+def construct_import_list(import_libs):
+    '''Takes a list of library names, and returns a list of imports in an order that should have modules representing files at the end.'''
+    lib_components_list = [(libname, tuple(reversed(list(nest_iter_up_to(libname.split('.')))[:-1])))
+                           for libname in import_libs]
+    ret = list(map(escape_lib, import_libs))
+    lib_components = [(libname, i, max(map(len, lst)) - len(i))
+                      for libname, lst in lib_components_list
+                      for i in lst]
+    for libname, components, components_left in reversed(sorted(lib_components, key=(lambda x: x[2]))):
+        ret.append(escape_lib(libname) + '.' + '.'.join(components))
+    return ' '.join(ret)
+
 
 def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
@@ -202,13 +196,13 @@ def contents_as_module_without_require(lib, other_imports, module_include='Inclu
     module_name = escape_lib(lib)
     # import the top-level wrappers
     if len(other_imports) > 0:
-        # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.  We fake this by sorting from longest to shortest.
-        contents = 'Import %s.\n%s' % (' '.join(reversed(sorted(map(escape_lib, other_imports), key=len))), contents)
+        # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
+        contents = 'Import %s.\n%s' % (construct_import_list(other_imports), contents)
     # wrap the contents in directory modules
     lib_parts = lib.split('.')
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
-        contents = 'Module Export %s.\n%s\nEnd %s.\n' % (name, contents, name)
+        contents = 'Module %s.\n%s\nEnd %s.\n' % (name, contents, name) # or Module Export?
 #    existing_imports = recreate_path_structure((i, escape_lib(i)) for i in other_imports],
 #                                               module_include=module_include,
 #                                               uid=module_name,
