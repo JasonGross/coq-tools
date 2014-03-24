@@ -17,14 +17,22 @@ IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|
 def DEFAULT_LOG(text):
     print(text)
 
+@memoize
 def filename_of_lib(lib, topname='__TOP__', ext='.v'):
     if lib[:len(topname + '.')] == topname + '.':
         lib = lib[len(topname + '.'):]
         lib = lib.replace('.', os.sep)
+        return os.path.relpath(os.path.normpath(lib + ext), '.')
     else:
         # is this the right thing to do?
         lib = lib.replace('.', os.sep)
-    return os.path.relpath(os.path.normpath(lib + ext), '.')
+        for dirpath, dirname, filenames in os.walk('.', followlinks=True):
+            filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
+            if os.path.exists(filename):
+                return filename
+        return os.path.relpath(os.path.normpath(lib + ext), '.')
+
+    return filename_of_lib_helper(lib, topname) + ext
 
 def lib_of_filename(filename, topname='__TOP__', exts=('.v', '.glob')):
     filename = os.path.relpath(filename, '.')
