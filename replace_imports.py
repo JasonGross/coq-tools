@@ -173,7 +173,11 @@ def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include',
     for top_libname in top_libnames:
         rtn += '%s %s.\n' % (module_include, top_libname)
     for cur_lib, lib_list in group_by_first_component(lib_libname_pairs).items():
-        rtn += 'Module %s.\n' % cur_lib
+#        print(cur_lib, lib_list)
+        if all(lib == '' for lib, libname in lib_list):
+            rtn += 'Module %s.\n' % cur_lib
+        else:
+            rtn += 'Module Export %s.\n' % cur_lib
         rtn += recreate_path_structure(lib_list, module_include=module_include, topname='')
         if cur_lib in [other_lib for other_lib, other_libname in lib_list] and cur_lib not in top_libnames:
             rtn += '%s %s.\n' % (module_include, cur_lib)
@@ -184,6 +188,13 @@ def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include',
 def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_name, verbose=verbose, log=log)
+#    # normalize all the imports, and remove the requires
+#    reg1 = re.compile(r'^(\s*Require\s+)((?:Import|Export)\s+)((?:[^\.]|\.(?!\s|$))+)(\.(?:\s|$))', flags=re.MULTILINE)
+#    for req, imp_exp, modules, end in reg1.findall(contents):
+#        new_modules = ' '.join(normalize_libname(name, topname=topname)
+#                               for name in modules.split(' ')
+#                               if name.strip() != '')
+#        contents = contents.replace(req + imp_exp + modules + end, imp_exp + new_modules + end)
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
     contents = reg1.sub(r'\1', contents)
     reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
