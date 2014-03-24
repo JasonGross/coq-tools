@@ -173,7 +173,6 @@ def recreate_path_structure(lib_libname_pairs, uid='', module_include='Include',
     for top_libname in top_libnames:
         rtn += '%s %s.\n' % (module_include, top_libname)
     for cur_lib, lib_list in group_by_first_component(lib_libname_pairs).items():
-#        print(cur_lib, lib_list)
         if all(lib == '' for lib, libname in lib_list):
             rtn += 'Module %s.\n' % cur_lib
         else:
@@ -201,11 +200,21 @@ def contents_as_module_without_require(lib, other_imports, module_include='Inclu
     contents = reg2.sub(r'', contents)
     if verbose > 1: log(contents)
     module_name = escape_lib(lib)
-    existing_imports = recreate_path_structure([(i, escape_lib(i)) for i in other_imports],
-                                               module_include=module_include,
-                                               uid=module_name,
-                                               topname=topname)
-    contents = 'Module %s.\n%s\n%s\nEnd %s.\n' % (module_name, existing_imports, contents, module_name)
+    # import the top-level wrappers
+    if len(other_imports) > 0:
+        # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.  We fake this by sorting from longest to shortest.
+        contents = 'Import %s.\n%s' % (' '.join(reversed(sorted(map(escape_lib, other_imports), key=len))), contents)
+    # wrap the contents in directory modules
+    lib_parts = lib.split('.')
+    contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
+    for name in reversed(lib_parts[:-1]):
+        contents = 'Module Export %s.\n%s\nEnd %s.\n' % (name, contents, name)
+#    existing_imports = recreate_path_structure((i, escape_lib(i)) for i in other_imports],
+#                                               module_include=module_include,
+#                                               uid=module_name,
+#                                               topname=topname)
+#    contents = 'Module %s.\n%s\n%s\nEnd %s.\n' % (module_name, existing_imports, contents, module_name)
+    contents = 'Module %s.\n%s\nEnd %s.\n' % (module_name, contents, module_name)
     return contents
 
 
