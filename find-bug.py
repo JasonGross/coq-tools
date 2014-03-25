@@ -39,15 +39,6 @@ parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                           "contents of each file is wrapped in its own " +
                           "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
-parser.add_argument('--use-include', dest='module_include',
-                    action='store_const', const='Include', default='Export',
-                    help=("Use 'Export' rather than 'Include' for nesting modules. " +
-                          "Coq doesn't support namespacing/mix-in modules " +
-                          "(see https://coq.inria.fr/bugs/show_bug.cgi?id=3171 and related bugs) " +
-                          "so we need to pick from two bad options.  'Include' tends " +
-                          "to break by duplicating Inductive definitions, while " +
-                          "'Export' tends to break by getting qualified names " +
-                          "wrong."))
 parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
                     metavar='N', nargs='?', type=int, default=2,
                     help=("Passing `--strip-newlines N` will cause the " +
@@ -142,7 +133,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
         contents = read_from_file(output_file_name)
         output = diagnose_error.get_coq_output(coqc, contents, use_timeout)
         result = ''
-        log("\nThis file produces the following output when Coq'ed:\n%s" % output)
+        print("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
         if result in ('n', 'no'):
@@ -152,7 +143,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            log("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string))
+            print("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string))
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
@@ -177,11 +168,11 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
                and (not re.search(error_reg_string, output)
                     or len(re.search(error_reg_string, output).groups()) != 2)):
             if not re.search(error_reg_string, output):
-                log('\nThe given regular expression does not match the output.')
+                print('\nThe given regular expression does not match the output.')
             elif len(re.search(error_reg_string, output).groups()) != 2:
-                log('\nThe given regular expression does not have two groups.')
-                log('It must have one integer group which matches on the line number,')
-                log('and another group which matches on the error string.')
+                print('\nThe given regular expression does not have two groups.')
+                print('It must have one integer group which matches on the line number,')
+                print('and another group which matches on the error string.')
             error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
                                          % output_file_name)
 
@@ -726,7 +717,6 @@ if __name__ == '__main__':
         'coqc': args.coqc,
         'coqtop': args.coqtop,
         'as_modules': args.wrap_modules,
-        'module_include': args.module_include,
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,

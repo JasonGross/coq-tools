@@ -79,6 +79,11 @@ def get_coq_output(coqc, contents, use_timeout):
     end = time.time()
     if LAST_TIMEOUT is None or start - end <= 1.5 * LAST_TIMEOUT:
         LAST_TIMEOUT = start - end
-    if os.path.exists(file_name):
-        os.remove(file_name)
+    for names in (file_name[:-2] + '.glob',
+                  file_name[:-2] + '.vo',
+                  file_name[:-2] + '.d',
+                  file_name[:-2] + '.v.d',
+                  file_name):
+        if os.path.exists(name):
+            os.remove(name)
     return clean_output(stdout)

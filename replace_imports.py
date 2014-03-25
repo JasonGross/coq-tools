@@ -178,16 +178,9 @@ def construct_import_list(import_libs):
     return ' '.join(ret)
 
 
-def contents_as_module_without_require(lib, other_imports, module_include='Include', verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
+def contents_as_module_without_require(lib, other_imports, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     contents = get_file(v_name, verbose=verbose, log=log)
-#    # normalize all the imports, and remove the requires
-#    reg1 = re.compile(r'^(\s*Require\s+)((?:Import|Export)\s+)((?:[^\.]|\.(?!\s|$))+)(\.(?:\s|$))', flags=re.MULTILINE)
-#    for req, imp_exp, modules, end in reg1.findall(contents):
-#        new_modules = ' '.join(normalize_libname(name, topname=topname)
-#                               for name in modules.split(' ')
-#                               if name.strip() != '')
-#        contents = contents.replace(req + imp_exp + modules + end, imp_exp + new_modules + end)
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
     contents = reg1.sub(r'\1', contents)
     reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
@@ -203,16 +196,11 @@ def contents_as_module_without_require(lib, other_imports, module_include='Inclu
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
         contents = 'Module %s.\n%s\nEnd %s.\n' % (name, contents, name) # or Module Export?
-#    existing_imports = recreate_path_structure((i, escape_lib(i)) for i in other_imports],
-#                                               module_include=module_include,
-#                                               uid=module_name,
-#                                               topname=topname)
-#    contents = 'Module %s.\n%s\n%s\nEnd %s.\n' % (module_name, existing_imports, contents, module_name)
     contents = 'Module %s.\n%s\nEnd %s.\n' % (module_name, contents, module_name)
     return contents
 
 
-def include_imports(filename, as_modules=True, module_include='Include', verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
+def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname='__TOP__', coqc='coqc', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -264,7 +252,7 @@ def include_imports(filename, as_modules=True, module_include='Include', verbose
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, module_include=module_include, verbose=verbose, log=log, topname=topname) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, topname=topname) + '\n'
             else:
                 rtn += contents_without_imports(import_name, verbose=verbose, log=log, topname=topname) + '\n'
             imports_done.append(import_name)
