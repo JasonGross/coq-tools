@@ -55,6 +55,9 @@ parser.add_argument('--no-admit-opaque', dest='admit_opaque',
 parser.add_argument('--no-admit-transparent', dest='admit_transparent',
                     action='store_const', const=False, default=True,
                     help=("Don't try to replace transparent things with [admit]s."))
+parser.add_argument('--aggressive', dest='aggressive',
+                    action='store_const', const=True, default=False,
+                    help=("Be more aggressive by trying to remove all definitions."))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)',
                     help=("A line to be placed at the top of the " +
@@ -377,6 +380,14 @@ def try_remove_each_definition(definitions, output_file_name, error_reg_string, 
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                               'Definition removal',
+                              header=header, header_dict=dict(header_dict),
+                              verbose=verbose, log=log, coqc=coqc, use_timeout=True)
+
+def try_remove_each_and_every_line(definitions, output_file_name, error_reg_string, temp_file_name,
+                               header='', header_dict={}, **kwargs):
+    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+                              (lambda cur_definition, rest_definitions: False),
+                              'Line removal',
                               header=header, header_dict=dict(header_dict),
                               verbose=verbose, log=log, coqc=coqc, use_timeout=True)
 
@@ -708,6 +719,7 @@ if __name__ == '__main__':
     log = make_logger(args.log_files)
     coqc = args.coqc
     admit_opaque = args.admit_opaque
+    aggressive = args.aggressive
     admit_transparent = args.admit_transparent
     env = {
         'topname': args.topname,
@@ -837,6 +849,11 @@ if __name__ == '__main__':
 
     tasks += (('remove hints', try_remove_hints),
               ('export modules', try_export_modules))
+
+    if aggressive:
+        tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks)
 
 
     old_definitions = ''
