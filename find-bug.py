@@ -379,7 +379,7 @@ def try_remove_each_definition(definitions, output_file_name, error_reg_string, 
                               try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                               'Definition removal',
                               header=header, header_dict=dict(header_dict),
-                              verbose=verbose, log=log, coqc=coqc, **kwargs)
+                              **kwargs)
 
 def try_remove_each_and_every_line(definitions, output_file_name, error_reg_string, temp_file_name,
                                header='', header_dict={}, **kwargs):
@@ -387,7 +387,7 @@ def try_remove_each_and_every_line(definitions, output_file_name, error_reg_stri
                               (lambda cur_definition, rest_definitions: False),
                               'Line removal',
                               header=header, header_dict=dict(header_dict),
-                              verbose=verbose, log=log, coqc=coqc, **kwargs)
+                              **kwargs)
 
 ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
 def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name,
