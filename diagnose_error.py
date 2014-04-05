@@ -67,7 +67,7 @@ def get_coq_output(coqc, contents, timeout):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    if timeout <= 0;
+    if timeout <= 0:
         p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
         p = subprocess.Popen(['timeout', str(timeout), coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
