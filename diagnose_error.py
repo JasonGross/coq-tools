@@ -53,6 +53,11 @@ def make_reg_string(output):
         re_string = re.sub(r'(\s)[^\s]+?\.([0-9]+)',
                            r'\1[^\s]+?\.\2',
                            re_string)
+    elif 'Unsatisfied constraints' in error_string:
+        re_string = re.sub(r'Error\\:\\ Unsatisfied\\ constraints\\:.*(?:\n.+)*.*\\\(maybe\\ a\\ bugged\\ tactic\\\)',
+                           r'Error\:\ Unsatisfied\ constraints\:.*(?:\\n.+)*.*\(maybe\ a\ bugged\ tactic\)',
+                           re.escape(error_string),
+                           re.DOTALL)
     else:
         re_string = re.escape(error_string)
     re_string = re.sub(r'[0-9]+',
@@ -79,4 +84,6 @@ def get_coq_output(coqc, contents, timeout):
                  file_name):
         if os.path.exists(name):
             os.remove(name)
+    ## remove instances of the file name
+    #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
     return clean_output(stdout)
