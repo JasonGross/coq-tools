@@ -58,6 +58,11 @@ def make_reg_string(output):
                            r'Error\:\ Unsatisfied\ constraints\:.*(?:\\n.+)*.*\(maybe\ a\ bugged\ tactic\)',
                            re.escape(error_string),
                            re.DOTALL)
+    elif 'Unable to satisfy the following constraints' in error_string:
+        re_string = re.sub(r'Error\\:\\ Unable\\ to\\ satisfy\\ the\\ following\\ constraints\\:.*(?:\n.*)*',
+                           r'Error\:\ Unable\ to\ satisfy\ the\ following\ constraints\:.*(?:\\n.*)*',
+                           re.escape(error_string),
+                           re.DOTALL)
     else:
         re_string = re.escape(error_string)
     re_string = re.sub(r'[0-9]+',
