@@ -89,15 +89,15 @@ def get_coq_output(coqc, contents, timeout):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    start = time.clock()
+    start = time.time()
     if timeout <= 0:
         p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
         p = subprocess.Popen(['timeout', str(timeout), coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    finish = time.clock()
+    finish = time.time()
     if TIMEOUT is None:
-        TIMEOUT = 2 * max((5, int(math.ceil(finish - start))))
+        TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     for name in (file_name[:-2] + '.glob',
                  file_name[:-2] + '.vo',
                  file_name[:-2] + '.d',
