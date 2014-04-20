@@ -736,8 +736,7 @@ if __name__ == '__main__':
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,
-        'timeout': args.timeout,
-        'header_dict':{'original_line_count':0}
+        'timeout': args.timeout
         }
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -767,6 +766,10 @@ if __name__ == '__main__':
         if verbose >= 1: log('Failed to inline inputs.')
         sys.exit(1)
 
+    old_header = get_old_header(inlined_contents, env['header'])
+    env['header_dict'] = {'original_line_count':0,
+                          'old_header':old_header}
+
     if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name, **env)
 
@@ -776,9 +779,7 @@ if __name__ == '__main__':
 
     contents = read_from_file(output_file_name)
     original_line_count = len(contents.split('\n'))
-    old_header = get_old_header(contents, env['header'])
-    env['header_dict'] = {'original_line_count':original_line_count,
-                          'old_header':old_header}
+    env['header_dict']['original_line_count'] = original_line_count
 
     if verbose >= 1: log('\nNow, I will attempt to strip the comments from this file...')
     try_strip_comments(output_file_name, error_reg_string, **env)
