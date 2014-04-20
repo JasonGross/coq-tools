@@ -55,24 +55,27 @@ parser.add_argument('--no-admit-opaque', dest='admit_opaque',
 parser.add_argument('--no-admit-transparent', dest='admit_transparent',
                     action='store_const', const=False, default=True,
                     help=("Don't try to replace transparent things with [admit]s."))
-parser.add_argument('--aggressive', dest='aggressive',
-                    action='store_const', const=True, default=False,
-                    help=("Be more aggressive by trying to remove all definitions."))
+parser.add_argument('--no-aggressive', dest='aggressive',
+                    action='store_const', const=False, default=True,
+                    help=("Be less aggressive; don't try to remove _all_ definitions/lines."))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
-                    default='(* File reduced by coq-bug-finder from %(original_line_count)d lines to %(final_line_count)d lines. *)',
+                    default='(* File reduced by coq-bug-finder from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
                     help=("A line to be placed at the top of the " +
                           "output file, followed by a newline.  The " +
                           "variables original_line_count and " +
                           "final_line_count will be available for " +
                           "substitution.  The default is " +
-                          "`(* File reduced by coq-bug-finder from %%(original_line_count)d lines to %%(final_line_count)d lines. *)'"))
+                          "`(* File reduced by coq-bug-finder from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
 parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
                           "trailing spaces on each line are removed."))
 parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, default=-1,
                     help=("Use a timeout; make sure Coq is " +
-                          "killed after running for this many seconds"))
+                          "killed after running for this many seconds. " +
+                          "If 0, there is no timeout.  If negative, then " +
+                          "twice the initial run of the script is used.\n\n" +
+                          "Default: -1"))
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
@@ -132,7 +135,10 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
     while error_reg_string == '':
         if verbose: log('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
+        diagnose_error.reset_timeout()
         output = diagnose_error.get_coq_output(coqc, contents, kwargs['timeout'])
+        if kwargs['timeout'] < 0:
+            log('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
         print("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
@@ -184,15 +190,18 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
 
 def prepend_header(contents, header='', header_dict={}):
     """Fills in the variables in the header for output files"""
+    old_header = 'original input'
     if header[:2] == '(*' and header[-2:] == '*)' and '*)' not in header[2:-2]:
         pre_header = header[:header.index('%')]
         if contents[:len(pre_header)] == pre_header:
             # strip the old header
+            old_header = contents[len(pre_header):contents.index('*)')].strip()
             contents = contents[contents.index('*)')+2:]
             if contents[0] == '\n': contents = contents[1:]
     final_line_count = len(contents.split('\n'))
     header_dict = dict(header_dict) # clone the dict
     header_dict['final_line_count'] = final_line_count
+    header_dict['old_header'] = old_header
     return '%s\n%s' % (header % header_dict, contents)
 
 def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,

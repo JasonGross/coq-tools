@@ -1,8 +1,8 @@
 from __future__ import with_statement
-import os, sys, tempfile, subprocess, re
+import os, sys, tempfile, subprocess, re, time, math
 from memoize import memoize
 
-__all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string"]
+__all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout"]
 
 DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
@@ -70,18 +70,34 @@ def make_reg_string(output):
                        re_string)
     return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
+TIMEOUT = None
+
+def get_timeout():
+    return TIMEOUT
+
+def reset_timeout():
+    global TIMEOUT
+    TIMEOUT = None
+
 @memoize
 def get_coq_output(coqc, contents, timeout):
     """Returns the coqc output of running through the given
     contents."""
+    global TIMEOUT
+    if timeout < 0 and TIMEOUT is not None:
+        return get_coq_output(coqc, contents, TIMEOUT)
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
+    start = time.clock()
     if timeout <= 0:
         p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
         p = subprocess.Popen(['timeout', str(timeout), coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
+    finish = time.clock()
+    if TIMEOUT is None:
+        TIMEOUT = 2 * max((5, int(math.ceil(finish - start))))
     for name in (file_name[:-2] + '.glob',
                  file_name[:-2] + '.vo',
                  file_name[:-2] + '.d',
