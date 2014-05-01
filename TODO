@@ -4,25 +4,11 @@
 * Remember timing information for definitions, so we can be smart
   about prioritizing things that take a long time.
 
-* Separate things into more files
-
 * Consider skipping changes that make compilation much slower (e.g.,
   removing a quick-path instance).  Maybe make a tuning parameter for
   how much size needs to be reduced to accept a given reduction in
   speed.
 
-* Use `coqtop -time -emacs` rather than `coqtop -emacs`, and remove
-  the need to split into statements.  Alternatively, use `coqc -q -I
-  . -time -verbose -dump-globs foo.glob foo`
-
 * Deal with [Load] better
 
-* Handle subdirectories better
-
 * Rename "hint removal" to something more accurate
-
-* Add info about how many files were combined to the header, and keep
-  track of original line count across multiple runs (e.g., turn the
-  header into "(* File reduced by coq-bug-finder from $n lines,
-  originally $m files and $o lines, to $p lines. *)", and parse it to
-  preserve the "originally ...," part).
