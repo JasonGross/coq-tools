@@ -28,6 +28,9 @@ parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, defau
 parser.add_argument('--verbose', '-v', dest='verbose',
                     action='count',
                     help='display some extra information')
+parser.add_argument('--quiet', '-q', dest='quiet',
+                    action='count',
+                    help='the inverse of --verbose')
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
@@ -421,7 +424,7 @@ def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_n
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : ')),
-                                                                              verbose=verbose, log=log, coqc=coqc),
+                                                                              **kwargs),
                                   'Ltac removal',
                                   **kwargs)
 
@@ -719,15 +722,16 @@ if __name__ == '__main__':
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
     temp_file_name = args.temp_file
-    verbose = args.verbose
     log = make_logger(args.log_files)
     coqc = args.coqc
     admit_opaque = args.admit_opaque
     aggressive = args.aggressive
     admit_transparent = args.admit_transparent
+    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
+    if args.quiet is None: args.quiet = 0
     env = {
         'topname': args.topname,
-        'verbose': args.verbose,
+        'verbose': args.verbose - args.quiet,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
         'coqc': args.coqc,
@@ -758,36 +762,36 @@ if __name__ == '__main__':
         sys.exit(1)
 
 
-    if verbose >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+    if env['verbose'] >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
     inlined_contents = include_imports(bug_file_name, **env)
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
     else:
-        if verbose >= 1: log('Failed to inline inputs.')
+        if env['verbose'] >= 1: log('Failed to inline inputs.')
         sys.exit(1)
 
     old_header = get_old_header(inlined_contents, env['header'])
     env['header_dict'] = {'original_line_count':0,
                           'old_header':old_header}
 
-    if verbose >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
+    if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name, **env)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
         try_strip_newlines(output_file_name, error_reg_string, **env)
 
     contents = read_from_file(output_file_name)
     original_line_count = len(contents.split('\n'))
     env['header_dict']['original_line_count'] = original_line_count
 
-    if verbose >= 1: log('\nNow, I will attempt to strip the comments from this file...')
+    if env['verbose'] >= 1: log('\nNow, I will attempt to strip the comments from this file...')
     try_strip_comments(output_file_name, error_reg_string, **env)
 
 
 
     contents = read_from_file(output_file_name)
-    if verbose >= 1:
+    if env['verbose'] >= 1:
         log('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
         strings = re.findall(r'"[^"]+"', contents)
         bad_strings = [i for i in strings if re.search(r'\.\s', i)]
@@ -797,38 +801,38 @@ if __name__ == '__main__':
     statements = split_coq_file_contents(contents)
     output = diagnose_error.get_coq_output(coqc, '\n'.join(statements), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log('Splitting successful.')
+        if env['verbose'] >= 1: log('Splitting successful.')
         contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
         write_to_file(output_file_name, contents)
     else:
-        if verbose >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
+        if env['verbose'] >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
         contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
         write_to_file(temp_file_name, contents)
-        if verbose >= 1: log('The output given was:')
-        if verbose >= 1: log(output)
+        if env['verbose'] >= 1: log('The output given was:')
+        if env['verbose'] >= 1: log(output)
         sys.exit(1)
 
-    if verbose >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
+    if env['verbose'] >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
     line_num = diagnose_error.get_error_line_number(output, error_reg_string)
     try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, **env)
 
 
-    if verbose >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
+    if env['verbose'] >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
-    if verbose >= 3: log('I am using the following file: %s' % '\n'.join(statements))
+    if env['verbose'] >= 3: log('I am using the following file: %s' % '\n'.join(statements))
     definitions = split_statements_to_definitions(statements, **env)
     output = diagnose_error.get_coq_output(coqc, join_definitions(definitions), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log('Splitting to definitions successful.')
+        if env['verbose'] >= 1: log('Splitting to definitions successful.')
         contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
         write_to_file(output_file_name, contents)
     else:
-        if verbose >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
+        if env['verbose'] >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
         contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
         write_to_file(temp_file_name, contents)
-        if verbose >= 1: log('The output given was:')
-        if verbose >= 1: log(output)
+        if env['verbose'] >= 1: log('The output given was:')
+        if env['verbose'] >= 1: log(output)
         sys.exit(1)
 
     recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
@@ -865,19 +869,19 @@ if __name__ == '__main__':
     old_definitions = ''
     while old_definitions != join_definitions(definitions):
         old_definitions = join_definitions(definitions)
-        if verbose >= 2: log('Definitions:')
-        if verbose >= 2: log(definitions)
+        if env['verbose'] >= 2: log('Definitions:')
+        if env['verbose'] >= 2: log(definitions)
 
         for description, task in tasks:
-            if verbose >= 1: log('\nI will now attempt to %s' % description)
+            if env['verbose'] >= 1: log('\nI will now attempt to %s' % description)
             definitions = task(definitions, output_file_name, error_reg_string, temp_file_name, **env)
 
 
-    if verbose >= 1: log('\nI will now attempt to remove empty sections')
+    if env['verbose'] >= 1: log('\nI will now attempt to remove empty sections')
     try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, **env)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-        if verbose >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
         try_strip_newlines(output_file_name, error_reg_string, **env)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
