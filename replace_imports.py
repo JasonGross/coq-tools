@@ -175,7 +175,7 @@ def construct_import_list(import_libs):
                       for i in lst]
     for libname, components, components_left in reversed(sorted(lib_components, key=(lambda x: x[2]))):
         ret.append(escape_lib(libname) + '.' + '.'.join(components))
-    return ' '.join(ret)
+    return ret
 
 
 def contents_as_module_without_require(lib, other_imports, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname='__TOP__'):
@@ -190,7 +190,8 @@ def contents_as_module_without_require(lib, other_imports, verbose=DEFAULT_VERBO
     # import the top-level wrappers
     if len(other_imports) > 0:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
-        contents = 'Import %s.\n%s' % (construct_import_list(other_imports), contents)
+        for imp in reversed(construct_import_list(other_imports)):
+            contents = 'Import %s.\n%s' % (imp, contents)
     # wrap the contents in directory modules
     lib_parts = lib.split('.')
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
@@ -266,7 +267,8 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=Fal
             pattern = 'Require %s.\n%s'
         else:
             pattern = 'Require Import %s.\n%s'
-        rtn = pattern % (' '.join(remaining_imports), rtn)
+        for imp in reversed(remaining_imports):
+            rtn = pattern % (imp, rtn)
     return rtn
 
 if __name__ == "__main__":
