@@ -9,18 +9,33 @@ not it successfully determined the error you're seeking to reproduce,
 and whether or not it created a regular expression which captures that
 error.  After that, it will run without user input until it finishes.
 
+# Usage
+
+Standard usage is to invoke with the buggy file name and the output
+(minimized) file name:
+
+```
+python find-bug.py BUGGY_FILE.v OUTPUT_FILE.v
+```
+
+You can add `-v` for a more verbose output.
+
+If you are using a non-system version of Coq, you can pass `--coqtop
+/path/to/coqtop` and `--coqc /path/to/coqc`.  If you pass `-R . Foo`
+to, say, `coq_makefile`, you can inform `find-bug.py` of this fact
+using `--topname Foo`.  The script should be run from the main
+directory of your development; there is an experimental `--directory`
+argument to allow you to do otherwise.
+
+# Examples
+
 There is an example in the examples directory.  You can run
 `run-example-1.sh` to see how the program works.  You can pass this
 script the arguments `-v`, `-vv`, or `-vvv` for different levels of
 verbosity.  Look at the contents of `run-example-1.sh` to see how to
 invoke the program.
 
-Currently, the program does not work well with non-flat file layouts.
-If you want me to add this feature, email me or create an issue on
-github with a link to a non-flat repo, and a file in that repo with a
-bug, and I will work to make my script work with that file.
-Currently, getting this to work well is blocking on [having better
-namespacing](https://coq.inria.fr/bugs/show_bug.cgi?id=3171).
+# Known Bugs
 
 Note that this program can fail in mysterious ways when run using
 Windows Python 2.7 under cygwin; it seems that buffering and stdin and
@@ -28,3 +43,5 @@ stderr and Popen are screwed up.  To work around this, there is a
 coqtop.bat file which is chosen as the default coqtop program.
 Somehow running via a .bat file makes things work.  You will probably
 have to use a similar wrapper if you use a custom coqtop executable.
+
+The `--directory` argument has poor semantics.  It should be improved.
