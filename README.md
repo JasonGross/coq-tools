@@ -9,7 +9,7 @@ not it successfully determined the error you're seeking to reproduce,
 and whether or not it created a regular expression which captures that
 error.  After that, it will run without user input until it finishes.
 
-# Usage
+## Usage
 
 Standard usage is to invoke with the buggy file name and the output
 (minimized) file name:
@@ -27,7 +27,7 @@ using `--topname Foo`.  The script should be run from the main
 directory of your development; there is an experimental `--directory`
 argument to allow you to do otherwise.
 
-# Examples
+## Examples
 
 There is an example in the examples directory.  You can run
 `run-example-1.sh` to see how the program works.  You can pass this
@@ -35,7 +35,7 @@ script the arguments `-v`, `-vv`, or `-vvv` for different levels of
 verbosity.  Look at the contents of `run-example-1.sh` to see how to
 invoke the program.
 
-# Known Bugs
+## Known Bugs
 
 Note that this program can fail in mysterious ways when run using
 Windows Python 2.7 under cygwin; it seems that buffering and stdin and
