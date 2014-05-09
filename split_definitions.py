@@ -24,10 +24,10 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
-def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', **kwargs):
+def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=(,), **kwargs):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
-    p = Popen([coqtop, '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    p = Popen([coqtop, '-emacs', '-time'] + coqtop_args, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
                            flags=re.DOTALL)
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
@@ -39,7 +39,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     if 'know what to do with -time' in stdout.strip().split('\n')[0]:
         # we're using a version of coqtop that doesn't support -time
         if verbose: log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
-        return split_definitions_old.split_statements_to_definitions(statements, verbose=verbose, log=log, coqtop=coqtop)
+        return split_definitions_old.split_statements_to_definitions(statements, verbose=verbose, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
     if verbose: log('Done.  Splitting to definitions...')
 
     rtn = []

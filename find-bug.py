@@ -84,6 +84,10 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
                     help=('The path to the coqtop program (default: %s).' % DEFAULT_COQTOP))
+parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, nargs='?',
+                    help='Arguments to pass to coqc.')
+parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
+                    help='Arguments to pass to coqtop.')
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
                     help='The name to bind to the current directory using -R .')
 
@@ -134,13 +138,13 @@ def re_compile(pattern, *args):
 def re_search(pattern, string, flags=0):
     return re_compile(pattern, flags).search(string)
 
-def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     error_reg_string = ''
     while error_reg_string == '':
         if verbose: log('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
-        output = diagnose_error.get_coq_output(coqc, contents, kwargs['timeout'])
+        output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
         if kwargs['timeout'] < 0:
             log('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
@@ -220,7 +224,7 @@ def prepend_header(contents, header='', header_dict={}, **kwargs):
     return '%s\n%s' % (use_header, contents)
 
 def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -247,7 +251,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
             else:
                 if verbose >= 3: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
-            output = diagnose_error.get_coq_output(coqc, join_definitions(try_definitions), kwargs['timeout'])
+            output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
             if diagnose_error.has_error(output, error_reg_string):
                 if verbose >= 3: log('Change succeeded')
                 success = True
@@ -275,7 +279,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
 
 
 def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                           verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+                           verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -301,7 +305,7 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         else:
             if verbose >= 3: log('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
-    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions), kwargs['timeout'])
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(definitions), kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log(description + ' successful')
         contents = prepend_header(join_definitions(definitions), **kwargs)
@@ -611,14 +615,14 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
 
 
 def try_strip_comments(output_file_name, error_reg_string,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     contents = strip_comments(contents)
     if contents == old_contents:
         if verbose >= 1: log('\nNo strippable comments.')
         return
-    output = diagnose_error.get_coq_output(coqc, contents, kwargs['timeout'])
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping comments.')
         contents = prepend_header(contents, **kwargs)
@@ -634,7 +638,7 @@ def try_strip_comments(output_file_name, error_reg_string,
 
 
 def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
@@ -643,7 +647,7 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
     if contents == old_contents:
         if verbose >= 1: log('\nNo strippable newlines or spaces.')
         return
-    output = diagnose_error.get_coq_output(coqc, contents, kwargs['timeout'])
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose >= 1: log('\nSucceeded in stripping newlines and spaces.')
         contents = prepend_header(contents, **kwargs)
@@ -658,7 +662,7 @@ def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newli
 
 
 def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name,
-                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc', **kwargs):
+                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
@@ -671,7 +675,7 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
     if new_statements == statements:
         if verbose: log('No lines to trim')
         return
-    output = diagnose_error.get_coq_output(coqc, '\n'.join(new_statements), kwargs['timeout'])
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], '\n'.join(new_statements), kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose: log('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         new_contents = prepend_header('\n'.join(new_statements), **kwargs)
@@ -691,8 +695,7 @@ EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\
                                r'|Global\s|Local\s'
                                r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
                                r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
-def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqc='coqc',
-                             **kwargs):
+def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     new_contents = EMPTY_SECTION_REG.sub(r'\1', old_contents)
@@ -702,7 +705,7 @@ def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name,
     if new_contents == contents:
         if verbose: log('No empty sections to remove')
         return
-    output = diagnose_error.get_coq_output(coqc, new_contents, kwargs['timeout'])
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if verbose: log('Empty section removal successful.')
         new_contents = prepend_header(new_contents, **kwargs)
@@ -740,7 +743,9 @@ if __name__ == '__main__':
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,
-        'timeout': args.timeout
+        'timeout': args.timeout,
+        'coqc_args': args.coqc_args,
+        'coqtop_args': args.coqtop_args
         }
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -799,7 +804,7 @@ if __name__ == '__main__':
             log('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
             log('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
     statements = split_coq_file_contents(contents)
-    output = diagnose_error.get_coq_output(coqc, '\n'.join(statements), env['timeout'])
+    output = diagnose_error.get_coq_output(coqc, env['coqc_args'], '\n'.join(statements), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if env['verbose'] >= 1: log('Splitting successful.')
         contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
@@ -822,7 +827,7 @@ if __name__ == '__main__':
     statements = split_coq_file_contents(contents)
     if env['verbose'] >= 3: log('I am using the following file: %s' % '\n'.join(statements))
     definitions = split_statements_to_definitions(statements, **env)
-    output = diagnose_error.get_coq_output(coqc, join_definitions(definitions), env['timeout'])
+    output = diagnose_error.get_coq_output(coqc, env['coqc_args'], join_definitions(definitions), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if env['verbose'] >= 1: log('Splitting to definitions successful.')
         contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])

@@ -80,20 +80,20 @@ def reset_timeout():
     TIMEOUT = None
 
 @memoize
-def get_coq_output(coqc, contents, timeout):
+def get_coq_output(coqc, coqc_args, contents, timeout):
     """Returns the coqc output of running through the given
     contents."""
     global TIMEOUT
     if timeout < 0 and TIMEOUT is not None:
-        return get_coq_output(coqc, contents, TIMEOUT)
+        return get_coq_output(coqc, coqc_args, contents, TIMEOUT)
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
     start = time.time()
     if timeout <= 0:
-        p = subprocess.Popen([coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = subprocess.Popen([coqc, '-q'] + coqc_args + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
-        p = subprocess.Popen(['timeout', str(timeout), coqc, '-q', file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = subprocess.Popen(['timeout', str(timeout), coqc, '-q'] + coqc_args + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     finish = time.time()
     if TIMEOUT is None:
