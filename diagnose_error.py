@@ -91,9 +91,9 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
         file_name = f.name
     start = time.time()
     if timeout <= 0:
-        p = subprocess.Popen([coqc, '-q'] + coqc_args + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = subprocess.Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
-        p = subprocess.Popen(['timeout', str(timeout), coqc, '-q'] + coqc_args + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = subprocess.Popen(['timeout', str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     finish = time.time()
     if TIMEOUT is None:

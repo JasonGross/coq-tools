@@ -88,6 +88,10 @@ parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, na
                     help='Arguments to pass to coqc.')
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
                     help='Arguments to pass to coqtop.')
+#parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
+#                    help='The path to the coqc program that should compile the file successfully.')
+#parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
+#                    help='Arguments to pass to coqc so that it compiles the file successfully.')
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
                     help='The name to bind to the current directory using -R .')
 
@@ -744,9 +748,16 @@ if __name__ == '__main__':
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,
         'timeout': args.timeout,
-        'coqc_args': args.coqc_args,
-        'coqtop_args': args.coqtop_args
+        'coqc_args': tuple(args.coqc_args if args.coqc_args is not None else []),
+        'coqtop_args': tuple(args.coqtop_args if args.coqtop_args is not None else []),
+#        'passing_coqc_args': tuple(args.passing_coqc_args if args.passing_coqc_args is not None else []),
+#        'passing_coqc' : (args.passing_coqc
+#                          if args.passing_coqc != ''
+#                          else (args.coqc
+#                                if args.passing_coqc_args is not None
+#                                else None))
         }
+
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
