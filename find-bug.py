@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse, tempfile, sys, os, re
-from OrderedSet import OrderedSet
 from replace_imports import include_imports
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
