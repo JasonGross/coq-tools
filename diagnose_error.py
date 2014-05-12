@@ -45,7 +45,7 @@ def make_reg_string(output):
 
     Precondition: has_error(output)
     """
-    error_string = get_error_string(output)
+    error_string = get_error_string(output).strip()
     if 'Universe inconsistency' in error_string:
         re_string = re.sub(r'(Universe\\ inconsistency.*) because(.|\n)*',
                            r'\1 because.*',

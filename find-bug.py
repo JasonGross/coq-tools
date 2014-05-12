@@ -301,12 +301,12 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         new_definition = transformer(definitions[i], definitions[i + 1:])
         if new_definition:
             if definitions[i] != new_definition:
-                if verbose >= 3: log('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
+                if verbose >= 2: log('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
             else:
                 if verbose >= 3: log('No change to %s' % new_definition['statement'])
             definitions[i] = new_definition
         else:
-            if verbose >= 3: log('Removing %s' % definitions[i]['statement'])
+            if verbose >= 2: log('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(definitions), kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
@@ -325,7 +325,7 @@ def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_V
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
-            if verbose >= 2: log('Definition found; found:\n%s\nin\n%s'
+            if verbose >= 3: log('Definition found; found:\n%s\nin\n%s'
                                  % (cur_definition,
                                     [future_definition['statement']
                                      for future_definition in rest_definitions
