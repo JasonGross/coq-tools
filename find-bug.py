@@ -84,13 +84,13 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
                     help=('The path to the coqtop program (default: %s).' % DEFAULT_COQTOP))
 parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, nargs='?',
-                    help='Arguments to pass to coqc.')
+                    help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
-                    help='Arguments to pass to coqtop.')
+                    help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 #parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
 #                    help='The path to the coqc program that should compile the file successfully.')
 #parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
-#                    help='Arguments to pass to coqc so that it compiles the file successfully.')
+#                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
                     help='The name to bind to the current directory using -R .')
 
@@ -720,7 +720,13 @@ def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name,
         new_contents = prepend_header(new_contents, **kwargs)
         write_to_file(temp_file_name, new_contents)
 
-
+def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
+    if ls is None: return tuple()
+    if isinstance(ls, str): return tuple([ls])
+    if isinstance(ls, tuple): return ls
+    if isinstance(ls, list): return tuple(ls)
+    if verbose >= 1: log("Unknown type '%s' of list '%s'" % (str(type(ls)), repr(ls)))
+    return tuple(ls)
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -735,9 +741,10 @@ if __name__ == '__main__':
     admit_transparent = args.admit_transparent
     if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
     if args.quiet is None: args.quiet = 0
+    verbose = args.verbose - args.quiet
     env = {
         'topname': args.topname,
-        'verbose': args.verbose - args.quiet,
+        'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
         'coqc': args.coqc,
@@ -747,9 +754,9 @@ if __name__ == '__main__':
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,
         'timeout': args.timeout,
-        'coqc_args': tuple(args.coqc_args if args.coqc_args is not None else []),
-        'coqtop_args': tuple(args.coqtop_args if args.coqtop_args is not None else []),
-#        'passing_coqc_args': tuple(args.passing_coqc_args if args.passing_coqc_args is not None else []),
+        'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
+        'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
+#        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
 #        'passing_coqc' : (args.passing_coqc
 #                          if args.passing_coqc != ''
 #                          else (args.coqc
