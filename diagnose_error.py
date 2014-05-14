@@ -65,8 +65,8 @@ def make_reg_string(output):
                            re.DOTALL)
     else:
         re_string = re.escape(error_string)
-    re_string = re.sub(r'tmp[A-Za-z\d]+',
-                       r'tmp[A-Za-z\d]+',
+    re_string = re.sub(r'tmp[A-Za-z_\d]+',
+                       r'tmp[A-Za-z_\d]+',
                        re_string)
     re_string = re.sub(r'[\d]+',
                        r'[\d]+',
