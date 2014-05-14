@@ -35,7 +35,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     (stdout, stderr) = p.communicate()
     if '-time' not in stdout:
         return fallback()
-    p = Popen([coqtop, '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stdin=PIPE)#stderr=STDOUT, stdin=PIPE)
+    p = Popen([coqtop, '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
                            flags=re.DOTALL)
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
@@ -55,6 +55,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     cur_definition_names = '||'
     last_char_end = -1
 
+    #if verbose >= 3: log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)')
     responses = split_reg.findall(stdout)
     for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
         char_start, char_end = int(char_start), int(char_end)

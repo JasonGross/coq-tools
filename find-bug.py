@@ -825,6 +825,7 @@ if __name__ == '__main__':
         write_to_file(temp_file_name, contents)
         if env['verbose'] >= 1: log('The output given was:')
         if env['verbose'] >= 1: log(output)
+        if env['verbose'] >= 2: log('re.search(' + repr(error_reg_string) + ', ' + repr(output) + ')')
         sys.exit(1)
 
     if env['verbose'] >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
