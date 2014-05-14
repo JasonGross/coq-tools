@@ -68,6 +68,9 @@ def make_reg_string(output):
     re_string = re.sub(r'[0-9]+',
                        r'[0-9]+',
                        re_string)
+    re_string = re.sub(r'tmp[A-Za-z0-9]+',
+                       r'tmp[A-Za-z0-9]+',
+                       re_string)
     return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
 TIMEOUT = None
