@@ -17,3 +17,5 @@
   program
 
 * Preserve (and maybe read) -*- coq-prog-args -*-
+
+* Add an option for doing the aggressive thing first
