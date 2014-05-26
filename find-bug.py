@@ -141,15 +141,15 @@ def re_compile(pattern, *args):
 def re_search(pattern, string, flags=0):
     return re_compile(pattern, flags).search(string)
 
-def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def get_error_reg_string(output_file_name, **kwargs):
     error_reg_string = ''
     while error_reg_string == '':
-        if verbose: log('\nCoqing the file (%s)...' % output_file_name)
+        if kwargs['verbose']: kwargs['log']('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
         output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
         if kwargs['timeout'] < 0:
-            log('The timeout has been set to: %d' % diagnose_error.get_timeout())
+            kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
         print("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
@@ -168,7 +168,7 @@ def get_error_reg_string(output_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAUL
             if result in ('no', 'n'):
                 error_reg_string = ''
         else:
-            log('\nThe current state of the file does not have a recognizable error.')
+            kwargs['log']('\nThe current state of the file does not have a recognizable error.')
 
         if error_reg_string == '':
             success = False
@@ -226,8 +226,7 @@ def prepend_header(contents, header='', header_dict={}, **kwargs):
     #    use_header = ','.join(OrderedSet(use_header[:-3].split(','))) + ' *)'
     return '%s\n%s' % (use_header, contents)
 
-def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1, **kwargs):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -238,7 +237,8 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     reverse-order.
 
     Returns updated definitions."""
-    if verbose >= 3: log('try_transform_each')
+    print('try_transform_each_verbose: ' + str(kwargs['verbose']))
+    if kwargs['verbose'] >= 3: kwargs['log']('try_transform_each')
     original_definitions = [dict(i) for i in definitions]
     # TODO(jgross): Use coqtop and [BackTo] to do incremental checking
     success = False
@@ -249,14 +249,14 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         if not new_definition or \
                 re.sub(r'\s+', ' ', old_definition['statement']) != re.sub(r'\s+', ' ', new_definition['statement']):
             if not new_definition or not new_definition['statement'].strip():
-                if verbose >= 2: log('Attempting to remove %s' % repr(old_definition['statement']))
+                if kwargs['verbose'] >= 2: kwargs['log']('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
-                if verbose >= 2: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
+                if kwargs['verbose'] >= 2: kwargs['log']('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
             output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
             if diagnose_error.has_error(output, error_reg_string):
-                if verbose >= 2: log('Change succeeded')
+                if kwargs['verbose'] >= 2: kwargs['log']('Change succeeded')
                 success = True
                 contents = prepend_header(join_definitions(try_definitions), **kwargs)
                 write_to_file(output_file_name, contents)
@@ -264,25 +264,24 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 # make a copy for saving
                 save_definitions = [dict(defn) for defn in try_definitions]
             else:
-                if verbose >= 2: log('Change failed.  Output:\n%s' % output)
+                if kwargs['verbose'] >= 2: kwargs['log']('Change failed.  Output:\n%s' % output)
         else:
-            if verbose >= 3: log('No change to %s' % old_definition['statement'])
+            if kwargs['verbose'] >= 3: kwargs['log']('No change to %s' % old_definition['statement'])
         i -= 1
     if success:
-        if verbose >= 1: log(description + ' successful')
+        if kwargs['verbose'] >= 1: kwargs['log'](description + ' successful')
         if join_definitions(save_definitions) != join_definitions(definitions):
-            log('Probably fatal error: definitions != save_definitions')
+            kwargs['log']('Probably fatal error: definitions != save_definitions')
         else:
             contents = prepend_header(join_definitions(definitions), **kwargs)
             write_to_file(output_file_name, contents)
         return definitions
     else:
-        if verbose >= 1: log(description + ' unsuccessful.')
+        if kwargs['verbose'] >= 1: kwargs['log'](description + ' unsuccessful.')
         return original_definitions
 
 
-def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1,
-                           verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1, **kwargs):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -292,40 +291,40 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
     passed in is guaranteed to be reverse-order.
 
     Returns updated definitions."""
-    if verbose >= 3: log('try_transform_reversed')
+    if kwargs['verbose'] >= 3: kwargs['log']('try_transform_reversed')
     definitions = list(definitions) # clone the list of definitions
     original_definitions = list(definitions)
-    if verbose >= 3: log(len(definitions))
-    if verbose >= 3: log(definitions)
+    if kwargs['verbose'] >= 3: kwargs['log'](len(definitions))
+    if kwargs['verbose'] >= 3: kwargs['log'](definitions)
     for i in reversed(list(range(len(definitions) - skip_n))):
         new_definition = transformer(definitions[i], definitions[i + 1:])
         if new_definition:
             if definitions[i] != new_definition:
-                if verbose >= 2: log('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
+                if kwargs['verbose'] >= 2: kwargs['log']('Transforming %s into %s' % (definitions[i]['statement'], new_definition['statement']))
             else:
-                if verbose >= 3: log('No change to %s' % new_definition['statement'])
+                if kwargs['verbose'] >= 3: kwargs['log']('No change to %s' % new_definition['statement'])
             definitions[i] = new_definition
         else:
-            if verbose >= 2: log('Removing %s' % definitions[i]['statement'])
+            if kwargs['verbose'] >= 2: kwargs['log']('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(definitions), kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log(description + ' successful')
+        if kwargs['verbose'] >= 1: kwargs['log'](description + ' successful')
         contents = prepend_header(join_definitions(definitions), **kwargs)
         write_to_file(output_file_name, contents)
         return definitions
     else:
-        if verbose >= 1: log(description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
-        if verbose >= 3: log('The output was:\n%s' % output)
+        if kwargs['verbose'] >= 1: kwargs['log'](description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
+        if kwargs['verbose'] >= 3: kwargs['log']('The output was:\n%s' % output)
         contents = prepend_header(join_definitions(definitions), **kwargs)
         write_to_file(temp_file_name, contents)
         return original_definitions
 
-def try_remove_if_not_matches_transformer(definition_found_in, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_remove_if_not_matches_transformer(definition_found_in, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
                for future_definition in rest_definitions):
-            if verbose >= 3: log('Definition found; found:\n%s\nin\n%s'
+            if kwargs['verbose'] >= 3: kwargs['log']('Definition found; found:\n%s\nin\n%s'
                                  % (cur_definition,
                                     [future_definition['statement']
                                      for future_definition in rest_definitions
@@ -355,7 +354,7 @@ def try_remove_if_name_not_found_in_transformer(get_names, **kwargs):
     return try_remove_if_not_matches_transformer(definition_found_in, **kwargs)
 
 
-def try_remove_if_name_not_found_in_section_transformer(get_names, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs):
     SECTION_BEGIN_REG = re.compile(r'^\s*(?:Section|Module)\s+[^\.]+\.\s*$')
     SECTION_END_REG = re.compile(r'^\s*End\s+[^\.]+\.\s*$')
     def transformer(cur_definition, rest_definitions):
@@ -479,23 +478,19 @@ CONTEXT_REG = re.compile(r'^\s*' +
                          r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                          r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
                          flags=re.MULTILINE)
-def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name,
-                        **kwargs):
+def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, **kwargs):
     return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')), **kwargs),
                                   'Context removal',
                                   **kwargs)
 
 
-def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name,
-                        verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, **kwargs):
     def do_call(method, definitions, agressive):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       (lambda definition, rest_definitions:
-                           transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=verbose, log=log)),
+                           transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=kwargs['verbose'], log=kwargs['log'])),
                       '[abstract ...] admits',
-                      verbose=verbose,
-                      log=log,
                       **kwargs)
 
     old_definitions = join_definitions(definitions)
@@ -505,7 +500,7 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
     definitions = do_call(try_transform_reversed, definitions, True)
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
-        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_reversed, agressive: True, definitions:\n%s'
+        if kwargs['verbose'] >= 3: kwargs['log']('Success with [abstract ...] admits on try_transform_reversed, agressive: True, definitions:\n%s'
                              % new_definitions)
         return definitions
 
@@ -513,29 +508,28 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
     definitions = do_call(try_transform_reversed, definitions, False)
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
-        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_reversed, agressive: False, definitions:\n%s'
+        if kwargs['verbose'] >= 3: kwargs['log']('Success with [abstract ...] admits on try_transform_reversed, agressive: False, definitions:\n%s'
                              % new_definitions)
         return definitions
 
     definitions = do_call(try_transform_each, definitions, True)
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
-        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_each, agressive: True, definitions:\n%s'
+        if kwargs['verbose'] >= 3: kwargs['log']('Success with [abstract ...] admits on try_transform_each, agressive: True, definitions:\n%s'
                              % new_definitions)
         return definitions
 
     definitions = do_call(try_transform_each, definitions, False)
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
-        if verbose >= 3: log('Success with [abstract ...] admits on try_transform_each, agressive: False, definitions:\n%s'
+        if kwargs['verbose'] >= 3: kwargs['log']('Success with [abstract ...] admits on try_transform_each, agressive: False, definitions:\n%s'
                              % new_definitions)
     else:
-        if verbose >= 3: log('Failure with [abstract ...] admits.')
+        if kwargs['verbose'] >= 3: kwargs['log']('Failure with [abstract ...] admits.')
     return definitions
 
 
-def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description,
-                                   verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 2 and matcher(cur_definition):
             statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
@@ -548,8 +542,6 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
     def do_call(method, definitions):
         return method(definitions, output_file_name, error_reg_string, temp_file_name,
                       transformer, description,
-                      verbse=verbose,
-                      log=log,
                       **kwargs)
 
     old_definitions = join_definitions(definitions) # for comparison,
@@ -561,13 +553,13 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
     if new_definitions == old_definitions:
         # we failed to do everything at once, try the simple thing and
         # try to admit each individually
-        if verbose >= 1: log('Failed to do everything at once; trying one at a time.')
+        if kwargs['verbose'] >= 1: kwargs['log']('Failed to do everything at once; trying one at a time.')
         definitions = do_call(try_transform_each, definitions)
     new_definitions = join_definitions(definitions)
     if new_definitions == old_definitions:
-        if verbose >= 1: log('No successful changes.')
+        if kwargs['verbose'] >= 1: kwargs['log']('No successful changes.')
     else:
-        if verbose >= 1: log('Success!')
+        if kwargs['verbose'] >= 1: kwargs['log']('Success!')
     return definitions
 
 def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name,
@@ -617,55 +609,52 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
 
 
 
-def try_strip_comments(output_file_name, error_reg_string,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_strip_comments(output_file_name, error_reg_string, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     contents = strip_comments(contents)
     if contents == old_contents:
-        if verbose >= 1: log('\nNo strippable comments.')
+        if kwargs['verbose'] >= 1: kwargs['log']('\nNo strippable comments.')
         return
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log('\nSucceeded in stripping comments.')
+        if kwargs['verbose'] >= 1: kwargs['log']('\nSucceeded in stripping comments.')
         contents = prepend_header(contents, **kwargs)
         write_to_file(output_file_name, contents)
     else:
-        if verbose >= 1:
-            log('\nNon-fatal error: Failed to strip comments and preserve the error.')
-            log('The new error was:')
-            log(output)
-            log('Stripped comments file not saved.')
+        if kwargs['verbose'] >= 1:
+            kwargs['log']('\nNon-fatal error: Failed to strip comments and preserve the error.')
+            kwargs['log']('The new error was:')
+            kwargs['log'](output)
+            kwargs['log']('Stripped comments file not saved.')
 
 
 
 
-def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space,
-                       verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
         contents = '\n'.join(map(str.rstrip, contents.split('\n')))
     contents = strip_newlines(contents, max_consecutive_newlines)
     if contents == old_contents:
-        if verbose >= 1: log('\nNo strippable newlines or spaces.')
+        if kwargs['verbose'] >= 1: kwargs['log']('\nNo strippable newlines or spaces.')
         return
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose >= 1: log('\nSucceeded in stripping newlines and spaces.')
+        if kwargs['verbose'] >= 1: kwargs['log']('\nSucceeded in stripping newlines and spaces.')
         contents = prepend_header(contents, **kwargs)
         write_to_file(output_file_name, contents)
     else:
-        if verbose >= 1:
-            log('\nNon-fatal error: Failed to strip newlines and spaces and preserve the error.')
-            log('The new error was:')
-            log(output)
-            log('Stripped comments file not saved.')
+        if kwargs['verbose'] >= 1:
+            kwargs['log']('\nNon-fatal error: Failed to strip newlines and spaces and preserve the error.')
+            kwargs['log']('The new error was:')
+            kwargs['log'](output)
+            kwargs['log']('Stripped comments file not saved.')
 
 
 
-def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name,
-                          verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
@@ -676,18 +665,18 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
             new_statements = statements[:statement_num + 1]
             break
     if new_statements == statements:
-        if verbose: log('No lines to trim')
+        if kwargs['verbose']: kwargs['log']('No lines to trim')
         return
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], '\n'.join(new_statements), kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose: log('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
+        if kwargs['verbose']: kwargs['log']('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
         new_contents = prepend_header('\n'.join(new_statements), **kwargs)
         write_to_file(output_file_name, new_contents)
-        if verbose >= 2: log('Trimmed file:\n%s' % read_from_file(output_file_name))
+        if kwargs['verbose'] >= 2: kwargs['log']('Trimmed file:\n%s' % read_from_file(output_file_name))
     else:
-        if verbose:
-            log('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-            log(output)
+        if kwargs['verbose']:
+            kwargs['log']('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+            kwargs['log'](output)
         new_contents = prepend_header('\n'.join(new_statements), **kwargs)
         write_to_file(temp_file_name, new_contents)
 
@@ -698,7 +687,7 @@ EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\
                                r'|Global\s|Local\s'
                                r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
                                r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
-def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, **kwargs):
+def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     new_contents = EMPTY_SECTION_REG.sub(r'\1', old_contents)
@@ -706,17 +695,17 @@ def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name,
         old_contents, new_contents = new_contents, EMPTY_SECTION_REG.sub(r'\1', new_contents)
 
     if new_contents == contents:
-        if verbose: log('No empty sections to remove')
+        if kwargs['verbose']: kwargs['log']('No empty sections to remove')
         return
     output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
-        if verbose: log('Empty section removal successful.')
+        if kwargs['verbose']: kwargs['log']('Empty section removal successful.')
         new_contents = prepend_header(new_contents, **kwargs)
         write_to_file(output_file_name, new_contents)
     else:
-        if verbose:
-            log('Empty section removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-            log(output)
+        if kwargs['verbose']:
+            kwargs['log']('Empty section removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
+            kwargs['log'](output)
         new_contents = prepend_header(new_contents, **kwargs)
         write_to_file(temp_file_name, new_contents)
 
