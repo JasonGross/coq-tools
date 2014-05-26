@@ -874,14 +874,17 @@ if __name__ == '__main__':
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks)
 
-    tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
+    if not aggressive:
+        tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
 
     if admit_transparent:
         tasks += (('admit lemmas', try_admit_lemmas),
                   ('admit definitions', try_admit_definitions))
 
-    tasks += (('remove hints', try_remove_hints),
-              ('export modules', try_export_modules))
+    if not aggressive:
+        tasks += (('remove hints', try_remove_hints),)
+
+    tasks += (('export modules', try_export_modules),)
 
     if aggressive:
         tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
