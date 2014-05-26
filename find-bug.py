@@ -249,14 +249,14 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         if not new_definition or \
                 re.sub(r'\s+', ' ', old_definition['statement']) != re.sub(r'\s+', ' ', new_definition['statement']):
             if not new_definition or not new_definition['statement'].strip():
-                if verbose >= 3: log('Attempting to remove %s' % repr(old_definition['statement']))
+                if verbose >= 2: log('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
-                if verbose >= 3: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
+                if verbose >= 2: log('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
                 try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
             output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
             if diagnose_error.has_error(output, error_reg_string):
-                if verbose >= 3: log('Change succeeded')
+                if verbose >= 2: log('Change succeeded')
                 success = True
                 contents = prepend_header(join_definitions(try_definitions), **kwargs)
                 write_to_file(output_file_name, contents)
@@ -264,12 +264,12 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 # make a copy for saving
                 save_definitions = [dict(defn) for defn in try_definitions]
             else:
-                if verbose >= 3: log('Change failed.  Output:\n%s' % output)
+                if verbose >= 2: log('Change failed.  Output:\n%s' % output)
         else:
             if verbose >= 3: log('No change to %s' % old_definition['statement'])
         i -= 1
     if success:
-        if verbose >= 1 : log(description + ' successful')
+        if verbose >= 1: log(description + ' successful')
         if join_definitions(save_definitions) != join_definitions(definitions):
             log('Probably fatal error: definitions != save_definitions')
         else:
