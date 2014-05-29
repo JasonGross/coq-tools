@@ -199,7 +199,55 @@ def get_error_reg_string(output_file_name, **kwargs):
 
     return error_reg_string
 
+def escape_coq_prog_args(coq_prog_args):
+    return ' '.join('"' + arg.replace('\\', '\\\\').replace('"', r'\"') + '"'
+                    for arg in coq_prog_args)
+
+def unescape_coq_prog_args(coq_prog_args):
+    ret = []
+    cur = None
+    in_string = False
+    idx = 0
+    while idx < len(coq_prog_args):
+        cur_char = coq_prog_args[idx]
+        idx += 1
+        if not in_string:
+            if cur_char == '"':
+                in_string = True
+                cur = ''
+            elif cur_char not in ' \t':
+                print("Warning: Invalid unquoted character '%s' at index %d in coq-prog-args '%s'" % (cur_char, idx - 1, coq_prog_args))
+                return tuple(ret)
+        else:
+            if cur_char == '"':
+                in_string = False
+                ret.append(cur)
+                cur = None
+            elif cur_char == '\\':
+                if idx < len(coq_prog_args):
+                    # take the next character
+                    cur += coq_prog_args[idx]
+                    idx += 1
+                else:
+                    print("Warning: Invalid backslash at end of coq-prog-args '%s'" % coq_prog_args)
+            else:
+                cur += cur_char
+    return tuple(ret)
+
+
+COQ_PROG_ARGS_REG = re.compile(r'coq-prog-args\s*:\s*\(([^\)]+)\)')
+def get_coq_prog_args(contents):
+     return tuple(arg
+                  for args in COQ_PROG_ARGS_REG.findall(contents)
+                  for arg in unescape_coq_prog_args(args)
+                  if arg not in ("-emacs", "-emacs-U"))
+
+COQ_PROG_ARGS_REP = re.compile(r'[ \t]*\(\*+\s+-\*-\s+.*?\s-\*-\s+\*+\)\s*')
+def strip_coq_prog_args(contents):
+    return COQ_PROG_ARGS_REP.sub('', contents)
+
 def get_old_header(contents, header=''):
+    contents = strip_coq_prog_args(contents)
     if header[:2] == '(*' and header[-2:] == '*)' and '*)' not in header[2:-2]:
         pre_header = header[:header.index('%')]
         if pre_header in contents and contents.index('*)') > contents.index(pre_header):
@@ -208,6 +256,7 @@ def get_old_header(contents, header=''):
 
 def prepend_header(contents, header='', header_dict={}, **kwargs):
     """Fills in the variables in the header for output files"""
+    contents = strip_coq_prog_args(contents)
     if header[:2] == '(*' and header[-2:] == '*)' and '*)' not in header[2:-2]:
         pre_header = header[:header.index('%')]
         if contents[:len(pre_header)] == pre_header:
@@ -220,11 +269,14 @@ def prepend_header(contents, header='', header_dict={}, **kwargs):
     if 'old_header' not in header_dict.keys():
         header_dict['old_header'] = 'original input'
     use_header = header % header_dict
+    coq_prog_args = ('(* -*- mode: coq; coq-prog-args: ("-emacs" %s) -*- *)\n' % escape_coq_prog_args(kwargs['coqc_args'])
+                     if len(kwargs['coqc_args']) > 0
+                     else '')
     ## de-duplicate things in a list
     ## XXX This is a hack to deal with things like "from x lines to y lines, from x lines to y lines"
     #if use_header[-3:] == ' *)':
     #    use_header = ','.join(OrderedSet(use_header[:-3].split(','))) + ' *)'
-    return '%s\n%s' % (use_header, contents)
+    return '%s%s\n%s' % (coq_prog_args, use_header, contents)
 
 def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1, **kwargs):
     """Tries to apply transformer to each definition in definitions,
@@ -780,6 +832,10 @@ if __name__ == '__main__':
         if env['verbose'] >= 1: log('Failed to inline inputs.')
         sys.exit(1)
 
+    extra_args = get_coq_prog_args(inlined_contents)
+    env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
+    env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
+
     old_header = get_old_header(inlined_contents, env['header'])
     env['header_dict'] = {'original_line_count':0,
                           'old_header':old_header}
@@ -812,11 +868,11 @@ if __name__ == '__main__':
     output = diagnose_error.get_coq_output(coqc, env['coqc_args'], '\n'.join(statements), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if env['verbose'] >= 1: log('Splitting successful.')
-        contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
+        contents = prepend_header('\n'.join(statements), **env)
         write_to_file(output_file_name, contents)
     else:
         if env['verbose'] >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header('\n'.join(statements), env['header'], env['header_dict'])
+        contents = prepend_header('\n'.join(statements), **env)
         write_to_file(temp_file_name, contents)
         if env['verbose'] >= 1: log('The output given was:')
         if env['verbose'] >= 1: log(output)
@@ -836,11 +892,11 @@ if __name__ == '__main__':
     output = diagnose_error.get_coq_output(coqc, env['coqc_args'], join_definitions(definitions), env['timeout'])
     if diagnose_error.has_error(output, error_reg_string):
         if env['verbose'] >= 1: log('Splitting to definitions successful.')
-        contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
+        contents = prepend_header(join_definitions(definitions), **env)
         write_to_file(output_file_name, contents)
     else:
         if env['verbose'] >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header(join_definitions(definitions), env['header'], env['header_dict'])
+        contents = prepend_header(join_definitions(definitions), **env)
         write_to_file(temp_file_name, contents)
         if env['verbose'] >= 1: log('The output given was:')
         if env['verbose'] >= 1: log(output)
