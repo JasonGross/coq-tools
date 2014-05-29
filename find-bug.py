@@ -237,7 +237,6 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     reverse-order.
 
     Returns updated definitions."""
-    print('try_transform_each_verbose: ' + str(kwargs['verbose']))
     if kwargs['verbose'] >= 3: kwargs['log']('try_transform_each')
     original_definitions = [dict(i) for i in definitions]
     # TODO(jgross): Use coqtop and [BackTo] to do incremental checking
