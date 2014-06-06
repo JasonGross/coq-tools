@@ -1,5 +1,5 @@
 from __future__ import with_statement
-import os, sys, tempfile, subprocess, re, time, math
+import os, sys, tempfile, subprocess, re, time, math, glob
 from memoize import memoize
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout"]
@@ -82,6 +82,40 @@ def reset_timeout():
     global TIMEOUT
     TIMEOUT = None
 
+# from http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+@memoize
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    def ext_candidates(fpath):
+        yield fpath
+        for ext in os.environ.get("PATHEXT", "").split(os.pathsep):
+            yield fpath + ext
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            for candidate in ext_candidates(exe_file):
+                if is_exe(candidate):
+                    return candidate
+
+    return None
+
+@memoize
+def get_timeout_prog():
+    TIMEOUT_PROG = 'timeout'
+    p = subprocess.Popen([TIMEOUT_PROG, '1', 'true'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    if 'ERROR' in stdout:
+        TIMEOUT_PROG = which('timeout')
+
+    return TIMEOUT_PROG if TIMEOUT_PROG is not None else 'timeout'
+
 @memoize
 def get_coq_output(coqc, coqc_args, contents, timeout):
     """Returns the coqc output of running through the given
@@ -92,11 +126,14 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    start = time.time()
-    if timeout <= 0:
-        p = subprocess.Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    if timeout > 0:
+        # Windows sometimes doesn't like cygwin's timeout, so hack around it
+        TIMEOUT_PROG = get_timeout_prog()
+        start = time.time()
+        p = subprocess.Popen([TIMEOUT_PROG, str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
-        p = subprocess.Popen(['timeout', str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        start = time.time()
+        p = subprocess.Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     finish = time.time()
     if TIMEOUT is None:
