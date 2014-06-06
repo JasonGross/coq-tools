@@ -148,7 +148,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
         output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
-        if kwargs['timeout'] < 0:
+        if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
         print("\nThis file produces the following output when Coq'ed:\n%s" % output)
