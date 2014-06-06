@@ -85,6 +85,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         if verbose >= 4:
             log('Write: %s\n\nWait to read...' % statement)
         p.stdin.write(statement + '\n\n')
+        p.stdin.flush()
         stdout = get_all_semiwait(p.stdout, verbose=verbose, log=log)
         stderr = stdout # ''.join(get_all_semiwait(p.stderr))
 
