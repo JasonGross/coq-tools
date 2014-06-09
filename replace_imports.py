@@ -44,17 +44,34 @@ def lib_of_filename(filename, topname='__TOP__', exts=('.v', '.glob')):
         print("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return topname + '.' + filename.replace(os.sep, '.')
 
+def get_raw_file(filename, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG):
+    if verbose: log('getting %s' % filename)
+    try:
+        with open(filename, 'r', encoding='UTF-8') as f:
+            return f.read()
+    except TypeError:
+        with open(filename, 'r') as f:
+            return f.read()
+
+def update_imports_with_glob(contents, globs, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG):
+    for start, end, rep in reversed(re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> <> lib', globs, flags=re.MULTILINE)):
+        start, end = int(start), int(end) + 1
+        if verbose >= 2: log('Qualifying import %s to %s' % (contents[start:end], rep))
+        contents = '%s%s%s' % (contents[:start], rep, contents[end:])
+    return contents
+
 def get_file(filename, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG):
     if filename[-2:] != '.v': filename += '.v'
+    globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        if verbose: log('getting %s' % filename)
-        try:
-            with open(filename, 'r', encoding='UTF-8') as f:
-                file_contents[filename] = f.read()
-        except TypeError:
-            with open(filename, 'r') as f:
-                file_contents[filename] = f.read()
+        file_contents[filename] = get_raw_file(filename, verbose=verbose, log=log)
         file_mtimes[filename] = os.stat(filename).st_mtime
+        if os.path.isfile(globname):
+            if os.stat(globname).st_mtime >= file_mtimes[filename]:
+                globs = get_raw_file(filename[:-2] + '.glob', verbose=verbose, log=log)
+                file_contents[filename] = update_imports_with_glob(file_contents[filename], globs, verbose=verbose, log=log)
+            elif verbose:
+                log("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
     return file_contents[filename]
 
 def get_all_v_files(directory, exclude=tuple()):
