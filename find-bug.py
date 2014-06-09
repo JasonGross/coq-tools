@@ -91,7 +91,7 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
 #                    help='The path to the coqc program that should compile the file successfully.')
 #parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
 #                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
-parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='__TOP__',
+parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
                     help='The name to bind to the current directory using -R .')
 
 def DEFAULT_LOG(text):

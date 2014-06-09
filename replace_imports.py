@@ -10,7 +10,7 @@ lib_imports_fast = {}
 lib_imports_slow = {}
 
 DEFAULT_VERBOSE=1
-DEFAULT_TOPNAME='__TOP__'
+DEFAULT_TOPNAME='Top'
 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
