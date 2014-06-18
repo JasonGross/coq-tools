@@ -826,6 +826,7 @@ if __name__ == '__main__':
 
     if env['verbose'] >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
     inlined_contents = include_imports(bug_file_name, **env)
+    args.bug_file.close()
     if inlined_contents:
         write_to_file(output_file_name, inlined_contents)
     else:
