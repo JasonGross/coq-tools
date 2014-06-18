@@ -1,4 +1,4 @@
-from __future__ import with_statement
+from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob
 from memoize import memoize
 
@@ -133,7 +133,6 @@ def get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topna
 
 def norm_libname(lib, topname=DEFAULT_TOPNAME):
     filename = filename_of_lib(lib, topname=topname)
-    # TODO: Cache this lookup, if it's a bottleneck?
     if os.path.exists(filename):
         return lib_of_filename(filename, topname=topname)
     else:
@@ -147,6 +146,8 @@ def merge_imports(imports, topname=DEFAULT_TOPNAME):
                 rtn.append(norm_libname(i, topname=topname))
     return rtn
 
+# This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
+@memoize
 def recursively_get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname=DEFAULT_TOPNAME, coqc='coqc'):
     lib = norm_libname(lib, topname=topname)
     glob_name = filename_of_lib(lib, topname=topname, ext='.glob')
@@ -156,7 +157,7 @@ def recursively_get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAUL
         if not fast: make_globs(imports, verbose=verbose, topname=topname, log=log, coqc=coqc)
         imports_list = [recursively_get_imports(i, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc)
                         for i in imports]
-        return merge_imports(imports_list + [[lib]], topname=topname)
+        return merge_imports(tuple(map(tuple, imports_list + [[lib]])), topname=topname)
     return [lib]
 
 def contents_without_imports(lib, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, topname=DEFAULT_TOPNAME):
@@ -203,7 +204,7 @@ def contents_as_module_without_require(lib, other_imports, verbose=DEFAULT_VERBO
     contents = reg1.sub(r'\1', contents)
     reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
     contents = reg2.sub(r'', contents)
-    if verbose > 1: log(contents)
+    if verbose > 2: log(contents)
     module_name = escape_lib(lib)
     # import the top-level wrappers
     if len(other_imports) > 0:
