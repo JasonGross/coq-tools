@@ -53,13 +53,13 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     cur_definition = {}
     last_definitions = '||'
     cur_definition_names = '||'
-    last_char_end = -1
+    last_char_end = 0
 
     #if verbose >= 3: log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)')
     responses = split_reg.findall(stdout)
     for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
         char_start, char_end = int(char_start), int(char_end)
-        statement = strip_newlines(statements_string[last_char_end+1:char_end+1])
+        statement = strip_newlines(statements_string[last_char_end:char_end])
         last_char_end = char_end
 
         terms_defined = defined_reg.findall(response_text)
@@ -145,8 +145,8 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         del cur_definition[last_definitions]
 
     if last_char_end + 1 < len(statements_string):
-        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end + 1, len(statements_string), statements_string[last_char_end+1:]))
-        last_statement = strip_newlines(statements_string[last_char_end+1:])
+        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, len(statements_string), statements_string[last_char_end:]))
+        last_statement = strip_newlines(statements_string[last_char_end:])
         rtn.append({'statements':tuple(last_statement,),
                     'statement':last_statement,
                     'terms_defined':tuple()})
