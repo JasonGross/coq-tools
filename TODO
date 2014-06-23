@@ -19,3 +19,8 @@
 * Add an option for doing the aggressive thing first
 
 * Interleave "hint" removal and definition removal
+
+* Print out the last few lines of the file around the error in the
+  case that the error changes and it causes a catastrophic
+  error. (e.g., if splitting the file to definitions changes the error
+  message)
