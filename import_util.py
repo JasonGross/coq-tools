@@ -4,6 +4,7 @@ from memoize import memoize
 
 __all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports"]
 
+file_mtimes = {}
 file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
@@ -20,8 +21,8 @@ def DEFAULT_LOG(text):
 def fill_kwargs(kwargs):
     rtn = {
         'topname': DEFAULT_TOPNAME,
-        'verbose': DEFAULT_VERBOSE
-        'log'    : DEFAULT_LOG
+        'verbose': DEFAULT_VERBOSE,
+        'log'    : DEFAULT_LOG,
         'coqc'   : 'coqc'
         }
     rtn.update(kwargs)
@@ -53,7 +54,7 @@ def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
             break
     if '.' in filename and kwargs['verbose']:
         kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
-    return topname + '.' + filename.replace(os.sep, '.')
+    return kwargs['topname'] + '.' + filename.replace(os.sep, '.')
 
 def get_raw_file(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -108,20 +109,20 @@ def make_globs(libnames, **kwargs):
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
-def get_file(filename, absoluteize_imports=True, update_globs=False, **kwargs):
+def get_file(filename, absolutize_imports=True, update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     if filename[-2:] != '.v': filename += '.v'
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         file_contents[filename] = get_raw_file(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
-        if absoluteize_imports:
+        if absolutize_imports:
             if update_globs:
                 make_globs([lib_of_filename(filename, **kwargs)], **kwargs)
             if os.path.isfile(globname):
                 if os.stat(globname).st_mtime >= file_mtimes[filename]:
                     globs = get_raw_file(globname, **kwargs)
-                    file_contents[filename] = update_imports_with_glob(file_contents[filename], globs, verbose=verbose, log=log)
+                    file_contents[filename] = update_imports_with_glob(file_contents[filename], globs, **kwargs)
                 elif kwargs['verbose']:
                     kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
     return file_contents[filename]
