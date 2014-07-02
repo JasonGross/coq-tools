@@ -28,22 +28,25 @@ def fill_kwargs(kwargs):
     rtn.update(kwargs)
     return rtn
 
+def fix_path(filename):
+    return filename.replace('\\', '/')
+
 @memoize
 def filename_of_lib(lib, topname=DEFAULT_TOPNAME, ext='.v'):
     if lib[:len(topname + '.')] == topname + '.':
         lib = lib[len(topname + '.'):]
         lib = lib.replace('.', os.sep)
-        return os.path.relpath(os.path.normpath(lib + ext), '.')
+        return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
     else:
         # is this the right thing to do?
         lib = lib.replace('.', os.sep)
         for dirpath, dirname, filenames in os.walk('.', followlinks=True):
             filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
             if os.path.isfile(filename):
-                return filename
-        return os.path.relpath(os.path.normpath(lib + ext), '.')
+                return fix_path(filename)
+        return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
 
-    return filename_of_lib_helper(lib, topname) + ext
+    return fix_path(filename_of_lib_helper(lib, topname) + ext)
 
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -80,11 +83,11 @@ def get_all_v_files(directory, exclude=tuple()):
     for dirpath, dirnames, filenames in os.walk(directory):
         all_files += [os.path.relpath(name, '.') for name in glob.glob(os.path.join(dirpath, '*.v'))
                       if os.path.normpath(name) not in exclude]
-    return all_files
+    return tuple(map(fix_path, all_files))
 
 @memoize
 def get_makefile_contents(coqc, topname, v_files, verbose, log):
-    cmds = ['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + list(v_files)
+    cmds = ['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
     p_make_makefile = subprocess.Popen(cmds,
@@ -103,7 +106,7 @@ def make_globs(libnames, **kwargs):
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
     extra_filenames_v = get_all_v_files('.', filenames_v)
-    (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(filenames_v + extra_filenames_v)), kwargs['verbose'], kwargs['log'])
+    (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -111,6 +114,7 @@ def make_globs(libnames, **kwargs):
 
 def get_file(filename, absolutize_imports=True, update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
+    filename = fix_path(filename)
     if filename[-2:] != '.v': filename += '.v'
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
