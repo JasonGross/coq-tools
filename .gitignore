@@ -33,3 +33,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Coq files from tests
+*.vo
+*.v.d
+*.glob
+
+/examples/example_1_output.v
+/examples/example_2_output.v
+/examples/example_3_output.v
