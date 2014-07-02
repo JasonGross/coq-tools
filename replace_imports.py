@@ -1,5 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob
+import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 
 __all__ = ["include_imports"]
@@ -61,13 +61,13 @@ def update_imports_with_glob(contents, globs, verbose=DEFAULT_VERBOSE, log=DEFAU
         contents = '%s%s%s' % (contents[:start], rep, contents[end:])
     return contents
 
-def get_file(filename, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG):
+def get_file(filename, verbose=DEFAULT_VERBOSE, log=DEFAULT_LOG, absoluteize_imports=True):
     if filename[-2:] != '.v': filename += '.v'
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         file_contents[filename] = get_raw_file(filename, verbose=verbose, log=log)
         file_mtimes[filename] = os.stat(filename).st_mtime
-        if os.path.isfile(globname):
+        if os.path.isfile(globname) and absoluteize_imports:
             if os.stat(globname).st_mtime >= file_mtimes[filename]:
                 globs = get_raw_file(filename[:-2] + '.glob', verbose=verbose, log=log)
                 file_contents[filename] = update_imports_with_glob(file_contents[filename], globs, verbose=verbose, log=log)
@@ -99,7 +99,8 @@ def make_globs(libnames, verbose=DEFAULT_VERBOSE, topname=DEFAULT_TOPNAME, log=D
     if len(extant_libnames) == 0: return
     filenames_v = [filename_of_lib(i, topname=topname, ext='.v') for i in extant_libnames]
     filenames_glob = [filename_of_lib(i, topname=topname, ext='.glob') for i in extant_libnames]
-    if all(os.path.exists(glob_name) for glob_name in filenames_glob):
+    if all(os.path.exists(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
+           for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
     extra_filenames_v = get_all_v_files('.', filenames_v)
     (stdout, stderr) = get_makefile_contents(coqc, topname, tuple(sorted(filenames_v + extra_filenames_v)), verbose, log)
@@ -114,8 +115,7 @@ def get_imports(lib, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topna
     v_name = filename_of_lib(lib, topname=topname, ext='.v')
     if not fast:
         if lib not in lib_imports_slow.keys():
-            if not os.path.exists(glob_name):
-                make_globs([lib], verbose=verbose, topname=topname, log=log, coqc=coqc)
+            make_globs([lib], verbose=verbose, topname=topname, log=log, coqc=coqc)
             if os.path.exists(glob_name): # making succeeded
                 with open(glob_name, 'r') as f:
                     contents = f.read()
