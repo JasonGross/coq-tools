@@ -113,7 +113,6 @@ def get_timeout_prog():
     (stdout, stderr) = p.communicate()
     if 'ERROR' in stdout:
         TIMEOUT_PROG = which('timeout')
-
     return TIMEOUT_PROG if TIMEOUT_PROG is not None else 'timeout'
 
 @memoize
