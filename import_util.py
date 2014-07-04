@@ -109,7 +109,7 @@ def make_globs(libnames, **kwargs):
     (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
-    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE) #, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
 def get_file(filename, absolutize_imports=True, update_globs=False, **kwargs):
@@ -173,13 +173,13 @@ def merge_imports(imports, **kwargs):
 
 # This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
 @memoize
-def recursively_get_imports(lib, **kwargs):
+def recursively_get_imports(lib, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.glob')
     v_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')
     if os.path.isfile(v_name):
-        imports = get_imports(lib, **kwargs)
+        imports = get_imports(lib, fast=fast, **kwargs)
         if not fast: make_globs(imports, **kwargs)
         imports_list = [recursively_get_imports(i, **kwargs)
                         for i in imports]
