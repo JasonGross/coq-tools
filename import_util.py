@@ -2,7 +2,7 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants"]
 
 file_mtimes = {}
 file_contents = {}
@@ -11,6 +11,9 @@ lib_imports_slow = {}
 
 DEFAULT_VERBOSE=1
 DEFAULT_TOPNAME='Top'
+
+IMPORT_ABSOLUTIZE_TUPLE = ('lib', 'mod')
+ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'mod', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')
 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
@@ -30,6 +33,10 @@ def fill_kwargs(kwargs):
 
 def fix_path(filename):
     return filename.replace('\\', '/')
+
+def absolutize_has_all_constants(absolutize_tuple):
+    '''Returns True if absolutizing the types of things mentioned by the tuple is enough to ensure that we only use absolute names'''
+    return set(ALL_ABSOLUTIZE_TUPLE).issubset(set(absolutize_tuple))
 
 @memoize
 def filename_of_lib(lib, topname=DEFAULT_TOPNAME, ext='.v'):
@@ -69,12 +76,31 @@ def get_raw_file(filename, **kwargs):
         with open(filename, 'r') as f:
             return f.read()
 
-def update_imports_with_glob(contents, globs, **kwargs):
+@memoize
+def get_constr_name(code):
+    first_word = code.split(' ')[0]
+    last_component = first_word.split('.')[-1]
+    return last_component
+
+
+def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     kwargs = fill_kwargs(kwargs)
-    for start, end, rep in reversed(re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> <> lib', globs, flags=re.MULTILINE)):
+    all_globs = set((start, end, loc, append, ty.strip())
+                    for start, end, loc, append, ty
+                    in re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> ([^ ]+) ([^ ]+)$', globs, flags=re.MULTILINE))
+    for start, end, loc, append, ty in sorted(all_globs, key=(lambda x: int(x[0])), reverse=True):
+        ty = ty.strip() # clear trailing newlines
         start, end = int(start), int(end) + 1
-        if kwargs['verbose'] >= 2: kwargs['log']('Qualifying import %s to %s' % (contents[start:end], rep))
-        contents = '%s%s%s' % (contents[:start], rep, contents[end:])
+        if ty not in absolutize or loc == libname:
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
+        # sanity check for correct replacement, to skip things like record builder notation
+        elif append != '<>' and get_constr_name(contents[start:end]) != append:
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
+        else: # ty in absolutize and loc != libname
+            rep = transform_base(loc) + ('.' + append if append != '<>' else '')
+            if kwargs['verbose'] >= 2: kwargs['log']('Qualifying %s %s to %s' % (ty, contents[start:end], rep))
+            contents = '%s%s%s' % (contents[:start], rep, contents[end:])
+
     return contents
 
 def get_all_v_files(directory, exclude=tuple()):
@@ -112,21 +138,22 @@ def make_globs(libnames, **kwargs):
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE) #, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
-def get_file(filename, absolutize_imports=True, update_globs=False, **kwargs):
+def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
     if filename[-2:] != '.v': filename += '.v'
+    libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         file_contents[filename] = get_raw_file(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
-        if absolutize_imports:
+        if len(absolutize) > 0:
             if update_globs:
-                make_globs([lib_of_filename(filename, **kwargs)], **kwargs)
+                make_globs([libname], **kwargs)
             if os.path.isfile(globname):
                 if os.stat(globname).st_mtime >= file_mtimes[filename]:
                     globs = get_raw_file(globname, **kwargs)
-                    file_contents[filename] = update_imports_with_glob(file_contents[filename], globs, **kwargs)
+                    file_contents[filename] = update_with_glob(file_contents[filename], globs, absolutize, libname, **kwargs)
                 elif kwargs['verbose']:
                     kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
     return file_contents[filename]

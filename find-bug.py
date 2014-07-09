@@ -6,6 +6,7 @@ from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
+from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 import diagnose_error
 
@@ -42,6 +43,14 @@ parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                           "contents of each file is wrapped in its own " +
                           "module to deal with renaming issues.  This " +
                           "can cause issues with subdirectories."))
+parser.add_argument('--absolutize-constants', dest='absolutize',
+                    action='store_const', default=IMPORT_ABSOLUTIZE_TUPLE, const=ALL_ABSOLUTIZE_TUPLE,
+                    help=("Replace constants with fully qualified versions.  " +
+                          "By default, all constants are not fully qualified.  If you have " +
+                          "many overlapping file names in different directories " +
+                          "and use partially qualified names that differ depending " +
+                          "on which files have been Required, not absolutizing constants " +
+                          "may cause name resolution to fail."))
 parser.add_argument('--strip-newlines', dest='max_consecutive_newlines',
                     metavar='N', nargs='?', type=int, default=2,
                     help=("Passing `--strip-newlines N` will cause the " +
@@ -794,6 +803,7 @@ if __name__ == '__main__':
         'header': args.header,
         'strip_trailing_space': args.strip_trailing_space,
         'timeout': args.timeout,
+        'absolutize': args.absolutize,
         'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
         'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
 #        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),

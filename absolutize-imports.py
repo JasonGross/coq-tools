@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
-from import_util import get_file
+from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -9,6 +9,9 @@ parser.add_argument('input_files', metavar='INFILE', nargs='+', type=argparse.Fi
                     help='.v files to update')
 parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='?', type=str, default='',
                     help='update files in place (makes backup if SUFFIX supplied)')
+parser.add_argument('--all', '-a', dest='absolutize', action='store_const',
+                    const=ALL_ABSOLUTIZE_TUPLE, default=IMPORT_ABSOLUTIZE_TUPLE,
+                    help='Absolutize all constants, and not just imports.')
 parser.add_argument('--verbose', '-v', dest='verbose',
                     action='count',
                     help='display some extra information')
@@ -56,7 +59,7 @@ def write_to_file(file_name, contents, do_backup=False, ext='.bak'):
 def absolutize_imports(infile, **kwargs):
     filename = infile.name
     if kwargs['verbose']: kwargs['log']('Processing %s...' % filename)
-    absolutized_contents = get_file(filename, absolutize_imports=True, update_globs=True, **kwargs)
+    absolutized_contents = get_file(filename, update_globs=True, **kwargs)
     infile.close()
     if kwargs['inplace']:
         do_backup = kwargs['suffix'] is not None and len(kwargs['suffix']) > 0
@@ -77,7 +80,8 @@ if __name__ == '__main__':
         'log': log,
         'coqc': args.coqc,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
-        'suffix': args.suffix
+        'suffix': args.suffix,
+        'absolutize': args.absolutize
         }
 
     for f in args.input_files:
