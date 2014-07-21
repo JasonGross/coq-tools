@@ -1,3 +1,5 @@
+* Add continuous integration and an actual test suite
+
 * Reduce files before inlining them (or add an option to do so), and
   inline incrementally
 
