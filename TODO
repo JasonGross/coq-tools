@@ -20,9 +20,6 @@
 
 * Rename "hint removal" to something more accurate
 
-* Add a front-end to replace_imports.py, so it can be run as it's own
-  program
-
 * Add an option for doing the aggressive thing first
 
 * Interleave "hint" removal and definition removal
