@@ -113,7 +113,7 @@ def make_logger(log_files):
         for i in log_files:
             i.write(str(text) + '\n')
             i.flush()
-            if i.fileno() > 1:
+            if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
     return log
 

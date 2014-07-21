@@ -1,3 +1,6 @@
+* Reduce files before inlining them (or add an option to do so), and
+  inline incrementally
+
 * Try using delta-debugging, and being smarter about ordering of
   removals
 

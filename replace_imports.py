@@ -1,7 +1,7 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
-from import_util import filename_of_lib, lib_of_filename, get_file, recursively_get_imports, absolutize_has_all_constants, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
+from import_util import filename_of_lib, lib_of_filename, get_file, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
 
 __all__ = ["include_imports"]
 
@@ -60,7 +60,7 @@ def construct_import_list(import_libs, import_all_directories=False):
 def contents_as_module_without_require(lib, other_imports, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
     if import_all_directories:
-        transform_base = lambda x: escape_lib(x) + '.' + x
+        transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
     else:
         transform_base = lambda x: x
     v_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')

@@ -66,6 +66,10 @@ def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
         kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return kwargs['topname'] + '.' + filename.replace(os.sep, '.')
 
+def is_local_import(libname, topname=DEFAULT_TOPNAME, **kwargs):
+    '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
+    return os.path.isfile(filename_of_lib(lib, topname=topname))
+
 def get_raw_file(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
     if kwargs['verbose']: kwargs['log']('getting %s' % filename)
@@ -117,7 +121,7 @@ def get_makefile_contents(coqc, topname, v_files, verbose, log):
     if verbose:
         log(' '.join(cmds))
     p_make_makefile = subprocess.Popen(cmds,
-                                       stdout=subprocess.PIPE,
+                                       stdout=subprocess.STDERR,
                                        stderr=subprocess.PIPE)
     return p_make_makefile.communicate()
 
@@ -135,7 +139,7 @@ def make_globs(libnames, **kwargs):
     (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
-    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE) #, stdout=subprocess.PIPE)
+    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.STDERR) #, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
 def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
