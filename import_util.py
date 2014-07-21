@@ -68,7 +68,7 @@ def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
 
 def is_local_import(libname, topname=DEFAULT_TOPNAME, **kwargs):
     '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
-    return os.path.isfile(filename_of_lib(lib, topname=topname))
+    return os.path.isfile(filename_of_lib(libname, topname=topname))
 
 def get_raw_file(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
