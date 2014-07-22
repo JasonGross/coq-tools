@@ -121,8 +121,7 @@ def get_makefile_contents(coqc, topname, v_files, verbose, log):
     if verbose:
         log(' '.join(cmds))
     p_make_makefile = subprocess.Popen(cmds,
-                                       stdout=subprocess.STDERR,
-                                       stderr=subprocess.PIPE)
+                                       stdout=subprocess.PIPE)
     return p_make_makefile.communicate()
 
 def make_globs(libnames, **kwargs):
@@ -139,7 +138,7 @@ def make_globs(libnames, **kwargs):
     (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
-    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=subprocess.STDERR) #, stdout=subprocess.PIPE)
+    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
 def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
