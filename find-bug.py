@@ -306,14 +306,19 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
     while i >= 0:
         old_definition = definitions[i]
         new_definition = transformer(old_definition, definitions[i + 1:])
-        if not new_definition or \
-                re.sub(r'\s+', ' ', old_definition['statement']) != re.sub(r'\s+', ' ', new_definition['statement']):
-            if not new_definition or not new_definition['statement'].strip():
+        if not new_definition: new_definitions = []
+        elif isinstance(new_definition, dict):
+            if not new_definition['statement'].strip(): new_definitions = []
+            else: new_definitions = [new_definition]
+        else: new_definitions = list(new_definition)
+        if len(new_definitions) != 1 or \
+                re.sub(r'\s+', ' ', old_definition['statement']).strip() != re.sub(r'\s+', ' ', new_definitions[0]['statement']).strip():
+            if len(new_definitions) == 0:
                 if kwargs['verbose'] >= 2: kwargs['log']('Attempting to remove %s' % repr(old_definition['statement']))
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
-                if kwargs['verbose'] >= 2: kwargs['log']('Attempting to transform %s into %s' % (old_definition['statement'], new_definition['statement']))
-                try_definitions = definitions[:i] + [new_definition] + definitions[i + 1:]
+                if kwargs['verbose'] >= 2: kwargs['log']('Attempting to transform %s into %s' % (old_definition['statement'], ''.join(defn['statement'] for defn in new_definitions)))
+                try_definitions = definitions[:i] + new_definitions + definitions[i + 1:]
             output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
             if diagnose_error.has_error(output, error_reg_string):
                 if kwargs['verbose'] >= 2: kwargs['log']('Change succeeded')
@@ -648,6 +653,30 @@ def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_
                                           **kwargs)
 
 
+def try_split_imports(definitions, output_file_name, error_reg_string, temp_file_name,
+                      **kwargs):
+    def transformer(cur_definition, rest_definitions):
+        if (len(cur_definition['statements']) > 1
+            or any(ch in cur_definition['statement'] for ch in '*()')
+            or cur_definition['statement'].strip()[-1] != '.'
+            or cur_definition['statement'].strip().split(' ')[0] not in ('Import', 'Export')):
+            return cur_definition
+        else:
+            terms = [i for i in cur_definition['statement'].strip()[:-1].split(' ') if i != '']
+            inport_or_export, terms = terms[0], terms[1:]
+            pat = inport_or_export + ' %s.'
+            rtn_part = dict(cur_definition)
+            rtn = []
+            for term in terms:
+                rtn_part['statement'] = pat % term
+                rtn_part['statements'] = (pat % term,)
+                rtn.append(dict(rtn_part))
+            return tuple(rtn)
+    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+                              transformer,
+                              'Import/Export splitting',
+                              **kwargs)
+
 MODULE_REG = re.compile(r'^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$')
 def try_export_modules(definitions, output_file_name, error_reg_string, temp_file_name,
                        **kwargs):
@@ -665,6 +694,10 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
                               transformer,
                               'Module exportation',
                               **kwargs)
+
+
+
+
 
 
 
@@ -939,7 +972,8 @@ if __name__ == '__main__':
     if not aggressive:
         tasks += (('remove hints', try_remove_hints),)
 
-    tasks += (('export modules', try_export_modules),)
+    tasks += (('export modules', try_export_modules),
+              ('split imports and exports', try_split_imports))
 
     if aggressive:
         tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
