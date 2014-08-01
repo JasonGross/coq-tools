@@ -115,6 +115,14 @@ def get_timeout_prog():
         TIMEOUT_PROG = which('timeout')
     return TIMEOUT_PROG if TIMEOUT_PROG is not None else 'timeout'
 
+def memory_robust_Popen(*args, **kwargs):
+    while True:
+        try:
+            return subprocess.Popen(*args, **kwargs)
+        except OSError as e:
+            print('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)))
+            time.sleep(10)
+
 @memoize
 def get_coq_output(coqc, coqc_args, contents, timeout):
     """Returns the coqc output of running through the given
@@ -129,10 +137,10 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
         # Windows sometimes doesn't like cygwin's timeout, so hack around it
         TIMEOUT_PROG = get_timeout_prog()
         start = time.time()
-        p = subprocess.Popen([TIMEOUT_PROG, str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = memory_robust_Popen([TIMEOUT_PROG, str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     else:
         start = time.time()
-        p = subprocess.Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = memory_robust_Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
     finish = time.time()
     if TIMEOUT is None:
