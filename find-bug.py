@@ -8,6 +8,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
+from coq_version import get_coqc_version, get_coqtop_version
 import diagnose_error
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -70,14 +71,24 @@ parser.add_argument('--no-admit-transparent', dest='admit_transparent',
 parser.add_argument('--no-aggressive', dest='aggressive',
                     action='store_const', const=False, default=True,
                     help=("Be less aggressive; don't try to remove _all_ definitions/lines."))
-parser.add_argument('--header', dest='header', nargs='?', type=str,
+parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
                     help=("A line to be placed at the top of the " +
                           "output file, followed by a newline.  The " +
                           "variables original_line_count and " +
                           "final_line_count will be available for " +
-                          "substitution.  The default is " +
+                          "substitution.  The variable old_header will" +
+                          "have the previous contents of this comment. " +
+                          "The default is " +
                           "`(* File reduced by coq-bug-finder from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
+parser.add_argument('--header', dest='header', nargs='?', type=str,
+                    default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s *)',
+                    help=("A line to be placed at the top of the " +
+                          "output file, below the dynamic header, " +
+                          "followed by a newline.  The variables " +
+                          "coqtop_version and coqc_version will be " +
+                          "available for substitution.  The default is " +
+                          "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version) *)'"))
 parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
@@ -263,9 +274,15 @@ def get_old_header(contents, header=''):
             return contents[contents.index(pre_header)+len(pre_header):contents.index('*)')].strip()
     return 'original input'
 
-def prepend_header(contents, header='', header_dict={}, **kwargs):
+def prepend_header(contents, dynamic_header='', header='', header_dict={}, **kwargs):
     """Fills in the variables in the header for output files"""
     contents = strip_coq_prog_args(contents)
+    if dynamic_header[:2] == '(*' and dynamic_header[-2:] == '*)' and '*)' not in dynamic_header[2:-2]:
+        pre_header = dynamic_header[:dynamic_header.index('%')]
+        if contents[:len(pre_header)] == pre_header:
+            # strip the old header
+            contents = contents[contents.index('*)')+2:]
+            if contents[0] == '\n': contents = contents[1:]
     if header[:2] == '(*' and header[-2:] == '*)' and '*)' not in header[2:-2]:
         pre_header = header[:header.index('%')]
         if contents[:len(pre_header)] == pre_header:
@@ -277,7 +294,7 @@ def prepend_header(contents, header='', header_dict={}, **kwargs):
     header_dict['final_line_count'] = final_line_count
     if 'old_header' not in header_dict.keys():
         header_dict['old_header'] = 'original input'
-    use_header = header % header_dict
+    use_header = (dynamic_header + '\n' + header)  % header_dict
     coq_prog_args = ('(* -*- mode: coq; coq-prog-args: ("-emacs" %s) -*- *)\n' % escape_coq_prog_args(kwargs['coqc_args'])
                      if len(kwargs['coqc_args']) > 0
                      else '')
@@ -834,6 +851,7 @@ if __name__ == '__main__':
         'as_modules': args.wrap_modules,
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
+        'dynamic_header': args.dynamic_header,
         'strip_trailing_space': args.strip_trailing_space,
         'timeout': args.timeout,
         'absolutize': args.absolutize,
@@ -880,9 +898,13 @@ if __name__ == '__main__':
     env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
     env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
 
+    coqc_version = get_coqc_version(env['coqc'])
+    coqtop_version = get_coqtop_version(env['coqtop'])
     old_header = get_old_header(inlined_contents, env['header'])
     env['header_dict'] = {'original_line_count':0,
-                          'old_header':old_header}
+                          'old_header':old_header,
+                          'coqc_version':coqc_version,
+                          'coqtop_version':coqtop_version}
 
     if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
     error_reg_string = get_error_reg_string(output_file_name, **env)
