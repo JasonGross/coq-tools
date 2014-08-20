@@ -900,7 +900,7 @@ if __name__ == '__main__':
 
     coqc_version = get_coqc_version(env['coqc'])
     coqtop_version = get_coqtop_version(env['coqtop'])
-    old_header = get_old_header(inlined_contents, env['header'])
+    old_header = get_old_header(inlined_contents, env['dynamic_header'])
     env['header_dict'] = {'original_line_count':0,
                           'old_header':old_header,
                           'coqc_version':coqc_version,
