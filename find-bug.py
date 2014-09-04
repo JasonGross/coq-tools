@@ -136,14 +136,28 @@ def backup(file_name, ext='.bak'):
         os.rename(file_name, file_name + ext)
 
 def write_to_file(file_name, contents, do_backup=False):
-    if do_backup:
-        backup(file_name)
-    try:
-        with open(file_name, 'w', encoding='UTF-8') as f:
-            f.write(contents)
-    except TypeError:
-        with open(file_name, 'w') as f:
-            f.write(contents)
+    backed_up = False
+    while not backed_up:
+        try:
+            if do_backup:
+                backup(file_name)
+            backed_up = True
+        except IOError as e:
+            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
+            time.sleep(10)
+    written = False
+    while not written:
+        try:
+            try:
+                with open(file_name, 'w', encoding='UTF-8') as f:
+                    f.write(contents)
+            except TypeError:
+                with open(file_name, 'w') as f:
+                    f.write(contents)
+            written = True
+        except IOError as e:
+            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
+            time.sleep(10)
 
 def read_from_file(file_name):
     try:
