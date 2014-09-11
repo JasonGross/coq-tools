@@ -714,7 +714,7 @@ def try_split_oneline_definitions(definitions, output_file_name, error_reg_strin
         if (len(cur_definition['statements']) > 1
             or cur_definition['statement'].strip()[-1] != '.'
             or ':=' not in cur_definition['statement']
-            or len(cur_definition['terms_defined'] != 1):
+            or len(cur_definition['terms_defined']) != 1):
             return cur_definition
         else:
             terms = cur_definition['statement'].strip()[:-1].split(':=')
