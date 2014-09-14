@@ -38,10 +38,16 @@ def absolutize_has_all_constants(absolutize_tuple):
     '''Returns True if absolutizing the types of things mentioned by the tuple is enough to ensure that we only use absolute names'''
     return set(ALL_ABSOLUTIZE_TUPLE).issubset(set(absolutize_tuple))
 
+def topname_with_dot(topname):
+    if topname in ("", '""', "''"):
+        return ""
+    else:
+        return topname + "."
+
 @memoize
 def filename_of_lib(lib, topname=DEFAULT_TOPNAME, ext='.v'):
-    if lib[:len(topname + '.')] == topname + '.':
-        lib = lib[len(topname + '.'):]
+    if lib[:len(topname_with_dot(topname))] == topname_with_dot(topname):
+        lib = lib[len(topname_with_dot(topname)):]
         lib = lib.replace('.', os.sep)
         return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
     else:
@@ -64,7 +70,7 @@ def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
             break
     if '.' in filename and kwargs['verbose']:
         kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
-    return kwargs['topname'] + '.' + filename.replace(os.sep, '.')
+    return topname_with_dot(kwargs['topname']) + filename.replace(os.sep, '.')
 
 def is_local_import(libname, topname=DEFAULT_TOPNAME, **kwargs):
     '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
@@ -117,7 +123,9 @@ def get_all_v_files(directory, exclude=tuple()):
 
 @memoize
 def get_makefile_contents(coqc, topname, v_files, verbose, log):
-    cmds = ['coq_makefile', 'COQC', '=', coqc, '-R', '.', topname] + list(map(fix_path, v_files))
+    cmds = ['coq_makefile', 'COQC', '=', coqc,
+            '-R', '.', (topname if topname not in ("", "''", '""') else '""')] + \
+        list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
     p_make_makefile = subprocess.Popen(cmds,
