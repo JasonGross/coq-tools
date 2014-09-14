@@ -721,7 +721,7 @@ def try_split_oneline_definitions(definitions, output_file_name, error_reg_strin
             rtn = []
             for i in range(1, len(terms)):
                 rtn_part = dict(cur_definition)
-                rtn_part['statements'] = (':='.join(terms[:i]) + '.', 'exact (%s).' % ':='.join(terms[i:]), 'Defined.')
+                rtn_part['statements'] = (':='.join(terms[:i]).rstrip() + '.', 'exact (%s).' % ':='.join(terms[i:]).strip(), 'Defined.')
                 rtn_part['statement'] = ' '.join(rtn_part['statements'])
                 rtn.append(dict(rtn_part))
             return tuple(rtn)
