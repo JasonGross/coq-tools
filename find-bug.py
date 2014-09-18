@@ -734,7 +734,7 @@ def try_split_oneline_definitions(definitions, output_file_name, error_reg_strin
             terms = cur_definition['statement'].strip()[:-1].split(':=')
             pre_statement = terms[0]
             in_string, paren_count = update_paren(False, 0, pre_statement)
-            for i, term in enumerate(terms)[1:]:
+            for i, term in list(enumerate(terms))[1:]:
                 if not in_string and paren_count == 0:
                     rtn_part = dict(cur_definition)
                     rtn_part['statements'] = (pre_statement.rstrip() + '.',
