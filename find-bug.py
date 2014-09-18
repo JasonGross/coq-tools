@@ -349,6 +349,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 try_definitions = definitions[:i] + definitions[i + 1:]
             else:
                 if kwargs['verbose'] >= 2: kwargs['log']('Attempting to transform %s\ninto\n%s' % (old_definition['statement'], ''.join(defn['statement'] for defn in new_definitions)))
+                if kwargs['verbose'] >= 2 and len(new_definitions) > 1: kwargs['log']('Splitting definition: %s' % repr(new_definitions))
                 try_definitions = definitions[:i] + new_definitions + definitions[i + 1:]
             output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
             if diagnose_error.has_error(output, error_reg_string):
@@ -694,8 +695,8 @@ def try_split_imports(definitions, output_file_name, error_reg_string, temp_file
             return cur_definition
         else:
             terms = [i for i in cur_definition['statement'].strip()[:-1].split(' ') if i != '']
-            inport_or_export, terms = terms[0], terms[1:]
-            pat = inport_or_export + ' %s.'
+            import_or_export, terms = terms[0], terms[1:]
+            pat = import_or_export + ' %s.'
             rtn_part = dict(cur_definition)
             rtn = []
             for term in terms:
@@ -710,6 +711,19 @@ def try_split_imports(definitions, output_file_name, error_reg_string, temp_file
 
 def try_split_oneline_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
                       **kwargs):
+    def update_paren(in_string, paren_count, new_string):
+        for ch in new_string:
+            if in_string:
+                if ch == '"': in_string = False
+            else:
+                if ch == '"':
+                    in_string = True
+                elif ch == '(':
+                    paren_count += 1
+                elif ch == ')':
+                    paren_count -= 1
+        return (in_string, paren_count)
+
     def transformer(cur_definition, rest_definitions):
         if (len(cur_definition['statements']) > 1
             or cur_definition['statement'].strip()[-1] != '.'
@@ -718,13 +732,20 @@ def try_split_oneline_definitions(definitions, output_file_name, error_reg_strin
             return cur_definition
         else:
             terms = cur_definition['statement'].strip()[:-1].split(':=')
-            rtn = []
-            for i in range(1, len(terms)):
-                rtn_part = dict(cur_definition)
-                rtn_part['statements'] = (':='.join(terms[:i]).rstrip() + '.', 'exact (%s).' % ':='.join(terms[i:]).strip(), 'Defined.')
-                rtn_part['statement'] = ' '.join(rtn_part['statements'])
-                rtn.append(dict(rtn_part))
-            return tuple(rtn)
+            pre_statement = terms[0]
+            in_string, paren_count = update_paren(False, 0, pre_statement)
+            for i, term in enumerate(terms)[1:]:
+                if not in_string and paren_count == 0:
+                    rtn_part = dict(cur_definition)
+                    rtn_part['statements'] = (pre_statement.rstrip() + '.',
+                                              'exact (%s).' % ':='.join(terms[i:]).strip(),
+                                              'Defined.')
+                    rtn_part['statement'] = ' '.join(rtn_part['statements'])
+                    return rtn_part
+                else:
+                    in_string, paren_count = update_paren(in_string, paren_count, term)
+                    pre_statement = ':=' + term
+            return cur_definition
     return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
                               transformer,
                               'One-line definition splitting',
