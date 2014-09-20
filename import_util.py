@@ -18,6 +18,12 @@ ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
+def warning(*objs):
+    print("WARNING: ", *objs, file=sys.stderr)
+
+def error(*objs):
+    print("ERROR: ", *objs, file=sys.stderr)
+
 def DEFAULT_LOG(text):
     print(text)
 
@@ -128,9 +134,19 @@ def get_makefile_contents(coqc, topname, v_files, verbose, log):
         list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
-    p_make_makefile = subprocess.Popen(cmds,
-                                       stdout=subprocess.PIPE)
-    return p_make_makefile.communicate()
+    try:
+        p_make_makefile = subprocess.Popen(cmds,
+                                           stdout=subprocess.PIPE)
+        return p_make_makefile.communicate()
+    except OSError as e:
+        error("When attempting to run coq_makefile:")
+        error(repr(e))
+        error("Failed to run coq_makefile using command line:")
+        error(' '.join(cmds))
+        error("Perhaps you forgot to add COQBIN to your PATH?")
+        error("Try running coqc on your files to get a .glob files, to work around this.")
+        sys.exit(1)
+              
 
 def make_globs(libnames, **kwargs):
     kwargs = fill_kwargs(kwargs)
