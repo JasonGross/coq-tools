@@ -107,6 +107,8 @@ parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, na
                     help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
+                    help='The path to the coq_makefile program.')
 #parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
 #                    help='The path to the coqc program that should compile the file successfully.')
 #parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
@@ -914,6 +916,7 @@ if __name__ == '__main__':
         'absolutize': args.absolutize,
         'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
         'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
+        'coq_makefile': args.coq_makefile,
 #        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
 #        'passing_coqc' : (args.passing_coqc
 #                          if args.passing_coqc != ''

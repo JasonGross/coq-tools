@@ -128,8 +128,8 @@ def get_all_v_files(directory, exclude=tuple()):
     return tuple(map(fix_path, all_files))
 
 @memoize
-def get_makefile_contents(coqc, topname, v_files, verbose, log):
-    cmds = ['coq_makefile', 'COQC', '=', coqc,
+def get_makefile_contents(coqc, coq_makefile, topname, v_files, verbose, log):
+    cmds = [coq_makefile, 'COQC', '=', coqc,
             '-R', '.', (topname if topname not in ("", "''", '""') else '""')] + \
         list(map(fix_path, v_files))
     if verbose:
@@ -146,7 +146,7 @@ def get_makefile_contents(coqc, topname, v_files, verbose, log):
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get a .glob files, to work around this.")
         sys.exit(1)
-              
+
 
 def make_globs(libnames, **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -159,7 +159,7 @@ def make_globs(libnames, **kwargs):
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
     extra_filenames_v = get_all_v_files('.', filenames_v)
-    (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
+    (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['coq_makefile'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
