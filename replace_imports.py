@@ -85,7 +85,7 @@ def contents_as_module_without_require(lib, other_imports, **kwargs):
     return contents
 
 
-def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname=DEFAULT_TOPNAME, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, **kwargs):
+def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname=DEFAULT_TOPNAME, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -130,7 +130,7 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=Fal
     """
     if filename[-2:] != '.v': filename += '.v'
     lib = lib_of_filename(filename, topname=topname)
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc)
+    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
     remaining_imports = []
     rtn = ''
     imports_done = []

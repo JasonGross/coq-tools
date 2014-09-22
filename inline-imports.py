@@ -48,6 +48,8 @@ parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, na
                     help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
+                    help='The path to the coq_makefile program.')
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
                     help='The name to bind to the current directory using -R .')
 
@@ -76,7 +78,8 @@ if __name__ == '__main__':
         'coqc': args.coqc,
         'absolutize': args.absolutize,
         'as_modules': args.wrap_modules,
-        'fast': args.fast_merge_imports
+        'fast': args.fast_merge_imports,
+        'coq_makefile': args.coq_makefile
         }
 
     filename = args.input_file.name
