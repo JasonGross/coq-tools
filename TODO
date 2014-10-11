@@ -28,3 +28,7 @@
   case that the error changes and it causes a catastrophic
   error. (e.g., if splitting the file to definitions changes the error
   message)
+
+* Add a mode where only [Import]s/[Export]s are removed, for
+  minimizing the dependencies of a file.  Write a wrapper around this
+  mode to check if all dependencies are used.
