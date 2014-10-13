@@ -145,13 +145,11 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
-    for name in (file_name[:-2] + '.glob',
-                 file_name[:-2] + '.vo',
-                 file_name[:-2] + '.d',
-                 file_name[:-2] + '.v.d',
-                 file_name):
-        if os.path.exists(name):
-            os.remove(name)
+    for pre in ('', '.'):
+        for ext in (file_name[-2:], '.glob', '.vo', '.d', '.v.d', '.aux'):
+            cur_name = pre + name[:-2] + ext
+            if os.path.exists(cur_name):
+                os.remove(cur_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
     return clean_output(stdout)
