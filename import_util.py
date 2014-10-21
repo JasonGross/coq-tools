@@ -12,8 +12,8 @@ lib_imports_slow = {}
 DEFAULT_VERBOSE=1
 DEFAULT_TOPNAME='Top'
 
-IMPORT_ABSOLUTIZE_TUPLE = ('lib', 'mod')
-ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'mod', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')
+IMPORT_ABSOLUTIZE_TUPLE = ('lib', )# 'mod')
+ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')# , 'mod', 'modtype')
 
 IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
@@ -114,7 +114,8 @@ def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambd
             if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
         else: # ty in absolutize and loc != libname
             rep = transform_base(loc) + ('.' + append if append != '<>' else '')
-            if kwargs['verbose'] >= 2: kwargs['log']('Qualifying %s %s to %s' % (ty, contents[start:end], rep))
+            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, contents[start:end], rep))
+            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, contents[start:end], rep, start, end, loc, append, ty))
             contents = '%s%s%s' % (contents[:start], rep, contents[end:])
 
     return contents
