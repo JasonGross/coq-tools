@@ -4,7 +4,7 @@ from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
-parser = argparse.ArgumentParser(description='Absoluteize the imports of Coq files')
+parser = argparse.ArgumentParser(description='Absolutize the imports of Coq files')
 parser.add_argument('input_files', metavar='INFILE', nargs='+', type=argparse.FileType('r'),
                     help='.v files to update')
 parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='?', type=str, default='',
@@ -23,6 +23,8 @@ parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argpar
                     help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
+parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
+                    help='The path to the coq_makefile program.')
 parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
                     help='The name to bind to the current directory using -R .')
 
@@ -81,7 +83,8 @@ if __name__ == '__main__':
         'coqc': args.coqc,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
-        'absolutize': args.absolutize
+        'absolutize': args.absolutize,
+        'coq_makefile': args.coq_makefile
         }
 
     for f in args.input_files:
