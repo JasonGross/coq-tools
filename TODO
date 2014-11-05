@@ -32,3 +32,7 @@
 * Add a mode where only [Import]s/[Export]s are removed, for
   minimizing the dependencies of a file.  Write a wrapper around this
   mode to check if all dependencies are used.
+  
+* Put back support for absolutizing mod and modtype, behind a
+  command-line flag.  See also 7d82914e7bc302c19d23f19399f3199c6b9cc3e7,
+  https://coq.inria.fr/bugs/show_bug.cgi?id=3756, and #3.
