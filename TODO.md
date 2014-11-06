@@ -64,3 +64,5 @@ cd "$(dirname "$0")"
 
 exec ./hoqtop $(strip_v "$@")
 ```
+
+* Set up a travis instance
