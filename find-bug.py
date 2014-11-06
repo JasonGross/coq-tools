@@ -9,6 +9,7 @@ from admit_abstract import transform_abstract_to_admit
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version
+from custom_arguments import add_libname_arguments
 import diagnose_error
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -113,8 +114,7 @@ parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile
 #                    help='The path to the coqc program that should compile the file successfully.')
 #parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
 #                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
-parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
-                    help='The name to bind to the current directory using -R .')
+add_libname_arguments(parser)
 
 def DEFAULT_LOG(text):
     print(text)
@@ -901,7 +901,7 @@ if __name__ == '__main__':
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
     env = {
-        'topname': args.topname,
+        'libnames': args.libnames,
         'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,

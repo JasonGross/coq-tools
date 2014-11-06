@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
+from custom_arguments import add_libname_arguments
 from replace_imports import include_imports
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -50,8 +51,7 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
-parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
-                    help='The name to bind to the current directory using -R .')
+add_libname_arguments(parser)
 
 def make_logger(log_files):
     def log(text):
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     log = make_logger(args.log_files)
 
     env = {
-        'topname': args.topname,
+        'libnames': args.libnames,
         'verbose': verbose,
         'log': log,
         'coqc': args.coqc,

@@ -10,7 +10,7 @@ lib_imports_fast = {}
 lib_imports_slow = {}
 
 DEFAULT_VERBOSE=1
-DEFAULT_TOPNAME='Top'
+DEFAULT_LIBNAMES=(('.', 'Top'), )
 
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
@@ -18,7 +18,7 @@ def DEFAULT_LOG(text):
     print(text)
 
 def contents_without_imports(lib, **kwargs):
-    v_file = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')
+    v_file = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_file, **kwargs)
     if '(*' in ' '.join(IMPORT_LINE_REG.findall(contents)):
         print('Warning: There are comments in your Require/Import/Export lines in %s.' % filename)
@@ -63,7 +63,7 @@ def contents_as_module_without_require(lib, other_imports, **kwargs):
         transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
     else:
         transform_base = lambda x: x
-    v_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')
+    v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
     contents = reg1.sub(r'\1', contents)
@@ -85,7 +85,7 @@ def contents_as_module_without_require(lib, other_imports, **kwargs):
     return contents
 
 
-def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, topname=DEFAULT_TOPNAME, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
+def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -129,17 +129,17 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=Fal
     >>> for name in names: os.remove(name)
     """
     if filename[-2:] != '.v': filename += '.v'
-    lib = lib_of_filename(filename, topname=topname)
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, topname=topname, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
+    lib = lib_of_filename(filename, libnames=libnames)
+    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, libnames=libnames, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
     remaining_imports = []
     rtn = ''
     imports_done = []
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, topname=topname, absolutize=absolutize) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, libnames=libnames, absolutize=absolutize) + '\n'
             else:
-                rtn += contents_without_imports(import_name, verbose=verbose, log=log, topname=topname, absolutize=tuple()) + '\n'
+                rtn += contents_without_imports(import_name, verbose=verbose, log=log, libnames=libnames, absolutize=tuple()) + '\n'
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)

@@ -23,9 +23,9 @@ You can add `-v` for a more verbose output.
 If you are using a non-system version of Coq, you can pass `--coqtop
 /path/to/coqtop` and `--coqc /path/to/coqc`.  If you pass `-R . Foo`
 to, say, `coq_makefile`, you can inform `find-bug.py` of this fact
-using `--topname Foo`.  The script should be run from the main
-directory of your development; there is an experimental `--directory`
-argument to allow you to do otherwise.
+using `-R . Foo`.  The script should be run from the main directory of
+your development; there is an experimental `--directory` argument to
+allow you to do otherwise.
 
 ## Examples
 

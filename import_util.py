@@ -10,7 +10,7 @@ lib_imports_fast = {}
 lib_imports_slow = {}
 
 DEFAULT_VERBOSE=1
-DEFAULT_TOPNAME='Top'
+DEFAULT_LIBNAMES=(('.', 'Top'), )
 
 IMPORT_ABSOLUTIZE_TUPLE = ('lib', )# 'mod')
 ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')# , 'mod', 'modtype')
@@ -29,10 +29,11 @@ def DEFAULT_LOG(text):
 
 def fill_kwargs(kwargs):
     rtn = {
-        'topname': DEFAULT_TOPNAME,
-        'verbose': DEFAULT_VERBOSE,
-        'log'    : DEFAULT_LOG,
-        'coqc'   : 'coqc'
+        'libnames'    : DEFAULT_LIBNAMES,
+        'verbose'     : DEFAULT_VERBOSE,
+        'log'         : DEFAULT_LOG,
+        'coqc'        : 'coqc',
+        'coq_makefile': 'coq_makefile'
         }
     rtn.update(kwargs)
     return rtn
@@ -44,43 +45,53 @@ def absolutize_has_all_constants(absolutize_tuple):
     '''Returns True if absolutizing the types of things mentioned by the tuple is enough to ensure that we only use absolute names'''
     return set(ALL_ABSOLUTIZE_TUPLE).issubset(set(absolutize_tuple))
 
-def topname_with_dot(topname):
-    if topname in ("", '""', "''"):
+def libname_with_dot(logical_name):
+    if logical_name in ("", '""', "''"):
         return ""
     else:
-        return topname + "."
+        return logical_name + "."
 
 @memoize
-def filename_of_lib(lib, topname=DEFAULT_TOPNAME, ext='.v'):
-    if lib[:len(topname_with_dot(topname))] == topname_with_dot(topname):
-        lib = lib[len(topname_with_dot(topname)):]
-        lib = lib.replace('.', os.sep)
-        return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
-    else:
-        # is this the right thing to do?
-        lib = lib.replace('.', os.sep)
-        for dirpath, dirname, filenames in os.walk('.', followlinks=True):
-            filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
-            if os.path.isfile(filename):
-                return fix_path(filename)
-        return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
+def filename_of_lib_helper(lib, libnames, ext):
+    for physical_name, logical_name in libnames:
+        if lib.startswith(libname_with_dot(logical_name)):
+            lib = lib[len(libname_with_dot(logical_name)):]
+            lib = os.path.join(physical_name, lib.replace('.', os.sep))
+            return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
+    # is this the right thing to do?
+    lib = lib.replace('.', os.sep)
+    for dirpath, dirname, filenames in os.walk('.', followlinks=True):
+        filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
+        if os.path.isfile(filename):
+            return fix_path(filename)
+    return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
 
-    return fix_path(filename_of_lib_helper(lib, topname) + ext)
+def filename_of_lib(lib, ext='.v', **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    return filename_of_lib_helper(lib, libnames=tuple(kwargs['libnames']), ext=ext)
+
+@memoize
+def lib_of_filename_helper(filename, libnames, exts):
+    filename = os.path.relpath(os.path.normpath(filename), '.')
+    for ext in exts:
+        if filename.endswith(ext):
+            filename = filename[:-len(ext)]
+            break
+    for physical_name, logical_name in ((os.path.relpath(os.path.normpath(phys), '.'), libname_with_dot(logical)) for phys, logical in libnames):
+        if filename.startswith(physical_name) or (physical_name == '.' and not filename.startswith('..' + os.sep)):
+            return (filename, logical_name + filename.replace(os.sep, '.'))
+    return (filename, filename.replace(os.sep, '.'))
 
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
     kwargs = fill_kwargs(kwargs)
-    filename = os.path.relpath(filename, '.')
-    for ext in exts:
-        if filename[-len(ext):] == ext:
-            filename = filename[:-len(ext)]
-            break
+    filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), exts=exts)
     if '.' in filename and kwargs['verbose']:
         kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
-    return topname_with_dot(kwargs['topname']) + filename.replace(os.sep, '.')
+    return libname
 
-def is_local_import(libname, topname=DEFAULT_TOPNAME, **kwargs):
+def is_local_import(libname, **kwargs):
     '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
-    return os.path.isfile(filename_of_lib(libname, topname=topname))
+    return os.path.isfile(filename_of_lib(libname, **kwargs))
 
 def get_raw_file(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -129,10 +140,11 @@ def get_all_v_files(directory, exclude=tuple()):
     return tuple(map(fix_path, all_files))
 
 @memoize
-def get_makefile_contents(coqc, coq_makefile, topname, v_files, verbose, log):
-    cmds = [coq_makefile, 'COQC', '=', coqc,
-            '-R', '.', (topname if topname not in ("", "''", '""') else '""')] + \
-        list(map(fix_path, v_files))
+def get_makefile_contents_helper(coqc, coq_makefile, libnames, v_files, verbose, log):
+    cmds = [coq_makefile, 'COQC', '=', coqc]
+    for physical_name, logical_name in libnames:
+        cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    cmds += list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
     try:
@@ -148,19 +160,23 @@ def get_makefile_contents(coqc, coq_makefile, topname, v_files, verbose, log):
         error("Try running coqc on your files to get a .glob files, to work around this.")
         sys.exit(1)
 
-
-def make_globs(libnames, **kwargs):
+def get_makefile_contents(v_files, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    extant_libnames = [i for i in libnames
-                       if os.path.isfile(filename_of_lib(i, topname=kwargs['topname'], ext='.v'))]
-    if len(extant_libnames) == 0: return
-    filenames_v = [filename_of_lib(i, topname=kwargs['topname'], ext='.v') for i in extant_libnames]
-    filenames_glob = [filename_of_lib(i, topname=kwargs['topname'], ext='.glob') for i in extant_libnames]
+    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), v_files=v_files, verbose=kwargs['verbose'], log=kwargs['log'])
+
+
+def make_globs(logical_names, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    extant_logical_names = [i for i in logical_names
+                            if os.path.isfile(filename_of_lib(i, ext='.v', **kwargs))]
+    if len(extant_logical_names) == 0: return
+    filenames_v = [filename_of_lib(i, ext='.v', **kwargs) for i in extant_logical_names]
+    filenames_glob = [filename_of_lib(i, ext='.glob', **kwargs) for i in extant_logical_names]
     if all(os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
     extra_filenames_v = get_all_v_files('.', filenames_v)
-    (stdout, stderr) = get_makefile_contents(kwargs['coqc'], kwargs['coq_makefile'], kwargs['topname'], tuple(sorted(list(filenames_v) + list(extra_filenames_v))), kwargs['verbose'], kwargs['log'])
+    (stdout, stderr) = get_makefile_contents(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), **kwargs)
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
@@ -189,8 +205,8 @@ def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
 def get_imports(lib, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
-    glob_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.glob')
-    v_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')
+    glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
+    v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if not fast:
         if lib not in lib_imports_slow.keys():
             make_globs([lib], **kwargs)
@@ -211,7 +227,7 @@ def get_imports(lib, fast=False, **kwargs):
 
 def norm_libname(lib, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    filename = filename_of_lib(lib, topname=kwargs['topname'])
+    filename = filename_of_lib(lib, **kwargs)
     if os.path.isfile(filename):
         return lib_of_filename(filename, **kwargs)
     else:
@@ -231,8 +247,8 @@ def merge_imports(imports, **kwargs):
 def recursively_get_imports(lib, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
-    glob_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.glob')
-    v_name = filename_of_lib(lib, topname=kwargs['topname'], ext='.v')
+    glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
+    v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
         if not fast: make_globs(imports, **kwargs)

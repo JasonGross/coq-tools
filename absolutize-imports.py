@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
 from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
+from custom_arguments import add_libname_arguments
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -25,8 +26,7 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
                     help='The path to the coqc program.')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
-parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top',
-                    help='The name to bind to the current directory using -R .')
+add_libname_arguments(parser)
 
 DEFAULT_VERBOSITY=1
 
@@ -75,9 +75,8 @@ if __name__ == '__main__':
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
     log = make_logger(args.log_files)
-
     env = {
-        'topname': args.topname,
+        'libnames': args.libnames,
         'verbose': verbose,
         'log': log,
         'coqc': args.coqc,
