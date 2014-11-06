@@ -129,17 +129,17 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=Fal
     >>> for name in names: os.remove(name)
     """
     if filename[-2:] != '.v': filename += '.v'
-    lib = lib_of_filename(filename, libnames=libnames)
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, libnames=libnames, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
+    lib = lib_of_filename(filename, libnames=tuple(libnames))
+    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, libnames=tuple(libnames), coqc=coqc, coq_makefile=coq_makefile, **kwargs)
     remaining_imports = []
     rtn = ''
     imports_done = []
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, libnames=libnames, absolutize=absolutize) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, libnames=tuple(libnames), absolutize=absolutize) + '\n'
             else:
-                rtn += contents_without_imports(import_name, verbose=verbose, log=log, libnames=libnames, absolutize=tuple()) + '\n'
+                rtn += contents_without_imports(import_name, verbose=verbose, log=log, libnames=tuple(libnames), absolutize=tuple()) + '\n'
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)
