@@ -32,7 +32,35 @@
 * Add a mode where only [Import]s/[Export]s are removed, for
   minimizing the dependencies of a file.  Write a wrapper around this
   mode to check if all dependencies are used.
-  
+
 * Put back support for absolutizing mod and modtype, behind a
   command-line flag.  See also 7d82914e7bc302c19d23f19399f3199c6b9cc3e7,
   https://coq.inria.fr/bugs/show_bug.cgi?id=3756, and #3.
+
+* Use argparse action='append' as per
+  http://stackoverflow.com/questions/26768253/how-can-i-make-pythons-argparse-accept-any-number-of-r-a-bs-and-aggregate-t?noredirect=1#comment42119360_26768253
+
+* Add a command line flag to use coqtop -load-vernac-source and/or
+  coqtop -compile as coqc.  Workaround: use the following script to
+  pass to --coqc:
+
+```bash
+#!/bin/bash
+function strip_v() {
+    for i in "$@"
+    do
+        j="${i%.*}"
+        if [ "$j.v" = "$i" ]; then
+            echo "-load-vernac-source" # or -compile
+            echo "$j"
+        else
+            echo "$j"
+        fi
+
+    done
+}
+
+cd "$(dirname "$0")"
+
+exec ./hoqtop $(strip_v "$@")
+```
