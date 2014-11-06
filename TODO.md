@@ -1,4 +1,4 @@
-* Use [abstract admit] rather than [admit] for coq-trunk
+* Use `abstract admit` rather than `admit` for coq-trunk
 
 * Add continuous integration and an actual test suite
 
@@ -16,7 +16,7 @@
   how much size needs to be reduced to accept a given reduction in
   speed.
 
-* Deal with [Load] better
+* Deal with `Load` better
 
 * Rename "hint removal" to something more accurate
 
@@ -29,20 +29,20 @@
   error. (e.g., if splitting the file to definitions changes the error
   message)
 
-* Add a mode where only [Import]s/[Export]s are removed, for
+* Add a mode where only `Import`s/`Export`s are removed, for
   minimizing the dependencies of a file.  Write a wrapper around this
   mode to check if all dependencies are used.
 
 * Put back support for absolutizing mod and modtype, behind a
-  command-line flag.  See also 7d82914e7bc302c19d23f19399f3199c6b9cc3e7,
-  https://coq.inria.fr/bugs/show_bug.cgi?id=3756, and #3.
+  command-line flag.  See also [7d82914e7bc302c19d23f19399f3199c6b9cc3e7](https://github.com/JasonGross/coq-bug-finder/commit/7d82914e7bc302c19d23f19399f3199c6b9cc3e7),
+  [Coq Bug 3756](https://coq.inria.fr/bugs/show_bug.cgi?id=3756), and [#3](https://github.com/JasonGross/coq-bug-finder/issues/3).
 
-* Use argparse action='append' as per
-  http://stackoverflow.com/questions/26768253/how-can-i-make-pythons-argparse-accept-any-number-of-r-a-bs-and-aggregate-t?noredirect=1#comment42119360_26768253
+* Use argparse `action='append'` as per
+  [stack overflow](http://stackoverflow.com/questions/26768253/how-can-i-make-pythons-argparse-accept-any-number-of-r-a-bs-and-aggregate-t?noredirect=1#comment42119360_26768253)
 
-* Add a command line flag to use coqtop -load-vernac-source and/or
-  coqtop -compile as coqc.  Workaround: use the following script to
-  pass to --coqc:
+* Add a command line flag to use `coqtop -load-vernac-source` and/or
+  `coqtop -compile` as coqc.  Workaround: use the following script to
+  pass to `--coqc`:
 
 ```bash
 #!/bin/bash
