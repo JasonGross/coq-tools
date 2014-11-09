@@ -66,3 +66,6 @@ exec ./hoqtop $(strip_v "$@")
 ```
 
 * Set up a travis instance
+
+* Fix the grammar so we don't get "Non-fatal error: Failed to
+  Admitting definitions and preserve the error."
