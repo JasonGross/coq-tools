@@ -39,9 +39,8 @@ nosetests.xml
 *.v.d
 *.glob
 
-/examples/example_1_output.v
-/examples/example_2_output.v
-/examples/example_3_output.v
+/examples/example_*_log.log
+/examples/example_*_output.v
 /examples/example_4/A_abs.v
 /examples/example_4/B_abs.v
 /examples/example_6/bug_A.v
