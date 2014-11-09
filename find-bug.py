@@ -110,10 +110,10 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
-#parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
-#                    help='The path to the coqc program that should compile the file successfully.')
-#parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
-#                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
+                    help='The path to the coqc program that should compile the file successfully.')
+parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
+                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
 
 def DEFAULT_LOG(text):
@@ -320,7 +320,58 @@ def prepend_header(contents, dynamic_header='', header='', header_dict={}, **kwa
     #    use_header = ','.join(OrderedSet(use_header[:-3].split(','))) + ' *)'
     return '%s%s\n%s' % (coq_prog_args, use_header, contents)
 
-def try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1, **kwargs):
+CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
+def classify_contents_change(old_contents, new_contents, **kwargs):
+    # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE)
+    new_padded_contents = prepend_header(new_contents, **kwargs)
+    if new_contents == old_contents:
+        return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
+
+    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
+    if diagnose_error.has_error(output, kwargs['error_reg_string']):
+        if kwargs['passing_coqc']:
+            passing_output = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'])
+            if not diagnose_error.has_error(passing_output):
+                return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
+            else:
+                return (CHANGE_FAILURE, new_padded_contents, (output, passing_output), 1, 'The alternate coqc (%s) was supposed to pass, but instead emitted an error.  ' % kwargs['passing_coqc'])
+        else:
+            return (CHANGE_SUCCESS, new_padded_contents, (output,), None, 'Change successful.  ')
+    else:
+        return (CHANGE_FAILURE, new_padded_contents, (output,), 0, '')
+
+def check_change_and_write_to_file(old_contents, new_contents, output_file_name, temp_file_name=None,
+                                   unchanged_message='No change.', success_message='Change successful.',
+                                   failure_description='make a change', changed_description='Changed file',
+                                   verbose_base=1,
+                                   **kwargs):
+    change_result, contents, outputs, output_i, error_desc = classify_contents_change(old_contents, new_contents, **kwargs)
+    if change_result == CONTENTS_UNCHANGED:
+        if kwargs['verbose'] >= verbose_base: kwargs['log']('\n%s' % unchanged_message)
+        return False
+    elif change_result == CHANGE_SUCCESS:
+        if kwargs['verbose'] >= verbose_base: kwargs['log']('\n%s' % success_message)
+        write_to_file(output_file_name, contents)
+        return True
+    elif change_result == CHANGE_FAILURE:
+        if kwargs['verbose'] >= verbose_base:
+            kwargs['log']('\nNon-fatal error: Failed to %s and preserve the error.  %s' % (failure_description, error_desc))
+            if temp_file_name is not None: kwargs['log']('Writing %s to %s.' % (changed_description.lower(), temp_file_name))
+            kwargs['log']('The new error was:')
+            kwargs['log'](outputs[output_i])
+            if kwargs['verbose'] >= verbose_base+2: kwargs['log']('All Outputs:\n%s' % '\n'.join(outputs))
+            if temp_file_name is None: kwargs['log']('%s not saved.' % changed_description)
+        if temp_file_name is not None:
+            write_to_file(temp_file_name, contents)
+        return False
+    else:
+        kwargs['log']('ERROR: Unrecognized change result %s on\nclassify_contents_change(\n  %s\n ,%s\n)\n%s'
+                      % (change_result, repr(old_contents), repr(new_contents),
+                         repr((change_result, contents, outputs, output_i, error_desc))))
+    return None
+
+
+def try_transform_each(definitions, output_file_name, temp_file_name, transformer, description, skip_n=1, **kwargs):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -353,17 +404,12 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
                 if kwargs['verbose'] >= 2: kwargs['log']('Attempting to transform %s\ninto\n%s' % (old_definition['statement'], ''.join(defn['statement'] for defn in new_definitions)))
                 if kwargs['verbose'] >= 2 and len(new_definitions) > 1: kwargs['log']('Splitting definition: %s' % repr(new_definitions))
                 try_definitions = definitions[:i] + new_definitions + definitions[i + 1:]
-            output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(try_definitions), kwargs['timeout'])
-            if diagnose_error.has_error(output, error_reg_string):
-                if kwargs['verbose'] >= 2: kwargs['log']('Change succeeded')
+
+            if check_change_and_write_to_file('', join_definitions(try_definitions), output_file_name, verbose_base=2, **kwargs):
                 success = True
-                contents = prepend_header(join_definitions(try_definitions), **kwargs)
-                write_to_file(output_file_name, contents)
                 definitions = try_definitions
                 # make a copy for saving
                 save_definitions = [dict(defn) for defn in try_definitions]
-            else:
-                if kwargs['verbose'] >= 2: kwargs['log']('Change failed.  Output:\n%s' % output)
         else:
             if kwargs['verbose'] >= 3: kwargs['log']('No change to %s' % old_definition['statement'])
         i -= 1
@@ -380,7 +426,7 @@ def try_transform_each(definitions, output_file_name, error_reg_string, temp_fil
         return original_definitions
 
 
-def try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name, transformer, description, skip_n=1, **kwargs):
+def try_transform_reversed(definitions, output_file_name, temp_file_name, transformer, description, skip_n=1, **kwargs):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -406,18 +452,13 @@ def try_transform_reversed(definitions, output_file_name, error_reg_string, temp
         else:
             if kwargs['verbose'] >= 2: kwargs['log']('Removing %s' % definitions[i]['statement'])
             definitions = definitions[:i] + definitions[i + 1:]
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], join_definitions(definitions), kwargs['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if kwargs['verbose'] >= 1: kwargs['log'](description + ' successful')
-        contents = prepend_header(join_definitions(definitions), **kwargs)
-        write_to_file(output_file_name, contents)
+
+    if check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
+                                      success_message=description+' successful.', failure_description=description,
+                                      changed_description='Intermediate code', **kwargs):
         return definitions
-    else:
-        if kwargs['verbose'] >= 1: kwargs['log'](description + ' unsuccessful.  Writing intermediate code to %s.' % temp_file_name)
-        if kwargs['verbose'] >= 3: kwargs['log']('The output was:\n%s' % output)
-        contents = prepend_header(join_definitions(definitions), **kwargs)
-        write_to_file(temp_file_name, contents)
-        return original_definitions
+
+    return original_definitions
 
 def try_remove_if_not_matches_transformer(definition_found_in, **kwargs):
     def transformer(cur_definition, rest_definitions):
@@ -479,8 +520,7 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs):
 
 INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
 CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
-def try_remove_non_instance_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                                        **kwargs):
+def try_remove_non_instance_definitions(definitions, output_file_name, temp_file_name, **kwargs):
     def get_names(definition):
         if INSTANCE_REG.search(definition['statements'][0]):
             return tuple()
@@ -488,45 +528,40 @@ def try_remove_non_instance_definitions(definitions, output_file_name, error_reg
             return tuple()
         else:
             return definition.get('terms_defined', tuple())
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(get_names, **kwargs),
                                   'Non-instance definition removal',
                                   **kwargs)
 
-def try_remove_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                           **kwargs):
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_definitions(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                                   'Definition removal',
                                   **kwargs)
 
-def try_remove_each_definition(definitions, output_file_name, error_reg_string, temp_file_name,
-                               **kwargs):
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_each_definition(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
                               'Definition removal',
                               **kwargs)
 
-def try_remove_each_and_every_line(definitions, output_file_name, error_reg_string, temp_file_name,
-                               **kwargs):
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_each_and_every_line(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               (lambda cur_definition, rest_definitions: False),
                               'Line removal',
                               **kwargs)
 
 ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
-def try_remove_aborted(definitions, output_file_name, error_reg_string, temp_file_name,
-                       **kwargs):
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_aborted(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   (lambda definition, rest:
                                        None if ABORT_REG.search(definition['statement']) else definition),
                                   'Aborted removal',
                                   **kwargs)
 
 LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', flags=re.MULTILINE)
-def try_remove_ltac(definitions, output_file_name, error_reg_string, temp_file_name,
-                    **kwargs):
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_ltac(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : ')),
                                                                               **kwargs),
@@ -543,9 +578,8 @@ HINT_REG = re.compile(r'^\s*' +
                       r'|Unet\s+Universe\s+Polymorphism' +
                       r'|' + DEFINITION_ISH +
                       r')\.?(?:\s+|$)')
-def try_remove_hints(definitions, output_file_name, error_reg_string, temp_file_name,
-                     **kwargs):
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_hints(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               (lambda definition, rest:
                                    (None
                                     if len(definition['statements']) == 1 and \
@@ -559,15 +593,14 @@ VARIABLE_REG = re.compile(r'^\s*' +
                           r'(?:' + DEFINITION_ISH + r')\s+' +
                           r'([^\.:]+)',
                           flags=re.MULTILINE)
-def try_remove_variables(definitions, output_file_name, error_reg_string, temp_file_name,
-                         **kwargs):
+def try_remove_variables(definitions, output_file_name, temp_file_name, **kwargs):
     def get_names(definition):
         terms = VARIABLE_REG.findall(definition['statement'])
         return [i for i in sorted(set(j
                                       for term in terms
                                       for j in term.split(' ')))]
 
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs),
                                   'Variable removal',
                                   **kwargs)
@@ -577,16 +610,16 @@ CONTEXT_REG = re.compile(r'^\s*' +
                          r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                          r'Context\s*`\s*[\({]\s*([^:\s]+)\s*:',
                          flags=re.MULTILINE)
-def try_remove_contexts(definitions, output_file_name, error_reg_string, temp_file_name, **kwargs):
-    return try_transform_reversed(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_remove_contexts(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')), **kwargs),
                                   'Context removal',
                                   **kwargs)
 
 
-def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_file_name, **kwargs):
+def try_admit_abstracts(definitions, output_file_name, temp_file_name, **kwargs):
     def do_call(method, definitions, agressive):
-        return method(definitions, output_file_name, error_reg_string, temp_file_name,
+        return method(definitions, output_file_name, temp_file_name,
                       (lambda definition, rest_definitions:
                            transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=kwargs['verbose'], log=kwargs['log'])),
                       '[abstract ...] admits',
@@ -628,7 +661,7 @@ def try_admit_abstracts(definitions, output_file_name, error_reg_string, temp_fi
     return definitions
 
 
-def try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name, matcher, description, **kwargs):
+def try_admit_matching_definitions(definitions, output_file_name, temp_file_name, matcher, description, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 2 and matcher(cur_definition):
             statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
@@ -639,7 +672,7 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
             return cur_definition
 
     def do_call(method, definitions):
-        return method(definitions, output_file_name, error_reg_string, temp_file_name,
+        return method(definitions, output_file_name, temp_file_name,
                       transformer, description,
                       **kwargs)
 
@@ -661,34 +694,30 @@ def try_admit_matching_definitions(definitions, output_file_name, error_reg_stri
         if kwargs['verbose'] >= 1: kwargs['log']('Success!')
     return definitions
 
-def try_admit_qeds(definitions, output_file_name, error_reg_string, temp_file_name,
-                   **kwargs):
+def try_admit_qeds(definitions, output_file_name, temp_file_name, **kwargs):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
-    return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: QED_REG.search(definition['statement'])),
                                           'Admitting Qeds',
                                           **kwargs)
 
-def try_admit_lemmas(definitions, output_file_name, error_reg_string, temp_file_name,
-                     **kwargs):
+def try_admit_lemmas(definitions, output_file_name, temp_file_name, **kwargs):
     LEMMA_REG = re.compile(r'^\s*' +
                            r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
-    return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
                                           'Admitting lemmas',
                                           **kwargs)
 
-def try_admit_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                          **kwargs):
-    return try_admit_matching_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
+def try_admit_definitions(definitions, output_file_name, temp_file_name, **kwargs):
+    return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: True),
                                           'Admitting definitions',
                                           **kwargs)
 
 
-def try_split_imports(definitions, output_file_name, error_reg_string, temp_file_name,
-                      **kwargs):
+def try_split_imports(definitions, output_file_name, temp_file_name, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if (len(cur_definition['statements']) > 1
             or any(ch in cur_definition['statement'] for ch in '*()')
@@ -706,13 +735,12 @@ def try_split_imports(definitions, output_file_name, error_reg_string, temp_file
                 rtn_part['statements'] = (pat % term,)
                 rtn.append(dict(rtn_part))
             return tuple(rtn)
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
                               'Import/Export splitting',
                               **kwargs)
 
-def try_split_oneline_definitions(definitions, output_file_name, error_reg_string, temp_file_name,
-                      **kwargs):
+def try_split_oneline_definitions(definitions, output_file_name, temp_file_name, **kwargs):
     def update_paren(in_string, paren_count, new_string):
         for ch in new_string:
             if in_string:
@@ -748,14 +776,13 @@ def try_split_oneline_definitions(definitions, output_file_name, error_reg_strin
                     in_string, paren_count = update_paren(in_string, paren_count, term)
                     pre_statement = ':=' + term
             return cur_definition
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
                               'One-line definition splitting',
                               **kwargs)
 
 MODULE_REG = re.compile(r'^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$')
-def try_export_modules(definitions, output_file_name, error_reg_string, temp_file_name,
-                       **kwargs):
+def try_export_modules(definitions, output_file_name, temp_file_name, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if (len(cur_definition['statements']) > 1 or
             not MODULE_REG.match(cur_definition['statement'])):
@@ -766,7 +793,7 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
             rtn['statement'] = new_statement
             rtn['statements'] = (new_statement, )
             return rtn
-    return try_transform_each(definitions, output_file_name, error_reg_string, temp_file_name,
+    return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
                               'Module exportation',
                               **kwargs)
@@ -777,53 +804,36 @@ def try_export_modules(definitions, output_file_name, error_reg_string, temp_fil
 
 
 
-
-def try_strip_comments(output_file_name, error_reg_string, **kwargs):
+def try_strip_comments(output_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
-    contents = strip_comments(contents)
-    if contents == old_contents:
-        if kwargs['verbose'] >= 1: kwargs['log']('\nNo strippable comments.')
-        return
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if kwargs['verbose'] >= 1: kwargs['log']('\nSucceeded in stripping comments.')
-        contents = prepend_header(contents, **kwargs)
-        write_to_file(output_file_name, contents)
-    else:
-        if kwargs['verbose'] >= 1:
-            kwargs['log']('\nNon-fatal error: Failed to strip comments and preserve the error.')
-            kwargs['log']('The new error was:')
-            kwargs['log'](output)
-            kwargs['log']('Stripped comments file not saved.')
+    new_contents = strip_comments(contents)
+
+    check_change_and_write_to_file(old_contents, new_contents, output_file_name,
+                                   unchanged_message='No strippable comments.',
+                                   success_message='Succeeded in stripping comments.',
+                                   failure_description='strip comments',
+                                   changed_descruption='Stripped comments file',
+                                   **kwargs)
 
 
 
-
-def try_strip_newlines(output_file_name, error_reg_string, max_consecutive_newlines, strip_trailing_space, **kwargs):
+def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailing_space, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
         contents = '\n'.join(map(str.rstrip, contents.split('\n')))
-    contents = strip_newlines(contents, max_consecutive_newlines)
-    if contents == old_contents:
-        if kwargs['verbose'] >= 1: kwargs['log']('\nNo strippable newlines or spaces.')
-        return
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if kwargs['verbose'] >= 1: kwargs['log']('\nSucceeded in stripping newlines and spaces.')
-        contents = prepend_header(contents, **kwargs)
-        write_to_file(output_file_name, contents)
-    else:
-        if kwargs['verbose'] >= 1:
-            kwargs['log']('\nNon-fatal error: Failed to strip newlines and spaces and preserve the error.')
-            kwargs['log']('The new error was:')
-            kwargs['log'](output)
-            kwargs['log']('Stripped comments file not saved.')
+    new_contents = strip_newlines(contents, max_consecutive_newlines)
+
+    check_change_and_write_to_file(old_contents, new_contents, output_file_name,
+                                   unchanged_message='No strippable newlines or spaces.',
+                                   success_message='Succeeded in stripping newlines and spaces.',
+                                   failure_description='strip newlines and spaces',
+                                   changed_descruption='Stripped file',
+                                   **kwargs)
 
 
-
-def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, **kwargs):
+def try_strip_extra_lines(output_file_name, line_num, **kwargs):
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
@@ -833,21 +843,14 @@ def try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_fil
         if cur_line_num >= line_num:
             new_statements = statements[:statement_num + 1]
             break
-    if new_statements == statements:
-        if kwargs['verbose']: kwargs['log']('No lines to trim')
-        return
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], '\n'.join(new_statements), kwargs['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if kwargs['verbose']: kwargs['log']('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num))
-        new_contents = prepend_header('\n'.join(new_statements), **kwargs)
-        write_to_file(output_file_name, new_contents)
-        if kwargs['verbose'] >= 2: kwargs['log']('Trimmed file:\n%s' % read_from_file(output_file_name))
-    else:
-        if kwargs['verbose']:
-            kwargs['log']('Trimming unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-            kwargs['log'](output)
-        new_contents = prepend_header('\n'.join(new_statements), **kwargs)
-        write_to_file(temp_file_name, new_contents)
+
+    if check_change_and_write_to_file('\n'.join(statements), '\n'.join(new_statements), output_file_name,
+                                      unchanged_message='No lines to trim.',
+                                      success_message=('Trimming successful.  We removed all lines after %d; the error was on line %d.' % (cur_line_num, line_num)),
+                                      failure_description='trim file',
+                                      changed_descruption='Trimmed file',
+                                      **kwargs):
+        if kwargs['verbose'] >= 3: kwargs['log']('Trimmed file:\n%s' % read_from_file(output_file_name))
 
 
 
@@ -856,27 +859,21 @@ EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\
                                r'|Global\s|Local\s'
                                r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
                                r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
-def try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, **kwargs):
+def try_strip_empty_sections(output_file_name, temp_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
     new_contents = EMPTY_SECTION_REG.sub(r'\1', old_contents)
     while new_contents != old_contents:
         old_contents, new_contents = new_contents, EMPTY_SECTION_REG.sub(r'\1', new_contents)
 
-    if new_contents == contents:
-        if kwargs['verbose']: kwargs['log']('No empty sections to remove')
-        return
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if kwargs['verbose']: kwargs['log']('Empty section removal successful.')
-        new_contents = prepend_header(new_contents, **kwargs)
-        write_to_file(output_file_name, new_contents)
-    else:
-        if kwargs['verbose']:
-            kwargs['log']('Empty section removal unsuccessful.  Writing trimmed file to %s.  The output was:' % temp_file_name)
-            kwargs['log'](output)
-        new_contents = prepend_header(new_contents, **kwargs)
-        write_to_file(temp_file_name, new_contents)
+    check_change_and_write_to_file(contents, new_contents, output_file_name,
+                                   unchanged_message='No empty sections to remove.',
+                                   success_message='Empty section removal successful.',
+                                   failure_description='remove empty sections',
+                                   changed_descruption='Trimmed file',
+                                   **kwargs)
+
+
 
 def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
     if ls is None: return tuple()
@@ -917,12 +914,12 @@ if __name__ == '__main__':
         'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
         'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
         'coq_makefile': args.coq_makefile,
-#        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
-#        'passing_coqc' : (args.passing_coqc
-#                          if args.passing_coqc != ''
-#                          else (args.coqc
-#                                if args.passing_coqc_args is not None
-#                                else None))
+        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
+        'passing_coqc' : (args.passing_coqc
+                          if args.passing_coqc != ''
+                          else (args.coqc
+                                if args.passing_coqc_args is not None
+                                else None)),
         }
 
     if bug_file_name[-2:] != '.v':
@@ -957,6 +954,7 @@ if __name__ == '__main__':
     extra_args = get_coq_prog_args(inlined_contents)
     env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
     env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
+    env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + list(extra_args))
 
     coqc_version = get_coqc_version(env['coqc'])
     coqtop_version = get_coqtop_version(env['coqtop'])
@@ -967,18 +965,26 @@ if __name__ == '__main__':
                           'coqtop_version':coqtop_version}
 
     if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
-    error_reg_string = get_error_reg_string(output_file_name, **env)
+    env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
+
+    contents = read_from_file(output_file_name)
+    if not check_change_and_write_to_file('', contents, output_file_name,
+                                          unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
+                                          failure_description='validate all coq runs', changed_description='The',
+                                          **env):
+        print('Fatal error: Sanity check failed.')
+        sys.exit(1)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
         if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-        try_strip_newlines(output_file_name, error_reg_string, **env)
+        try_strip_newlines(output_file_name, **env)
 
     contents = read_from_file(output_file_name)
     original_line_count = len(contents.split('\n'))
     env['header_dict']['original_line_count'] = original_line_count
 
     if env['verbose'] >= 1: log('\nNow, I will attempt to strip the comments from this file...')
-    try_strip_comments(output_file_name, error_reg_string, **env)
+    try_strip_comments(output_file_name, **env)
 
 
 
@@ -991,23 +997,20 @@ if __name__ == '__main__':
             log('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
             log('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
     statements = split_coq_file_contents(contents)
-    output = diagnose_error.get_coq_output(coqc, env['coqc_args'], '\n'.join(statements), env['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if env['verbose'] >= 1: log('Splitting successful.')
-        contents = prepend_header('\n'.join(statements), **env)
-        write_to_file(output_file_name, contents)
-    else:
-        if env['verbose'] >= 1: log('Splitting unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header('\n'.join(statements), **env)
-        write_to_file(temp_file_name, contents)
-        if env['verbose'] >= 1: log('The output given was:')
-        if env['verbose'] >= 1: log(output)
-        if env['verbose'] >= 2: log('re.search(' + repr(error_reg_string) + ', ' + repr(output) + ')')
+    if not check_change_and_write_to_file('', '\n'.join(statements), output_file_name, temp_file_name=temp_file_name,
+                                          unchanged_message='Invalid empty file!',
+                                          success_message='Splitting successful.',
+                                          failure_description='split file to statements',
+                                          changed_description='Split',
+                                          **env):
+        if env['verbose'] >= 1: log('I will not be able to proceed.')
+        if env['verbose'] >= 2: log('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
         sys.exit(1)
 
     if env['verbose'] >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
-    line_num = diagnose_error.get_error_line_number(output, error_reg_string)
-    try_strip_extra_lines(output_file_name, line_num, error_reg_string, temp_file_name, **env)
+    output = diagnose_error.get_coq_output(coqc, env['coqc_args'], '\n'.join(statements), env['timeout'])
+    line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
+    try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
 
 
     if env['verbose'] >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
@@ -1015,18 +1018,16 @@ if __name__ == '__main__':
     statements = split_coq_file_contents(contents)
     if env['verbose'] >= 3: log('I am using the following file: %s' % '\n'.join(statements))
     definitions = split_statements_to_definitions(statements, **env)
-    output = diagnose_error.get_coq_output(coqc, env['coqc_args'], join_definitions(definitions), env['timeout'])
-    if diagnose_error.has_error(output, error_reg_string):
-        if env['verbose'] >= 1: log('Splitting to definitions successful.')
-        contents = prepend_header(join_definitions(definitions), **env)
-        write_to_file(output_file_name, contents)
-    else:
-        if env['verbose'] >= 1: log('Splitting to definitions unsuccessful.  I will not be able to proceed.  Writing split file to %s.' % temp_file_name)
-        contents = prepend_header(join_definitions(definitions), **env)
-        write_to_file(temp_file_name, contents)
-        if env['verbose'] >= 1: log('The output given was:')
-        if env['verbose'] >= 1: log(output)
+    if not check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
+                                          unchanged_message='Invalid empty file!',
+                                          success_message='Splitting to definitions successful.',
+                                          failure_description='split file to definitions',
+                                          changed_description='Split',
+                                          **env):
+        if env['verbose'] >= 1: log('I will not be able to proceed.')
+        if env['verbose'] >= 2: log('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
         sys.exit(1)
+
 
     recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
                        ('remove unused Ltacs', try_remove_ltac),
@@ -1072,15 +1073,15 @@ if __name__ == '__main__':
 
         for description, task in tasks:
             if env['verbose'] >= 1: log('\nI will now attempt to %s' % description)
-            definitions = task(definitions, output_file_name, error_reg_string, temp_file_name, **env)
+            definitions = task(definitions, output_file_name, temp_file_name, **env)
 
 
     if env['verbose'] >= 1: log('\nI will now attempt to remove empty sections')
-    try_strip_empty_sections(output_file_name, error_reg_string, temp_file_name, **env)
+    try_strip_empty_sections(output_file_name, temp_file_name, **env)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
         if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-        try_strip_newlines(output_file_name, error_reg_string, **env)
+        try_strip_newlines(output_file_name, **env)
 
     if os.path.exists(temp_file_name) and remove_temp_file:
         os.remove(temp_file_name)
