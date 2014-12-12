@@ -371,7 +371,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
     return None
 
 
-def try_transform_each(definitions, output_file_name, temp_file_name, transformer, description, skip_n=1, **kwargs):
+def try_transform_each(definitions, output_file_name, temp_file_name, transformer, skip_n=1, **kwargs):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
     the returned value of the 'statement' key is not equal to the old
@@ -414,7 +414,7 @@ def try_transform_each(definitions, output_file_name, temp_file_name, transforme
             if kwargs['verbose'] >= 3: kwargs['log']('No change to %s' % old_definition['statement'])
         i -= 1
     if success:
-        if kwargs['verbose'] >= 1: kwargs['log'](description + ' successful')
+        if kwargs['verbose'] >= 1: kwargs['log'](kwargs['noun_description'] + ' successful')
         if join_definitions(save_definitions) != join_definitions(definitions):
             kwargs['log']('Probably fatal error: definitions != save_definitions')
         else:
@@ -422,7 +422,7 @@ def try_transform_each(definitions, output_file_name, temp_file_name, transforme
             write_to_file(output_file_name, contents)
         return definitions
     else:
-        if kwargs['verbose'] >= 1: kwargs['log'](description + ' unsuccessful.')
+        if kwargs['verbose'] >= 1: kwargs['log'](kwargs['noun_description'] + ' unsuccessful.')
         return original_definitions
 
 
@@ -454,7 +454,7 @@ def try_transform_reversed(definitions, output_file_name, temp_file_name, transf
             definitions = definitions[:i] + definitions[i + 1:]
 
     if check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
-                                      success_message=description+' successful.', failure_description=description,
+                                      success_message=kwargs['noun_description']+' successful.', failure_description=kwargs['verb_description'],
                                       changed_description='Intermediate code', **kwargs):
         return definitions
 
@@ -530,25 +530,29 @@ def try_remove_non_instance_definitions(definitions, output_file_name, temp_file
             return definition.get('terms_defined', tuple())
     return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(get_names, **kwargs),
-                                  'Non-instance definition removal',
+                                  noun_description='Non-instance definition removal',
+                                  verb_description='remove non-instance definitions',
                                   **kwargs)
 
 def try_remove_definitions(definitions, output_file_name, temp_file_name, **kwargs):
     return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
-                                  'Definition removal',
+                                  noun_description='Definition removal',
+                                  verb_description='remove definitions',
                                   **kwargs)
 
 def try_remove_each_definition(definitions, output_file_name, temp_file_name, **kwargs):
     return try_transform_each(definitions, output_file_name, temp_file_name,
                               try_remove_if_name_not_found_in_transformer(lambda definition: definition.get('terms_defined', tuple()), **kwargs),
-                              'Definition removal',
+                              noun_description='Definition removal',
+                              verb_description='remove definitions',
                               **kwargs)
 
 def try_remove_each_and_every_line(definitions, output_file_name, temp_file_name, **kwargs):
     return try_transform_each(definitions, output_file_name, temp_file_name,
                               (lambda cur_definition, rest_definitions: False),
-                              'Line removal',
+                              noun_description='Line removal',
+                              verb_description='remove lines',
                               **kwargs)
 
 ABORT_REG = re.compile(r'\sAbort\s*\.\s*$')
@@ -556,7 +560,8 @@ def try_remove_aborted(definitions, output_file_name, temp_file_name, **kwargs):
     return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   (lambda definition, rest:
                                        None if ABORT_REG.search(definition['statement']) else definition),
-                                  'Aborted removal',
+                                  noun_description='Aborted removal',
+                                  verb_description='remove Aborts',
                                   **kwargs)
 
 LTAC_REG = re.compile(r'^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)', flags=re.MULTILINE)
@@ -565,7 +570,8 @@ def try_remove_ltac(definitions, output_file_name, temp_file_name, **kwargs):
                                   try_remove_if_name_not_found_in_transformer(lambda definition: LTAC_REG.findall(definition['statement'].replace(':', '\
  : ')),
                                                                               **kwargs),
-                                  'Ltac removal',
+                                  noun_description='Ltac removal',
+                                  verb_description='remove Ltac',
                                   **kwargs)
 
 DEFINITION_ISH = r'Variables|Variable|Hypotheses|Hypothesis|Parameters|Parameter|Axioms|Axiom|Conjectures|Conjecture'
@@ -585,7 +591,8 @@ def try_remove_hints(definitions, output_file_name, temp_file_name, **kwargs):
                                     if len(definition['statements']) == 1 and \
                                         not HINT_REG.match(definition['statement'])
                                     else definition)),
-                              'Hint removal',
+                              noun_description='Hint removal',
+                              verb_description='remove hints',
                               **kwargs)
 
 VARIABLE_REG = re.compile(r'^\s*' +
@@ -602,7 +609,8 @@ def try_remove_variables(definitions, output_file_name, temp_file_name, **kwargs
 
     return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs),
-                                  'Variable removal',
+                                  noun_description='Variable removal',
+                                  verb_description='remove variables',
                                   **kwargs)
 
 
@@ -613,7 +621,8 @@ CONTEXT_REG = re.compile(r'^\s*' +
 def try_remove_contexts(definitions, output_file_name, temp_file_name, **kwargs):
     return try_transform_reversed(definitions, output_file_name, temp_file_name,
                                   try_remove_if_name_not_found_in_section_transformer(lambda definition: CONTEXT_REG.findall(definition['statement'].replace(':', ' : ')), **kwargs),
-                                  'Context removal',
+                                  noun_description='Context removal',
+                                  verb_description='remove Contexts',
                                   **kwargs)
 
 
@@ -622,7 +631,8 @@ def try_admit_abstracts(definitions, output_file_name, temp_file_name, **kwargs)
         return method(definitions, output_file_name, temp_file_name,
                       (lambda definition, rest_definitions:
                            transform_abstract_to_admit(definition, rest_definitions, agressive=agressive, verbose=kwargs['verbose'], log=kwargs['log'])),
-                      '[abstract ...] admits',
+                      noun_description='Admitting [abstract ...]',
+                      verb_description='[abstract ...] admits',
                       **kwargs)
 
     old_definitions = join_definitions(definitions)
@@ -661,7 +671,7 @@ def try_admit_abstracts(definitions, output_file_name, temp_file_name, **kwargs)
     return definitions
 
 
-def try_admit_matching_definitions(definitions, output_file_name, temp_file_name, matcher, description, **kwargs):
+def try_admit_matching_definitions(definitions, output_file_name, temp_file_name, matcher, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 2 and matcher(cur_definition):
             statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
@@ -673,7 +683,7 @@ def try_admit_matching_definitions(definitions, output_file_name, temp_file_name
 
     def do_call(method, definitions):
         return method(definitions, output_file_name, temp_file_name,
-                      transformer, description,
+                      transformer,
                       **kwargs)
 
     old_definitions = join_definitions(definitions) # for comparison,
@@ -698,7 +708,8 @@ def try_admit_qeds(definitions, output_file_name, temp_file_name, **kwargs):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: QED_REG.search(definition['statement'])),
-                                          'Admitting Qeds',
+                                          noun_description='Admitting Qeds',
+                                          verb_description='admit Qeds',
                                           **kwargs)
 
 def try_admit_lemmas(definitions, output_file_name, temp_file_name, **kwargs):
@@ -707,13 +718,15 @@ def try_admit_lemmas(definitions, output_file_name, temp_file_name, **kwargs):
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
-                                          'Admitting lemmas',
+                                          noun_description_'Admitting lemmas',
+                                          verb_description='admit lemmas',
                                           **kwargs)
 
 def try_admit_definitions(definitions, output_file_name, temp_file_name, **kwargs):
     return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: True),
-                                          'Admitting definitions',
+                                          noun_description='Admitting definitions',
+                                          verb_description='admit definitions',
                                           **kwargs)
 
 
@@ -737,7 +750,8 @@ def try_split_imports(definitions, output_file_name, temp_file_name, **kwargs):
             return tuple(rtn)
     return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
-                              'Import/Export splitting',
+                              noun_description='Import/Export splitting',
+                              verb_description='split Imports/Exports',
                               **kwargs)
 
 def try_split_oneline_definitions(definitions, output_file_name, temp_file_name, **kwargs):
@@ -778,7 +792,8 @@ def try_split_oneline_definitions(definitions, output_file_name, temp_file_name,
             return cur_definition
     return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
-                              'One-line definition splitting',
+                              noun_description='One-line definition splitting',
+                              verb_description='split one-line definitions',
                               **kwargs)
 
 MODULE_REG = re.compile(r'^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$')
@@ -795,7 +810,8 @@ def try_export_modules(definitions, output_file_name, temp_file_name, **kwargs):
             return rtn
     return try_transform_each(definitions, output_file_name, temp_file_name,
                               transformer,
-                              'Module exportation',
+                              noun_description='Module exportation',
+                              verb_description='export modules',
                               **kwargs)
 
 
