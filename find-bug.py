@@ -426,7 +426,7 @@ def try_transform_each(definitions, output_file_name, temp_file_name, transforme
         return original_definitions
 
 
-def try_transform_reversed(definitions, output_file_name, temp_file_name, transformer, description, skip_n=1, **kwargs):
+def try_transform_reversed(definitions, output_file_name, temp_file_name, transformer, skip_n=1, **kwargs):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
     definitions.  If transformer returns a false-y value, the
@@ -718,7 +718,7 @@ def try_admit_lemmas(definitions, output_file_name, temp_file_name, **kwargs):
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
     return try_admit_matching_definitions(definitions, output_file_name, temp_file_name,
                                           (lambda definition: LEMMA_REG.search(definition['statement'])),
-                                          noun_description_'Admitting lemmas',
+                                          noun_description='Admitting lemmas',
                                           verb_description='admit lemmas',
                                           **kwargs)
 
