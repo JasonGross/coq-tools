@@ -68,9 +68,10 @@ def make_reg_string(output):
     re_string = re.sub(r'tmp[A-Za-z_\d]+',
                        r'tmp[A-Za-z_\d]+',
                        re_string)
-    re_string = re.sub(r'[\d]+',
-                       r'[\d]+',
-                       re_string)
+    if r'Universe\ instance\ should\ have\ length\ ' not in re_string:
+        re_string = re.sub(r'[\d]+',
+                           r'[\d]+',
+                           re_string)
     return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
 
 TIMEOUT = None
