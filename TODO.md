@@ -69,3 +69,7 @@ exec ./hoqtop $(strip_v "$@")
 
 * Fix the grammar so we don't get "Non-fatal error: Failed to
   Admitting definitions and preserve the error."
+
+* Use the -top argument to have coqtop use the right top-level module
+  name (from the filename), and not change it with each iteration.
+  (See [bug 3863](https://coq.inria.fr/bugs/show_bug.cgi?id=3863).)
