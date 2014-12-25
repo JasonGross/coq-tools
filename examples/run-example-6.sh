@@ -7,7 +7,7 @@ COQC_84="$(readlink -f ~/.local64/coq/coq-8.4pl4/bin/coqc)"
 COQTOP_84="$(readlink -f ~/.local64/coq/coq-trunk/bin/coqtop)"
 COQC_TRUNK="$(readlink -f ~/.local64/coq/coq-trunk/bin/coqc)"
 COQTOP_TRUNK="$(readlink -f ~/.local64/coq/coq-trunk/bin/coqtop)"
-python ../../find-bug.py A.v bug_A.v --coqc "$COQC_84" --coqtop "$COQTOP_84" --passing-coqc "$COQC_TRUNK" "$@"
+python ../../find-bug.py A.v bug_A.v --coqc "$COQC_84" --coqtop "$COQTOP_84" --passing-coqc "$COQC_TRUNK" "$@" || exit $?
 grep Section bug_A.v
 ERR=$?
 if [ $ERR -ne 0 ]

@@ -12,5 +12,5 @@ script:
  - yes "y" | examples/run-example-3.sh
  - yes "y" | examples/run-example-4.sh
  - yes "y" | examples/run-example-5.sh
- - yes "y" | examples/run-example-6.sh
+# - yes "y" | examples/run-example-6.sh # needs two Coq's
  - yes "y" | examples/run-example-7.sh
