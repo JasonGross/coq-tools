@@ -44,3 +44,4 @@ nosetests.xml
 /examples/example_4/A_abs.v
 /examples/example_4/B_abs.v
 /examples/example_6/bug_A.v
+/examples/example_7/bug_A.v
