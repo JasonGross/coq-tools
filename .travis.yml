@@ -1,0 +1,16 @@
+language: python
+
+python:
+ - "2.7"
+
+before_script:
+ - sudo apt-get install -q coq
+
+script:
+ - yes "" | examples/run-example-1.sh
+ - yes "" | examples/run-example-2.sh
+ - yes "" | examples/run-example-3.sh
+ - yes "" | examples/run-example-4.sh
+ - yes "" | examples/run-example-5.sh
+ - yes "" | examples/run-example-6.sh
+ - yes "" | examples/run-example-7.sh
