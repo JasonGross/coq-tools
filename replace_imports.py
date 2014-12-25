@@ -25,7 +25,7 @@ def contents_without_imports(lib, **kwargs):
     return IMPORT_LINE_REG.sub('', contents)
 
 def escape_lib(lib):
-    return lib.replace('.', '_DOT_')
+    return lib.replace('.', '_DOT_').replace('-', '_DASH_')
 
 def group_by_first_component(lib_libname_pairs):
     rtn = dict((lib.split('.')[0], []) for lib, libname in lib_libname_pairs)
@@ -44,14 +44,14 @@ def nest_iter_up_to(iterator):
 def construct_import_list(import_libs, import_all_directories=False):
     '''Takes a list of library names, and returns a list of imports in an order that should have modules representing files at the end.  If import_all_directories is true, then the resulting imports should handle semi-absolute constants, and not just fully absolute or fully relative ones.'''
     if import_all_directories:
-        lib_components_list = [(libname, tuple(reversed(list(nest_iter_up_to(libname.split('.')))[:-1])))
+        lib_components_list = [(libname, tuple(reversed(list(nest_iter_up_to(map(escape_lib, libname.split('.'))))[:-1])))
                                for libname in import_libs]
         ret = list(map(escape_lib, import_libs))
         lib_components = [(libname, i, max(map(len, lst)) - len(i))
                           for libname, lst in lib_components_list
                           for i in lst]
         for libname, components, components_left in reversed(sorted(lib_components, key=(lambda x: x[2]))):
-            ret.append(escape_lib(libname) + '.' + '.'.join(components))
+            ret.append(escape_lib(libname) + '.' + '.'.join(map(escape_lib, components)))
         return ret
     else:
         return map(escape_lib, import_libs)
@@ -77,7 +77,7 @@ def contents_as_module_without_require(lib, other_imports, **kwargs):
         for imp in reversed(construct_import_list(other_imports, import_all_directories=import_all_directories)):
             contents = 'Import %s.\n%s' % (imp, contents)
     # wrap the contents in directory modules
-    lib_parts = lib.split('.')
+    lib_parts = list(map(escape_lib, lib.split('.')))
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
         contents = 'Module %s.\n%s\nEnd %s.\n' % (name, contents, name) # or Module Export?
