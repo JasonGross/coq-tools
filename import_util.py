@@ -33,7 +33,8 @@ def fill_kwargs(kwargs):
         'verbose'     : DEFAULT_VERBOSE,
         'log'         : DEFAULT_LOG,
         'coqc'        : 'coqc',
-        'coq_makefile': 'coq_makefile'
+        'coq_makefile': 'coq_makefile',
+        'walk_tree'   : True
         }
     rtn.update(kwargs)
     return rtn
@@ -175,7 +176,7 @@ def make_globs(logical_names, **kwargs):
     if all(os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
-    extra_filenames_v = get_all_v_files('.', filenames_v)
+    extra_filenames_v = (get_all_v_files('.', filenames_v) if kwargs['walk_tree'] else [])
     (stdout, stderr) = get_makefile_contents(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), **kwargs)
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))

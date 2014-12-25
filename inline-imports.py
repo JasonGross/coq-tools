@@ -27,6 +27,10 @@ parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
                     default=[sys.stdout],
                     help='The files to log output to.  Use - for stdout.')
+parser.add_argument('--no-deps', dest='walk_tree',
+                    action='store_const', const=False, default=True,
+                    help=("Don't do dependency analysis on all files in the current " +
+                          "file tree."))
 parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                     action='store_const', const=False, default=True,
                     help=("Don't wrap imports in Modules.  By default, the " +
@@ -79,7 +83,8 @@ if __name__ == '__main__':
         'absolutize': args.absolutize,
         'as_modules': args.wrap_modules,
         'fast': args.fast_merge_imports,
-        'coq_makefile': args.coq_makefile
+        'coq_makefile': args.coq_makefile,
+        'walk_tree': args.walk_tree
         }
 
     filename = args.input_file.name

@@ -94,6 +94,10 @@ parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
                           "trailing spaces on each line are removed."))
+parser.add_argument('--no-deps', dest='walk_tree',
+                    action='store_const', const=False, default=True,
+                    help=("Don't do dependency analysis on all files in the current " +
+                          "file tree."))
 parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, default=-1,
                     help=("Use a timeout; make sure Coq is " +
                           "killed after running for this many seconds. " +
@@ -936,6 +940,7 @@ if __name__ == '__main__':
                           else (args.coqc
                                 if args.passing_coqc_args is not None
                                 else None)),
+        'walk_tree': args.walk_tree
         }
 
     if bug_file_name[-2:] != '.v':
