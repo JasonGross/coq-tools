@@ -1,5 +1,5 @@
 from __future__ import with_statement
-import os, sys, tempfile, subprocess, re, time, math, glob
+import os, sys, tempfile, subprocess, re, time, math, glob, threading
 from memoize import memoize
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout"]
@@ -83,43 +83,31 @@ def reset_timeout():
     global TIMEOUT
     TIMEOUT = None
 
-# from http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-@memoize
-def which(program):
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+def timeout_Popen_communicate(*args, **kwargs):
+    ret = { 'value' : ('', '') }
+    timeout = kwargs.get('timeout')
+    del kwargs['timeout']
+    p = subprocess.Popen(*args, **kwargs)
 
-    def ext_candidates(fpath):
-        yield fpath
-        for ext in os.environ.get("PATHEXT", "").split(os.pathsep):
-            yield fpath + ext
+    def target():
+        ret['value'] = p.communicate()
 
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            for candidate in ext_candidates(exe_file):
-                if is_exe(candidate):
-                    return candidate
+    thread = threading.Thread(target=target)
+    thread.start()
 
-    return None
+    thread.join(timeout)
+    if not thread.is_alive():
+        return ret['value']
 
-@memoize
-def get_timeout_prog():
-    TIMEOUT_PROG = 'timeout'
-    p = subprocess.Popen([TIMEOUT_PROG, '1', 'true'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
-    if 'ERROR' in stdout:
-        TIMEOUT_PROG = which('timeout')
-    return TIMEOUT_PROG if TIMEOUT_PROG is not None else 'timeout'
+    p.terminate()
+    thread.join()
+    return tuple(map((lambda s: s + '\nTimeout!'), ret['value']))
 
-def memory_robust_Popen(*args, **kwargs):
+
+def memory_robust_timeout_Popen_communicate(*args, **kwargs):
     while True:
         try:
-            return subprocess.Popen(*args, **kwargs)
+            return timeout_Popen_communicate(*args, **kwargs)
         except OSError as e:
             print('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)))
             time.sleep(10)
@@ -134,15 +122,8 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
     with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
         f.write(contents)
         file_name = f.name
-    if timeout > 0:
-        # Windows sometimes doesn't like cygwin's timeout, so hack around it
-        TIMEOUT_PROG = get_timeout_prog()
-        start = time.time()
-        p = memory_robust_Popen([TIMEOUT_PROG, str(timeout), coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    else:
-        start = time.time()
-        p = memory_robust_Popen([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
+    start = time.time()
+    (stdout, stderr) = memory_robust_timeout_Popen_communicate([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout if timeout > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
