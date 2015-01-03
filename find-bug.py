@@ -104,6 +104,8 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "If 0, there is no timeout.  If negative, then " +
                           "twice the initial run of the script is used.\n\n" +
                           "Default: -1"))
+parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
+                    help=("Do not use a timeout"))
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
