@@ -101,7 +101,7 @@ def timeout_Popen_communicate(*args, **kwargs):
 
     p.terminate()
     thread.join()
-    return tuple(map((lambda s: s + '\nTimeout!'), ret['value']))
+    return tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value']))
 
 
 def memory_robust_timeout_Popen_communicate(*args, **kwargs):
