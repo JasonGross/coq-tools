@@ -1,1 +1,1 @@
-coqtop %*
+@coqtop %*
