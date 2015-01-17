@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import os, sys, tempfile, subprocess, re, time, math, glob, threading
 from memoize import memoize
+from file_util import clean_v_file
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout"]
 
@@ -127,11 +128,7 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
-    for pre in ('', '.'):
-        for ext in (file_name[-2:], '.glob', '.vo', '.d', '.v.d', '.aux'):
-            name = ''.join((os.path.dirname(file_name[:-2]), os.sep, pre, os.path.basename(file_name[:-2]), ext))
-            if os.path.exists(name):
-                os.remove(name)
+    clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
     return clean_output(stdout)
