@@ -11,6 +11,7 @@ from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version
 from custom_arguments import add_libname_arguments
 from file_util import clean_v_file
+from util import yes_no_prompt
 import diagnose_error
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -948,12 +949,18 @@ if __name__ == '__main__':
 
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
-        log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        #log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         sys.exit(1)
     if output_file_name[-2:] != '.v':
         print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
-        log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        #log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
         sys.exit(1)
+    if os.path.exists(output_file_name):
+        print('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        #log('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        if not yes_no_prompt():
+            sys.exit(1)
+
     remove_temp_file = False
     if temp_file_name == '':
         temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=False)
@@ -962,7 +969,7 @@ if __name__ == '__main__':
         remove_temp_file = True
 
     try:
-        
+
         if temp_file_name[-2:] != '.v':
             print('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
             log('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
