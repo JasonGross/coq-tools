@@ -15,6 +15,12 @@ parser.add_argument('source', metavar='SOURCE_FILE', type=argparse.FileType('r')
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
                     default=[sys.stdout],
                     help='The files to log output to.  Use - for stdout.')
+parser.add_argument('--hide', dest='hide_reg', nargs='*', type=str,
+                    default=['.*_subproof[0-9]*$', '.*_Proper$'],
+                    help=('Regular expressions to not display warnings about on low verbosity.  ' +
+                          '[Set Suggest Proof Using] can give suggestions about hard-to-find ' +
+                          'identifiers, and we might want to surpress them.'))
+parser.add_argument('--no-hide', dest='hide_reg', action='store_const', const=[])
 add_libname_arguments(parser)
 
 def DEFAULT_LOG(text):
@@ -86,7 +92,7 @@ def all_matches(reg, source, **env):
         cur_match = reg.search(source_text)
         while cur_match:
             ignoring = source_text[:cur_match.start()].strip()
-            if ignoring and env['verbose'] > 1:
+            if ignoring and env['verbose'] > 2:
                 env['log']('Ignoring: ' + repr(ignoring))
             yield cur_match.groups()
             source_text = source_text[cur_match.end():]
@@ -104,16 +110,17 @@ def split_to_file_and_rest(theorem_id, **kwargs):
         rest_parts.insert(0, module_parts.pop())
         if '.'.join(module_parts) in kwargs['lib_to_dir'].keys():
             dirname = kwargs['lib_to_dir']['.'.join(module_parts)]
-            filename = os.path.join(dirname, rest_parts[0] + '.v')
-            if os.path.exists(filename):
-                return (filename, ('.'.join(rest_parts[1:]) + '#' + rest_part).strip('#'))
+            for split_i in range(0, len(rest_parts)):
+                filename = os.path.join(dirname, *(rest_parts[:split_i] + [rest_parts[split_i] + '.v']))
+                if os.path.exists(filename):
+                    return (filename, ('.'.join(rest_parts[1:]) + '#' + rest_part).strip('#'))
     return (None, None)
 
-ALL_DEFINITONS_STR = (r'(?<!Existing )(?:' +
+ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
                       r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
                       r'|Definition|Example|SubClass' +
                       r'|Let|Fixpoint|CoFixpoint' +
-                      r'|Structure|Coercion|Instance' +
+                      r'|Structure|Coercion|(?<!Existing )Instance' +
                       r'|Add Parametric Morphism' +
                       r')\s+%s(?=[\s\(:{\.]|$)')
 
@@ -159,9 +166,11 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
             else:
                 if env['verbose'] >= 0: env['log']('Warning: No %s found in %s for %s' % (ALL_ENDINGS, filename, rest_id))
         else:
-            if env['verbose'] >= 0: env['log']('Warning: No %s found in %s' % (rest_id, filename))
+            if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
+                env['log']('Warning: No %s found in %s' % (rest_id, filename))
     else:
         if env['verbose'] >= 0: env['log']('Warning: Too many %s found in %s' % (rest_id, filename))
+        if env['verbose'] > 1: env['log']('Found: %s' % repr(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)))
     return contents
 
 if __name__ == '__main__':
@@ -175,7 +184,8 @@ if __name__ == '__main__':
         'libnames': args.libnames,
         'lib_to_dir': lib_to_dir_map(args.libnames),
         'verbose': verbose,
-        'log': log
+        'log': log,
+        'hide_reg': args.hide_reg
         }
     for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, **env):
         filename, rest_id = split_to_file_and_rest(theorem_id, **env)
@@ -185,3 +195,5 @@ if __name__ == '__main__':
             if updated != orig:
                 if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
                 write_to_file(filename, updated)
+        else:
+            log('Warning: Could not find theorem %s' % theorem_id)
