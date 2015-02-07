@@ -190,7 +190,7 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
                     if len(re.findall(ALL_DEFINITONS_STR % name, mod_body, re.MULTILINE)) <= 1:
                         ret = unsafe_update_definitions(name, mod_body, filename, rest_id, suggestion, **env)
                         if ret is not None:
-                            return pre + ret
+                            return pre + ret + post
                         else:
                             return None
                 else:
@@ -224,6 +224,6 @@ if __name__ == '__main__':
             updated = update_definitions(orig, filename, rest_id, suggestion, **env)
             if updated is not None and updated != orig:
                 if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
-                write_to_file(filename, updated)
+                write_to_file(filename, updated, backup=True)
         else:
             log('Warning: Could not find theorem %s' % theorem_id)
