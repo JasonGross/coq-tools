@@ -129,47 +129,77 @@ ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR + r'[^\.]+\.\n)'
 
 ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
+def update_proof(before_match, match, after_match, filename, rest_id, suggestion, **env):
+    ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
+    if ending:
+        proof_part = after_match[:ending.start()]
+        if proof_part.count('Proof') == 1:
+            proof_match = re.search('Proof(?: using[^\.]*)?\.', proof_part)
+            if proof_match:
+                if proof_match.group() == suggestion:
+                    return None # already correct
+                elif proof_match.group() == 'Proof.':
+                    return (before_match + match.group() + after_match[:proof_match.start()] +
+                            suggestion +
+                            after_match[proof_match.end():])
+                else:
+                    if env['verbose'] >= 0:
+                        env['log']('Warning: Mismatch between existing Proof using and suggested Proof using:')
+                        env['log']('In %s, id %s, found %s, expected %s' % (filename, rest_id, proof_match.group(), suggestion))
+            else:
+                if env['verbose'] >= 0: env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id))
+        elif proof_part.count('Proof') == 0:
+            extended_proof_part = match.group() + proof_part
+            for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS:
+                reg = re.compile(ALL_DEFINITIONS_FULL_STR % name, re.MULTILINE | re.DOTALL)
+                if reg.search(extended_proof_part):
+                    return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
+            if env['verbose'] >= 0: env['log']('Warning: No Proof found in %s for %s' % (filename, rest_id))
+        else:
+            if env['verbose'] >= 0: env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id))
+    else:
+        if env['verbose'] >= 0: env['log']('Warning: No %s found in %s for %s' % (ALL_ENDINGS, filename, rest_id))
+    return None
+
+def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env):
+    match = re.search(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)
+    if match:
+        return update_proof(contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
+    else:
+        if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
+            env['log']('Warning: No %s found in %s' % (rest_id, filename))
+    return None
 
 def update_definitions(contents, filename, rest_id, suggestion, **env):
     name = rest_id.split('#')[-1]
     if len(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)) <= 1:
-        match = re.search(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)
-        if match:
-            after_match = contents[match.end():]
-            ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
-            if ending:
-                proof_part = after_match[:ending.start()]
-                if proof_part.count('Proof') == 1:
-                    proof_match = re.search('Proof(?: using[^\.]*)?\.', proof_part)
-                    if proof_match:
-                        if proof_match.group() == suggestion:
-                            return contents # already correct
-                        elif proof_match.group() == 'Proof.':
-                            return (contents[:match.end()+proof_match.start()] +
-                                    suggestion +
-                                    contents[match.end()+proof_match.end():])
-                        else:
-                            if env['verbose'] >= 0:
-                                env['log']('Warning: Mismatch between existing Proof using and suggested Proof using:')
-                                env['log']('In %s, id %s, found %s, expected %s' % (filename, rest_id, proof_match.group(), suggestion))
-                    else:
-                        if env['verbose'] >= 0: env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id))
-                elif proof_part.count('Proof') == 0:
-                    extended_proof_part = contents[match.start():match.end()+ending.start()]
-                    for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS:
-                        reg = re.compile(ALL_DEFINITIONS_FULL_STR % name, re.MULTILINE | re.DOTALL)
-                        if reg.search(extended_proof_part):
-                            return contents[:match.start()] + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + contents[match.end()+ending.start():]
-                    if env['verbose'] >= 0: env['log']('Warning: No Proof found in %s for %s' % (filename, rest_id))
-                else:
-                    if env['verbose'] >= 0: env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id))
-            else:
-                if env['verbose'] >= 0: env['log']('Warning: No %s found in %s for %s' % (ALL_ENDINGS, filename, rest_id))
-        else:
-            if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
-                env['log']('Warning: No %s found in %s' % (rest_id, filename))
+        return unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env)
     else:
-        if env['verbose'] >= 0: env['log']('Warning: Too many %s found in %s' % (rest_id, filename))
+        modules = rest_id.split('#')[0].split('.')
+        pre, mod_body, post = '', contents, ''
+        while len(modules) > 0:
+            mod_name = modules.pop(0)
+            cur_mod = 'Module ' + mod_name
+            cur_end = 'End ' + mod_name + '.'
+            if mod_body.count(cur_mod) == 1:
+                pre += mod_body[:mod_body.index(cur_mod) + len(cur_mod)]
+                mod_body = mod_body[mod_body.index(cur_mod) + len(cur_mod):]
+                if mod_body.count(cur_end) == 1:
+                    post = mod_body[mod_body.index(cur_end):] + post
+                    mod_body = mod_body[:mod_body.index(cur_end)]
+                    if len(re.findall(ALL_DEFINITONS_STR % name, mod_body, re.MULTILINE)) <= 1:
+                        ret = unsafe_update_definitions(name, mod_body, filename, rest_id, suggestion, **env)
+                        if ret is not None:
+                            return pre + ret
+                        else:
+                            return None
+                else:
+                    if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_end, rest_id, filename))
+                    break
+            else:
+                if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_mod, rest_id, filename))
+                break
+        if env['verbose'] >= 0: env['log']('Warning: Module disambiguation was insufficient to uniqueize %s in %s' % (rest_id, filename))
         if env['verbose'] > 1: env['log']('Found: %s' % repr(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)))
     return contents
 
@@ -192,7 +222,7 @@ if __name__ == '__main__':
         if filename is not None:
             orig = read_from_file(filename)
             updated = update_definitions(orig, filename, rest_id, suggestion, **env)
-            if updated != orig:
+            if updated is not None and updated != orig:
                 if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
                 write_to_file(filename, updated)
         else:
