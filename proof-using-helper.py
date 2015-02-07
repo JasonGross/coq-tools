@@ -224,6 +224,6 @@ if __name__ == '__main__':
             updated = update_definitions(orig, filename, rest_id, suggestion, **env)
             if updated is not None and updated != orig:
                 if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
-                write_to_file(filename, updated, backup=True)
+                write_to_file(filename, updated, do_backup=True)
         else:
             log('Warning: Could not find theorem %s' % theorem_id)
