@@ -3,6 +3,9 @@ from __future__ import with_statement
 import os, sys, re, argparse
 from custom_arguments import add_libname_arguments
 
+# TODO:
+# - handle fake ambiguities from [Definition foo] in a comment
+
 parser = argparse.ArgumentParser(description='Implement the suggestions of [Set Suggest Proof Using.]')
 parser.add_argument('--verbose', '-v', dest='verbose',
                     action='count',
@@ -129,7 +132,7 @@ ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR + r'[^\.]+\.\n)'
 
 ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
-def update_proof(before_match, match, after_match, filename, rest_id, suggestion, **env):
+def update_proof(name, before_match, match, after_match, filename, rest_id, suggestion, **env):
     ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
     if ending:
         proof_part = after_match[:ending.start()]
@@ -164,7 +167,7 @@ def update_proof(before_match, match, after_match, filename, rest_id, suggestion
 def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env):
     match = re.search(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)
     if match:
-        return update_proof(contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
+        return update_proof(name, contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
     else:
         if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
             env['log']('Warning: No %s found in %s' % (rest_id, filename))
