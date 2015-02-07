@@ -1,1 +1,0 @@
-../common/coq_version.py
