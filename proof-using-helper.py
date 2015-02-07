@@ -5,6 +5,9 @@ from custom_arguments import add_libname_arguments
 
 # TODO:
 # - handle fake ambiguities from [Definition foo] in a comment
+# - handle theorems inside proof blocks
+# - do the right thing for [Theorem foo. Theorem bar. Proof. Qed. Qed.] (we do the wrong thing right now)
+# - make use of glob file?
 
 parser = argparse.ArgumentParser(description='Implement the suggestions of [Set Suggest Proof Using.]')
 parser.add_argument('--verbose', '-v', dest='verbose',
@@ -113,10 +116,14 @@ def split_to_file_and_rest(theorem_id, **kwargs):
         rest_parts.insert(0, module_parts.pop())
         if '.'.join(module_parts) in kwargs['lib_to_dir'].keys():
             dirname = kwargs['lib_to_dir']['.'.join(module_parts)]
-            for split_i in range(0, len(rest_parts)):
-                filename = os.path.join(dirname, *(rest_parts[:split_i] + [rest_parts[split_i] + '.v']))
-                if os.path.exists(filename):
-                    return (filename, ('.'.join(rest_parts[1:]) + '#' + rest_part).strip('#'))
+        elif '.'.join(module_parts) == '':
+            dirname = '.'
+        else:
+            pass
+        for split_i in range(0, len(rest_parts)):
+            filename = os.path.join(dirname, *(rest_parts[:split_i] + [rest_parts[split_i] + '.v']))
+            if os.path.exists(filename):
+                return (filename, ('.'.join(rest_parts[1:]) + '#' + rest_part).strip('#'))
     return (None, None)
 
 ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
