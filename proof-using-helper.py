@@ -127,8 +127,17 @@ ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
                       r'|Add Parametric Morphism' +
                       r')\s+%s(?=[\s\(:{\.]|$)')
 
-ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR + r'[^\.]+\.\n)',
-                             r'^([ \t]*)(' + ALL_DEFINITONS_STR + r'(?:[^\.]+|\.[A-Za-z])+\.\n)')
+ALL_DEFINITONS_STR_QUICK = (r'(?:' +
+                            r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
+                            r'|Definition|Example|SubClass' +
+                            r'|Let|Fixpoint|CoFixpoint' +
+                            r'|Structure|Coercion|Instance' +
+                            r'|Add Parametric Morphism' +
+                            r')\s+%s')
+
+
+ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'[^\.]+\.\n)',
+                             r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'(?:[^\.]+|\.[A-Za-z\(\)])+\.\n)')
 
 ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
@@ -155,6 +164,7 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
             extended_proof_part = match.group() + proof_part
             for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS:
                 reg = re.compile(ALL_DEFINITIONS_FULL_STR % name, re.MULTILINE | re.DOTALL)
+                if env['verbose'] > 3: env['log']('re.search(%s, %s, re.MULTILINE | re.DOTALL)' % (repr(ALL_DEFINITIONS_FULL_STR % name), repr(extended_proof_part)))
                 if reg.search(extended_proof_part):
                     return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
             if env['verbose'] >= 0: env['log']('Warning: No Proof found in %s for %s' % (filename, rest_id))
