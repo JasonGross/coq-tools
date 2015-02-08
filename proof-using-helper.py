@@ -119,7 +119,7 @@ def split_to_file_and_rest(theorem_id, **kwargs):
         elif '.'.join(module_parts) == '':
             dirname = '.'
         else:
-            pass
+            continue
         for split_i in range(0, len(rest_parts)):
             filename = os.path.join(dirname, *(rest_parts[:split_i] + [rest_parts[split_i] + '.v']))
             if os.path.exists(filename):
