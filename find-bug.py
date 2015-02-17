@@ -108,6 +108,8 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "Default: -1"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
+parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
+                    help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
@@ -910,11 +912,15 @@ def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
 if __name__ == '__main__':
     args = parser.parse_args()
     os.chdir(args.directory)
+    def prepend_coqbin(prog):
+        if args.coqbin != '':
+            return os.path.join(args.coqbin, prog)
+        else:
+            return prog
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
     temp_file_name = args.temp_file
     log = make_logger(args.log_files)
-    coqc = args.coqc
     admit_opaque = args.admit_opaque
     aggressive = args.aggressive
     admit_transparent = args.admit_transparent
@@ -926,8 +932,8 @@ if __name__ == '__main__':
         'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
-        'coqc': args.coqc,
-        'coqtop': args.coqtop,
+        'coqc': prepend_coqbin(args.coqc)
+        'coqtop': prepend_coqbin(args.coqtop),
         'as_modules': args.wrap_modules,
         'max_consecutive_newlines': args.max_consecutive_newlines,
         'header': args.header,
@@ -939,9 +945,9 @@ if __name__ == '__main__':
         'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
         'coq_makefile': args.coq_makefile,
         'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
-        'passing_coqc' : (args.passing_coqc
+        'passing_coqc' : (prepend_coqbin(args.passing_coqc)
                           if args.passing_coqc != ''
-                          else (args.coqc
+                          else (prepend_coqbin(args.coqc)
                                 if args.passing_coqc_args is not None
                                 else None)),
         'walk_tree': args.walk_tree
@@ -1042,7 +1048,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
         if env['verbose'] >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
-        output = diagnose_error.get_coq_output(coqc, env['coqc_args'], '\n'.join(statements), env['timeout'])
+        output = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
         line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
         try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
 

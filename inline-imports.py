@@ -45,6 +45,8 @@ parser.add_argument('--absolutize-constants', dest='absolutize',
                           "and use partially qualified names that differ depending " +
                           "on which files have been Required, not absolutizing constants " +
                           "may cause name resolution to fail."))
+parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
+                    help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
@@ -79,7 +81,7 @@ if __name__ == '__main__':
         'libnames': args.libnames,
         'verbose': verbose,
         'log': log,
-        'coqc': args.coqc,
+        'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
         'absolutize': args.absolutize,
         'as_modules': args.wrap_modules,
         'fast': args.fast_merge_imports,
