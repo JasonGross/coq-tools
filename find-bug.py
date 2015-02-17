@@ -932,7 +932,7 @@ if __name__ == '__main__':
         'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
-        'coqc': prepend_coqbin(args.coqc)
+        'coqc': prepend_coqbin(args.coqc),
         'coqtop': prepend_coqbin(args.coqtop),
         'as_modules': args.wrap_modules,
         'max_consecutive_newlines': args.max_consecutive_newlines,
