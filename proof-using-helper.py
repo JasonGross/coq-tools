@@ -91,9 +91,11 @@ def read_from_file(file_name):
 
 REG_PROOF_USING = re.compile(r'The proof of ([^\s]+)\s*should start with:\s*(Proof using[^\.]+\.)', re.MULTILINE)
 
-def all_matches(reg, source, **env):
+def all_matches(reg, source, start='', **env):
     source_text = ''
     for i in source:
+        if source_text[:len(start)] != start:
+            source_text = ''
         source_text += i
         cur_match = reg.search(source_text)
         while cur_match:
@@ -237,7 +239,7 @@ if __name__ == '__main__':
         'log': log,
         'hide_reg': args.hide_reg
         }
-    for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, **env):
+    for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, start='The proof of ', **env):
         filename, rest_id = split_to_file_and_rest(theorem_id, **env)
         if filename is not None:
             orig = read_from_file(filename)
