@@ -34,6 +34,11 @@ def split_leading_braces(statement):
 def split_merge_comments(statements):
     """Find open and close comments."""
 
+    def is_genuine_ending(cur):
+        return ((cur.strip()[:2] == '(*' and cur.strip()[-2:] == '*)') # cur is just a comment
+                or cur.strip()[-1:] in '.}'
+                or cur.strip() in BRACES)
+
     cur = None
     comment_level = 0
     for stmt in statements:
@@ -58,15 +63,7 @@ def split_merge_comments(statements):
                         for ret in split_leading_braces(i):
                             yield ret
                     else:
-                        if ((cur.strip()[:2] == '(*' and cur.strip()[-2:] == '*)') # cur is just a comment
-                            or cur.strip()[-1:] in '.}'
-                            or cur.strip() in BRACES): # genuine ending
-                            yield cur
-                            cur = None
-                            for ret in split_leading_braces(i):
-                                yield ret
-                        else:
-                            cur += i
+                        cur += i
                 elif cur is None:
                     cur = i
                 else:
@@ -77,6 +74,12 @@ def split_merge_comments(statements):
                     cur = i
                 else:
                     cur += i
+            if cur is not None and is_genuine_ending(cur) and comment_level == 0: # clear out cur, if we're done with it
+                yield cur
+                cur = None
+    if cur is not None:
+        print('Unterminated comment')
+        yield cur
 
 
 def split_coq_file_contents(contents):
@@ -92,4 +95,12 @@ def split_coq_file_contents(contents):
 def split_coq_file_contents_with_comments(contents):
     statements = re.split(r'(?<=[^\.]\.\.\.) |(?<=[^\.]\.) ',
                           re.sub(r'((?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s)', r' \1', contents))
+    if contents != ''.join(statements):
+        print('Splitting failed (initial split)!')
+    qstatements = list(merge_quotations(statements, sp=''))
+    if contents != ''.join(qstatements):
+        print('Splitting failed (quote merge)!')
+    cstatements = list(split_merge_comments(qstatements))
+    if contents != ''.join(cstatements):
+        print('Splitting failed (comment merge)!')
     return list(split_merge_comments(merge_quotations(statements, sp='')))

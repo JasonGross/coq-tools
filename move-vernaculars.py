@@ -100,6 +100,9 @@ def move_from_proof(filename, **kwargs):
     deferred_statements = []
     orig_space_count = 0
     cur_diff_space_count = 0
+    if ''.join(split_coq_file_contents_with_comments(contents)) != contents:
+        kwargs['log']('WARNING: Could not split %s' % filename)
+        return
     for i in split_coq_file_contents_with_comments(contents):
         is_definition_full = (ALL_DEFINITONS_REG.match(i) is not None
                               and (':=' in re.sub('"[^"]+|{[^}]+}|\([^\)]+\)', '', strip_comments(i))
@@ -120,7 +123,7 @@ def move_from_proof(filename, **kwargs):
                 deferred_statements.append((cur_diff_space_count, cur_statement))
             cur_diff_space_count = max(0, len(get_leading_space(i)) - orig_space_count)
             cur_statement = [remove_leading_space(i, cur_diff_space_count)]
-        elif (SAFE_REG.match(i) or not i.strip() or is_definition_full) and cur_statement:
+        elif (SAFE_REG.match(i) or not i.strip()) and cur_statement:
             if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
             cur_statement.append(remove_leading_space(i, cur_diff_space_count))
         elif is_definition_end and cur_statement:
@@ -133,7 +136,7 @@ def move_from_proof(filename, **kwargs):
                 ret.extend(cur_statements)
                 cur_statement = []
                 cur_statements = []
-        elif MOVE_UP_REG.match(i):
+        elif MOVE_UP_REG.match(i) or is_definition_full:
             if kwargs['verbose'] >= 2: kwargs['log']('Lifting: ' + repr(i))
             cur_statements.append(set_leading_space(i, orig_space_count))
         else:
