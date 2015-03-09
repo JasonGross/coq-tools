@@ -65,12 +65,14 @@ ONELINE_DEFINITIONS_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomo
 
 ALL_ENDINGS = re.compile(r'^(?:[}{]|\s)*(?:(?:Time|Timeout)\s+)?(?:Qed|Defined|Save|Admitted|Abort)\s*\.', re.MULTILINE)
 
+COPY_UP_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomorphic|Time|Timeout)\s+)?' +
+                         r'(?:Opaque\s|Transparent\s|Arguments\s|Implicit\s+Arguments\s)', re.MULTILINE)
 MOVE_UP_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomorphic|Time|Timeout)\s+)?' +
                          r'(?:Require|Import|Notation|Ltac|Tactic\s+Notation|Infix|Delimit\s+Scope|Reserved\s+Notation|Reserved\+Infix|Existing\s+Instance|Coercion|Hint|Set\s+Printing|Unset\+Printing)\s', re.MULTILINE)
 SPECIAL_TACTICS = r'W_eq|PropXRel|ILAlgoTypes|NoDup|W_neq|PropXTac|SEP_FACTS|SF\.'
 SAFE_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomorphic|Time|Timeout)\s+)?(?:' +
                       r'[a-z]|[0-9]+\s*:|\(\s*[a-z]|' + SPECIAL_TACTICS +
-                      r'|Opaque\s|Transparent\s|Arguments\s|Implicit\s+Arguments\s|{|}|-|\+|\*' +
+                      r'|{|}|-|\+|\*' +
                       r'|(?:Unfocus|Proof|Focus|Grab\s+Existentials?|Open\s+Scope|Close\s+Scope)(?:\.|\s)|\(\*' +
                       r')', re.MULTILINE)
 
@@ -83,7 +85,7 @@ def remove_leading_space(string, space_count):
     return re.sub(r'(^|\n)' + (' ' * space_count), r'\1', string, re.MULTILINE)
 
 def set_leading_space(string, space_count):
-    return re.sub(r'(^|\n)[ \t]+', r'\1' + (' ' * space_count), string, re.MULTILINE)
+    return remove_leading_space(string, max(0, len(get_leading_space(string)) - space_count))
 
 def strip_parens(string):
     last = string
@@ -145,6 +147,10 @@ def move_from_proof(filename, **kwargs):
                 cur_statements = []
         elif MOVE_UP_REG.match(i) or is_definition_full:
             if kwargs['verbose'] >= 2: kwargs['log']('Lifting: ' + repr(i))
+            cur_statements.append(set_leading_space(i, orig_space_count))
+        elif COPY_UP_REG.match(i) and cur_statement:
+            if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
+            cur_statement.append(remove_leading_space(i, cur_diff_space_count))
             cur_statements.append(set_leading_space(i, orig_space_count))
         else:
             raw_input('WARNING: Unrecognized: %s' % repr(i))
