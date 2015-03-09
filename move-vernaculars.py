@@ -134,7 +134,8 @@ def preminimize_lifted_statements(statements):
 def minimize_lifted_statements(statements):
     statements = list(preminimize_lifted_statements(statements))
     sans_opacity = [i for i in statements if re.match(r'^(?:Local\s+|Global\s+)?(?:Transparent|Opaque)\s', i.strip()) is None]
-    if len(sans_opacity) == 1:
+    sans_opacity_hint = [i for i in sans_opacity if re.match(r'^(?:Local\s+|Global\s+)?Hint\s', i.strip()) is None]
+    if len(sans_opacity_hint) == 1:
         return sans_opacity
     else:
         return statements
