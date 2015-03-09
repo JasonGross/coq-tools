@@ -95,12 +95,12 @@ def split_coq_file_contents(contents):
 def split_coq_file_contents_with_comments(contents):
     statements = re.split(r'(?<=[^\.]\.\.\.) |(?<=[^\.]\.) ',
                           re.sub(r'((?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s)', r' \1', contents))
-    if contents != ''.join(statements):
-        print('Splitting failed (initial split)!')
-    qstatements = list(merge_quotations(statements, sp=''))
-    if contents != ''.join(qstatements):
-        print('Splitting failed (quote merge)!')
-    cstatements = list(split_merge_comments(qstatements))
-    if contents != ''.join(cstatements):
-        print('Splitting failed (comment merge)!')
+    #if contents != ''.join(statements):
+    #    print('Splitting failed (initial split)!')
+    #qstatements = list(merge_quotations(statements, sp=''))
+    #if contents != ''.join(qstatements):
+    #    print('Splitting failed (quote merge)!')
+    #cstatements = list(split_merge_comments(qstatements))
+    #if contents != ''.join(cstatements):
+    #    print('Splitting failed (comment merge)!')
     return list(split_merge_comments(merge_quotations(statements, sp='')))
