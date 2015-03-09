@@ -51,7 +51,7 @@ def write_to_file(file_name, contents, do_backup=False, ext='.bak'):
         with open(file_name, 'w') as f:
             f.write(contents)
 
-ALL_DEFINITONS_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomorphic|Time|Timeout)\s+)?(?:' +
+ALL_DEFINITIONS_REG = re.compile(r'^\s*(?:(?:Global|Local|Polymorphic|Monomorphic|Time|Timeout)\s+)?(?:' +
                                 r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
                                 r'|Definition|Example|SubClass' +
                                 r'|Let|Fixpoint|CoFixpoint' +
@@ -85,6 +85,13 @@ def remove_leading_space(string, space_count):
 def set_leading_space(string, space_count):
     return re.sub(r'(^|\n)[ \t]+', r'\1' + (' ' * space_count), string, re.MULTILINE)
 
+def strip_parens(string):
+    last = string
+    cur = re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', '', last)
+    while cur != last:
+        last, cur = cur, re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', '', cur)
+    return cur
+
 def move_from_proof(filename, **kwargs):
     if kwargs['verbose']: kwargs['log']('Processing %s...' % filename)
     try:
@@ -104,13 +111,13 @@ def move_from_proof(filename, **kwargs):
         kwargs['log']('WARNING: Could not split %s' % filename)
         return
     for i in split_coq_file_contents_with_comments(contents):
-        is_definition_full = (ALL_DEFINITONS_REG.match(i) is not None
-                              and (':=' in re.sub('"[^"]+|{[^}]+}|\([^\)]+\)', '', strip_comments(i))
+        is_definition_full = (ALL_DEFINITIONS_REG.match(i) is not None
+                              and (':=' in strip_parens(strip_comments(i))
                                    or ONELINE_DEFINITIONS_REG.match(i)))
-        is_definition_start = (ALL_DEFINITONS_REG.match(i) is not None
-                               and ':=' not in re.sub('"[^"]+|{[^}]+}|\([^\)]+\)', '', strip_comments(i))
+        is_definition_start = (ALL_DEFINITIONS_REG.match(i) is not None
+                               and ':=' not in strip_parens(strip_comments(i))
                                and not ONELINE_DEFINITIONS_REG.match(i))
-        #print((is_definition_start, ONELINE_DEFINITIONS_REG.match(i), ALL_DEFINITONS_REG.match(i), i))
+        #print((is_definition_start, ONELINE_DEFINITIONS_REG.match(i), ALL_DEFINITIONS_REG.match(i), i))
         is_definition_end = ALL_ENDINGS.match(i) is not None
         if not is_definition_start and not cur_statements and not cur_statement:
             if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
