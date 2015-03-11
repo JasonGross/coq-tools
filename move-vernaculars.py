@@ -92,6 +92,7 @@ def strip_parens(string):
     cur = re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', '', last)
     while cur != last:
         last, cur = cur, re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', '', cur)
+    cur = re.sub(r'\slet\s[^\(\){}"]+?:=[^\(\){}"]+?\sin\s', '', cur, re.MULTILINE)
     return cur
 
 
