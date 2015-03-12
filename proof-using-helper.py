@@ -2,6 +2,7 @@
 from __future__ import with_statement
 import os, sys, re, argparse
 from custom_arguments import add_libname_arguments
+from memoize import memoize
 
 # TODO:
 # - handle fake ambiguities from [Definition foo] in a comment
@@ -22,7 +23,7 @@ parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argpar
                     default=[sys.stdout],
                     help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--hide', dest='hide_reg', nargs='*', type=str,
-                    default=['.*_subproof[0-9]*$', '.*_Proper$'],
+                    default=['.*_subproof[0-9]*$'], #, '.*_Proper$'],
                     help=('Regular expressions to not display warnings about on low verbosity.  ' +
                           '[Set Suggest Proof Using] can give suggestions about hard-to-find ' +
                           'identifiers, and we might want to surpress them.'))
@@ -43,6 +44,7 @@ def make_logger(log_files):
                 os.fsync(i.fileno())
     return log
 
+@memoize # only back up each file once
 def backup(file_name, ext='.bak'):
     if not ext:
         raise ValueError
@@ -136,6 +138,10 @@ ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
                       r'|Add Parametric Morphism' +
                       r')\s+%s(?=[\s\(:{\.]|$)')
 
+ALL_DEFINITIONS_LESS_PROPER_STR = (r'[ \t]*(?:Global\s+|Local\s+)?(?:' +
+                                   r'Add\s+(?:Parametric\s+)?Morphism' +
+                                   r')\s+(?:[^\.]+|\.[A-Za-z\(\)])+\.(?:\n|$)')
+
 ALL_DEFINITONS_STR_QUICK = (r'(?:' +
                             r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
                             r'|Definition|Example|SubClass' +
@@ -147,6 +153,8 @@ ALL_DEFINITONS_STR_QUICK = (r'(?:' +
 
 ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'[^\.]+\.\n)',
                              r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'(?:[^\.]+|\.[A-Za-z\(\)])+\.\n)')
+
+ALL_DEFINITIONS_FULL_STRS_LESS_PROPER = (r'^([ \t]*)((?:Global\s+|Local\s+)?Add\s+(?:Parametric\s+)?Morphism\s+(?:[^\.]+|\.[A-Za-z\(\)])+?\s+as\s+%s\s*\.\n)',)
 
 ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
@@ -176,6 +184,12 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
                 if env['verbose'] > 3: env['log']('re.search(%s, %s, re.MULTILINE | re.DOTALL)' % (repr(ALL_DEFINITIONS_FULL_STR % name), repr(extended_proof_part)))
                 if reg.search(extended_proof_part):
                     return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
+            if name[-len('_Proper'):] == '_Proper':
+                for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS_LESS_PROPER:
+                    reg = re.compile(ALL_DEFINITIONS_FULL_STR % name[:-len('_Proper')], re.MULTILINE | re.DOTALL)
+                    if env['verbose'] > 3: env['log']('re.search(%s, %s, re.MULTILINE | re.DOTALL)' % (repr(ALL_DEFINITIONS_FULL_STR % name[:-len('_Proper')]), repr(extended_proof_part)))
+                    if reg.search(extended_proof_part):
+                        return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
             if env['verbose'] >= 0: env['log']('Warning: No Proof found in %s for %s' % (filename, rest_id))
         else:
             if env['verbose'] >= 0: env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id))
@@ -187,9 +201,12 @@ def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **e
     match = re.search(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)
     if match:
         return update_proof(name, contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
-    else:
-        if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
-            env['log']('Warning: No %s found in %s' % (rest_id, filename))
+    elif name[-len('_Proper'):] == '_Proper':
+        for match in re.finditer(ALL_DEFINITIONS_LESS_PROPER_STR, contents, re.MULTILINE | re.DOTALL):
+            if match.group().strip('\n\t .').split(' ')[-1] + '_Proper' == name:
+                return update_proof(name, contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
+    if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
+        env['log']('Warning: No %s found in %s' % (rest_id, filename))
     return None
 
 def update_definitions(contents, filename, rest_id, suggestion, **env):
