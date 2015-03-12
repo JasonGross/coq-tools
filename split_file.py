@@ -26,6 +26,8 @@ def split_leading_braces(statement):
     while statement.strip() and statement.strip()[0] in BRACES:
         idx = statement.index(statement.strip()[0]) + 1
         first, rest = statement[:idx], statement[idx:]
+        #if 'not_reachable_iff' in statement or 'not_reachable_iff' in first:
+        #    print((first, rest))
         yield first
         statement = rest
     if statement:
@@ -49,10 +51,12 @@ def split_merge_comments(statements):
             else:
                 i2 = re.sub('^[^"]*"|"[^"]*"', '', i)
             str_count += i.count('"')
+            #print((repr(i), comment_level, repr(i2)))
             if '(*' not in i2 and '*)' not in i2:
                 if comment_level < 0:
                     if cur is not None:
-                        yield cur + i
+                        for ret in split_leading_braces(cur + i):
+                            yield ret
                         cur = None
                     else:
                         raw_input('UNEXPECTED COMMENT: %s' % i)
@@ -74,6 +78,11 @@ def split_merge_comments(statements):
                     cur = i
                 else:
                     cur += i
+            if cur is not None:
+                curs = list(split_leading_braces(cur))
+                while curs and curs[0].strip() in BRACES:
+                    yield curs.pop(0)
+                cur = ''.join(curs) if curs else None
             if cur is not None and is_genuine_ending(cur) and comment_level == 0: # clear out cur, if we're done with it
                 yield cur
                 cur = None

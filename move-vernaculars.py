@@ -134,10 +134,10 @@ def preminimize_lifted_statements(statements):
 
 def minimize_lifted_statements(statements):
     statements = list(preminimize_lifted_statements(statements))
-    sans_opacity = [i for i in statements if re.match(r'^(?:Local\s+|Global\s+)?(?:Transparent|Opaque)\s', i.strip()) is None]
-    sans_opacity_hint = [i for i in sans_opacity if re.match(r'^(?:Local\s+|Global\s+)?Hint\s', i.strip()) is None]
-    if len(sans_opacity_hint) == 1:
-        return sans_opacity
+    sans_copy = [i for i in statements if COPY_UP_REG.match(i.strip()) is None]
+    sans_copy_hint = [i for i in sans_copy if re.match(r'^(?:Local\s+|Global\s+)?Hint\s', i.strip()) is None]
+    if len(sans_copy_hint) == 1:
+        return sans_copy
     else:
         return statements
 
@@ -169,6 +169,8 @@ def move_from_proof(filename, **kwargs):
                                and not ONELINE_DEFINITIONS_REG.match(i))
         #print((is_definition_start, ONELINE_DEFINITIONS_REG.match(i), ALL_DEFINITIONS_REG.match(i), i))
         is_definition_end = ALL_ENDINGS.match(i) is not None
+        #if 'not_reachable_iff' in i:
+        #    print((ALL_DEFINITIONS_REG.match(i), strip_parens(strip_comments(i)), ONELINE_DEFINITIONS_REG.match(i)))
         if not is_definition_start and not cur_statements and not cur_statement:
             if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
             ret.append(i)
