@@ -986,6 +986,11 @@ if __name__ == '__main__':
         inlined_contents = include_imports(bug_file_name, **env)
         args.bug_file.close()
         if inlined_contents:
+            inlined_contents = r"""Module Export AdmitTactic.
+  Axiom proof_admitted : False.
+  Tactic Notation "admit" := case proof_admitted.
+End AdmitTactic.
+%s""" % inlined_contents
             write_to_file(output_file_name, inlined_contents)
         else:
             if env['verbose'] >= 1: log('Failed to inline inputs.')
