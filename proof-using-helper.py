@@ -114,7 +114,7 @@ def lib_to_dir_map(libnames):
 def split_to_file_and_rest(theorem_id, **kwargs):
     module_part, rest_part = theorem_id.split('#', 1)
     module_parts = module_part.split('.')
-    if len(module_parts) == 0: return (None, None)
+    ret = []
     rest_parts = []
     while len(module_parts) > 0:
         rest_parts.insert(0, module_parts.pop())
@@ -127,8 +127,8 @@ def split_to_file_and_rest(theorem_id, **kwargs):
         for split_i in range(0, len(rest_parts)):
             filename = os.path.join(dirname, *(rest_parts[:split_i] + [rest_parts[split_i] + '.v']))
             if os.path.exists(filename):
-                return (filename, ('.'.join(rest_parts[1:]) + '#' + rest_part).strip('#'))
-    return (None, None)
+                ret.append((filename, ('.'.join(rest_parts[split_i+1:]) + '#' + rest_part).strip('#')))
+    return tuple(ret)
 
 ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
                       r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
@@ -158,6 +158,8 @@ ALL_DEFINITIONS_FULL_STRS_LESS_PROPER = (r'^([ \t]*)((?:Global\s+|Local\s+)?Add\
 
 ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
+FOUND_BUT_UNCHANGED = object()
+
 def update_proof(name, before_match, match, after_match, filename, rest_id, suggestion, **env):
     ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
     if ending:
@@ -166,7 +168,7 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
             proof_match = re.search('Proof(?: using[^\.]*)?\.', proof_part)
             if proof_match:
                 if proof_match.group() == suggestion:
-                    return None # already correct
+                    return FOUND_BUT_UNCHANGED # already correct
                 elif proof_match.group() == 'Proof.':
                     return (before_match + match.group() + after_match[:proof_match.start()] +
                             suggestion +
@@ -175,8 +177,10 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
                     if env['verbose'] >= 0:
                         env['log']('Warning: Mismatch between existing Proof using and suggested Proof using:')
                         env['log']('In %s, id %s, found %s, expected %s' % (filename, rest_id, proof_match.group(), suggestion))
+                    return FOUND_BUT_UNCHANGED
             else:
                 if env['verbose'] >= 0: env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id))
+                return FOUND_BUT_UNCHANGED
         elif proof_part.count('Proof') == 0:
             extended_proof_part = match.group() + proof_part
             for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS:
@@ -212,7 +216,13 @@ def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **e
 def update_definitions(contents, filename, rest_id, suggestion, **env):
     name = rest_id.split('#')[-1]
     if len(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)) <= 1:
-        return unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env)
+        ret = unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env)
+        if ret is None:
+            return None
+        elif ret is FOUND_BUT_UNCHANGED:
+            return contents
+        else:
+            return ret
     else:
         modules = rest_id.split('#')[0].split('.')
         pre, mod_body, post = '', contents, ''
@@ -228,10 +238,12 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
                     mod_body = mod_body[:mod_body.index(cur_end)]
                     if len(re.findall(ALL_DEFINITONS_STR % name, mod_body, re.MULTILINE)) <= 1:
                         ret = unsafe_update_definitions(name, mod_body, filename, rest_id, suggestion, **env)
-                        if ret is not None:
-                            return pre + ret + post
-                        else:
+                        if ret is None:
                             return None
+                        elif ret is FOUND_BUT_UNCHANGED:
+                            return contents
+                        else:
+                            return pre + ret + post
                 else:
                     if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_end, rest_id, filename))
                     break
@@ -257,12 +269,19 @@ if __name__ == '__main__':
         'hide_reg': args.hide_reg
         }
     for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, start='The proof of ', **env):
-        filename, rest_id = split_to_file_and_rest(theorem_id, **env)
-        if filename is not None:
-            orig = read_from_file(filename)
-            updated = update_definitions(orig, filename, rest_id, suggestion, **env)
-            if updated is not None and updated != orig:
-                if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
-                write_to_file(filename, updated, do_backup=True)
+        filenames = list(reversed(split_to_file_and_rest(theorem_id, **env)))
+        if filenames:
+            is_first = True
+            for filename, rest_id in filenames:
+                orig = read_from_file(filename)
+                updated = update_definitions(orig, filename, rest_id, suggestion, **env)
+                if updated is not None:
+                    if updated != orig:
+                        if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
+                        write_to_file(filename, updated, do_backup=True)
+                    elif len(filenames) > 1 and not is_first:
+                        if env['verbose'] >= 1: env['log']('Found %s in %s' % (rest_id, filename))
+                    break
+                is_first = False
         else:
             log('Warning: Could not find theorem %s' % theorem_id)
