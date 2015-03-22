@@ -987,8 +987,8 @@ if __name__ == '__main__':
         args.bug_file.close()
         if inlined_contents:
             inlined_contents = r"""Module Export AdmitTactic.
-  Axiom proof_admitted : False.
-  Tactic Notation "admit" := case proof_admitted.
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
 End AdmitTactic.
 %s""" % inlined_contents
             write_to_file(output_file_name, inlined_contents)
