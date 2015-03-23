@@ -2,7 +2,7 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache"]
 
 file_mtimes = {}
 file_contents = {}
@@ -39,6 +39,12 @@ def fill_kwargs(kwargs):
     rtn.update(kwargs)
     return rtn
 
+def safe_kwargs(kwargs):
+    for k, v in list(kwargs.items()):
+        if isinstance(v, list):
+            kwargs[k] = tuple(v)
+    return dict((k, v) for k, v in kwargs.items() if not isinstance(v, dict))
+
 def fix_path(filename):
     return filename.replace('\\', '/')
 
@@ -51,6 +57,12 @@ def libname_with_dot(logical_name):
         return ""
     else:
         return logical_name + "."
+
+def clear_libimport_cache(libname):
+    if libname in lib_imports_fast.keys():
+        del lib_imports_fast[libname]
+    if libname in lib_imports_slow.keys():
+        del lib_imports_slow[libname]
 
 @memoize
 def filename_of_lib_helper(lib, libnames, ext):
@@ -217,7 +229,8 @@ def get_imports(lib, fast=False, **kwargs):
                 lines = contents.split('\n')
                 lib_imports_slow[lib] = tuple(sorted(set(norm_libname(name, **kwargs)
                                                          for name in IMPORT_REG.findall(contents))))
-                return lib_imports_slow[lib]
+        if lib in lib_imports_slow.keys():
+            return lib_imports_slow[lib]
     # making globs failed, or we want the fast way, fall back to regexp
     if lib not in lib_imports_fast.keys():
         contents = get_file(v_name, **kwargs)
@@ -245,7 +258,13 @@ def merge_imports(imports, **kwargs):
 
 # This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
 @memoize
-def recursively_get_imports(lib, fast=False, **kwargs):
+def internal_recursively_get_imports(lib, **kwargs):
+    return run_recursively_get_imports(lib, recur=internal_recursively_get_imports, **kwargs)
+
+def recursively_get_imports(lib, **kwargs):
+    return internal_recursively_get_imports(lib, **safe_kwargs(kwargs))
+
+def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
@@ -253,7 +272,7 @@ def recursively_get_imports(lib, fast=False, **kwargs):
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
         if not fast: make_globs(imports, **kwargs)
-        imports_list = [recursively_get_imports(i, **kwargs)
+        imports_list = [recur(i, fast=fast, **kwargs)
                         for i in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
     return [lib]

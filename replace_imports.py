@@ -1,9 +1,9 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
-from import_util import filename_of_lib, lib_of_filename, get_file, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
+from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
 
-__all__ = ["include_imports", "normalize_requires", "get_required_contents"]
+__all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file"]
 
 file_contents = {}
 lib_imports_fast = {}
@@ -81,7 +81,7 @@ def strip_requires(contents):
 
 def contents_as_module_without_require(lib, other_imports, export=False, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
-    if import_all_directories:
+    if import_all_directories and not export:
         transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
     else:
         transform_base = lambda x: x
@@ -109,7 +109,7 @@ def normalize_requires(filename, **kwargs):
     if filename[-2:] != '.v': filename += '.v'
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, libnames=tuple(kwargs['libnames']))
-    all_imports = recursively_get_imports(lib, **kwargs)
+    all_imports = run_recursively_get_imports(lib, **kwargs)
 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, **kwargs)
@@ -119,6 +119,13 @@ def normalize_requires(filename, **kwargs):
 
 def get_required_contents(libname, **kwargs):
     return contents_as_module_without_require(libname, other_imports=[], export=True, **fill_kwargs(kwargs))
+
+def recursively_get_requires_from_file(filename, **kwargs):
+    if filename[-2:] != '.v': filename += '.v'
+    kwargs = fill_kwargs(kwargs)
+    lib = lib_of_filename(filename, libnames=tuple(kwargs['libnames']))
+    return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
+
 
 def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.

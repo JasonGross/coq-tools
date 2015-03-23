@@ -15,3 +15,4 @@ script:
 # - yes "y" | examples/run-example-6.sh # needs two Coq's
  - yes "y" | examples/run-example-7.sh
  - yes "y" | examples/run-example-8.py
+ - yes "y" | examples/run-example-8-2.sh

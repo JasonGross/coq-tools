@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import argparse, tempfile, sys, os, re
-from replace_imports import include_imports
+from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
-from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
+from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version
 from custom_arguments import add_libname_arguments
@@ -108,6 +108,15 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "Default: -1"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
+parser.add_argument('--minimize-before-inlining', dest='minimize_before_inlining',
+                    action='store_const', const=True, default=False,
+                    help=("Run the full minimization script before inlining [Requires], " +
+                          "and between the inlining of every individual [Require].\n\n" +
+                          "Note that this option will not work well in conjunction with " +
+                          "--passing-coqc.\n"
+                          "Note also that this option resulting in a much more fragile " +
+                          "run; it requires that the compiled dependencies of the file " +
+                          "being debugged remain in place for the duration of the run."))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
                     help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
@@ -147,12 +156,22 @@ def backup(file_name, ext='.bak'):
         backup(file_name + ext)
         os.rename(file_name, file_name + ext)
 
-def write_to_file(file_name, contents, do_backup=False):
+def restore_file(file_name, backup_ext='.bak', backup_backup_ext='.unbak'):
+    if not os.path.exists(file_name + backup_ext):
+        raise IOError
+    if os.path.exists(file_name):
+        if backup_backup_ext:
+            backup(file_name, backup_backup_ext)
+        else:
+            os.remove(filename)
+    os.rename(file_name + backup_ext, file_name)
+
+def write_to_file(file_name, contents, do_backup=False, backup_ext='.bak'):
     backed_up = False
     while not backed_up:
         try:
             if do_backup:
-                backup(file_name)
+                backup(file_name, ext=backup_ext)
             backed_up = True
         except IOError as e:
             print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
@@ -900,6 +919,14 @@ def try_strip_empty_sections(output_file_name, temp_file_name, **kwargs):
                                    **kwargs)
 
 
+def add_admit_tactic(contents):
+    tac_code = r"""Module Export AdmitTactic.
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+End AdmitTactic.
+"""
+    return '%s%s' % (tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents))
+
 
 def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
     if ls is None: return tuple()
@@ -909,141 +936,41 @@ def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
     if verbose >= 1: log("Unknown type '%s' of list '%s'" % (str(type(ls)), repr(ls)))
     return tuple(ls)
 
-if __name__ == '__main__':
-    args = parser.parse_args()
-    os.chdir(args.directory)
-    def prepend_coqbin(prog):
-        if args.coqbin != '':
-            return os.path.join(args.coqbin, prog)
-        else:
-            return prog
-    bug_file_name = args.bug_file.name
-    output_file_name = args.output_file
-    temp_file_name = args.temp_file
-    log = make_logger(args.log_files)
-    admit_opaque = args.admit_opaque
-    aggressive = args.aggressive
-    admit_transparent = args.admit_transparent
-    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
-    if args.quiet is None: args.quiet = 0
-    verbose = args.verbose - args.quiet
-    env = {
-        'libnames': args.libnames,
-        'verbose': verbose,
-        'fast_merge_imports': args.fast_merge_imports,
-        'log': log,
-        'coqc': prepend_coqbin(args.coqc),
-        'coqtop': prepend_coqbin(args.coqtop),
-        'as_modules': args.wrap_modules,
-        'max_consecutive_newlines': args.max_consecutive_newlines,
-        'header': args.header,
-        'dynamic_header': args.dynamic_header,
-        'strip_trailing_space': args.strip_trailing_space,
-        'timeout': args.timeout,
-        'absolutize': args.absolutize,
-        'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
-        'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
-        'coq_makefile': args.coq_makefile,
-        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
-        'passing_coqc' : (prepend_coqbin(args.passing_coqc)
-                          if args.passing_coqc != ''
-                          else (prepend_coqbin(args.coqc)
-                                if args.passing_coqc_args is not None
-                                else None)),
-        'walk_tree': args.walk_tree
-        }
+def default_on_fatal(message):
+    if message is not None: print(message)
+    sys.exit(1)
 
-    if bug_file_name[-2:] != '.v':
-        print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
-        #log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
-        sys.exit(1)
-    if output_file_name[-2:] != '.v':
-        print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
-        #log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
-        sys.exit(1)
-    if os.path.exists(output_file_name):
-        print('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
-        #log('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
-        if not yes_no_prompt():
-            sys.exit(1)
-
-    remove_temp_file = False
-    if temp_file_name == '':
-        temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=False)
-        temp_file_name = temp_file.name
-        temp_file.close()
-        remove_temp_file = True
-
-    try:
-
-        if temp_file_name[-2:] != '.v':
-            print('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
-            log('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
-            sys.exit(1)
-
-
-        if env['verbose'] >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
-        inlined_contents = include_imports(bug_file_name, **env)
-        args.bug_file.close()
-        if inlined_contents:
-            inlined_contents = r"""Module Export AdmitTactic.
-Axiom proof_admitted : False.
-Tactic Notation "admit" := case proof_admitted.
-End AdmitTactic.
-%s""" % inlined_contents
-            if env['verbose'] >= 1: log('Stripping trailing ends')
-            while re.search(r'End [^ \.]*\.\s*$', inlined_contents):
-                inlined_contents = re.sub(r'End [^ \.]*\.\s*$', '', inlined_contents)
-            write_to_file(output_file_name, inlined_contents)
-        else:
-            if env['verbose'] >= 1: log('Failed to inline inputs.')
-            sys.exit(1)
-
-        extra_args = get_coq_prog_args(inlined_contents)
-        env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
-        env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
-        env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + list(extra_args))
-
-        coqc_version = get_coqc_version(env['coqc'])
-        coqtop_version = get_coqtop_version(env['coqtop'])
-        old_header = get_old_header(inlined_contents, env['dynamic_header'])
-        env['header_dict'] = {'original_line_count':0,
-                              'old_header':old_header,
-                              'coqc_version':coqc_version,
-                              'coqtop_version':coqtop_version}
-
-        if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
-        env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
-
+def minimize_file(output_file_name, die=default_on_fatal, **env):
+    """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
+    if True: # kludge for not needing to de-indent this at the moment; remove this and indentation soon
         contents = read_from_file(output_file_name)
         if not check_change_and_write_to_file('', contents, output_file_name,
                                               unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
                                               failure_description='validate all coq runs', changed_description='The',
                                               **env):
-            print('Fatal error: Sanity check failed.')
-            sys.exit(1)
+            return die('Fatal error: Sanity check failed.')
 
         if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-            if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
             try_strip_newlines(output_file_name, **env)
 
         contents = read_from_file(output_file_name)
         original_line_count = len(contents.split('\n'))
         env['header_dict']['original_line_count'] = original_line_count
 
-        if env['verbose'] >= 1: log('\nNow, I will attempt to strip the comments from this file...')
+        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip the comments from this file...')
         try_strip_comments(output_file_name, **env)
 
 
 
         contents = read_from_file(output_file_name)
         if env['verbose'] >= 1:
-            log('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
+            env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
             strings = re.findall(r'"[^"\n\r]+"', contents)
             bad_strings = [i for i in strings if re.search(r'\.\s', i)]
             if bad_strings:
-                log('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
-                log('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
+                env['log']('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+                env['log']('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
         statements = split_coq_file_contents(contents)
         if not check_change_and_write_to_file('', '\n'.join(statements), output_file_name, temp_file_name=temp_file_name,
                                               unchanged_message='Invalid empty file!',
@@ -1051,20 +978,20 @@ End AdmitTactic.
                                               failure_description='split file to statements',
                                               changed_description='Split',
                                               **env):
-            if env['verbose'] >= 1: log('I will not be able to proceed.')
-            if env['verbose'] >= 2: log('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
-            sys.exit(1)
+            if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
+            if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
+            return die(None)
 
-        if env['verbose'] >= 1: log('\nI will now attempt to remove any lines after the line which generates the error.')
+        if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
         output = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
         line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
         try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
 
 
-        if env['verbose'] >= 1: log('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
+        if env['verbose'] >= 1: env['log']('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
         contents = read_from_file(output_file_name)
         statements = split_coq_file_contents(contents)
-        if env['verbose'] >= 3: log('I am using the following file: %s' % '\n'.join(statements))
+        if env['verbose'] >= 3: env['log']('I am using the following file: %s' % '\n'.join(statements))
         definitions = split_statements_to_definitions(statements, **env)
         if not check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
                                               unchanged_message='Invalid empty file!',
@@ -1072,9 +999,9 @@ End AdmitTactic.
                                               failure_description='split file to definitions',
                                               changed_description='Split',
                                               **env):
-            if env['verbose'] >= 1: log('I will not be able to proceed.')
-            if env['verbose'] >= 2: log('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
-            sys.exit(1)
+            if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
+            if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
+            return die(None)
 
 
         recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
@@ -1116,21 +1043,187 @@ End AdmitTactic.
         old_definitions = ''
         while old_definitions != join_definitions(definitions):
             old_definitions = join_definitions(definitions)
-            if env['verbose'] >= 2: log('Definitions:')
-            if env['verbose'] >= 2: log(definitions)
+            if env['verbose'] >= 2: env['log']('Definitions:')
+            if env['verbose'] >= 2: env['log'](definitions)
 
             for description, task in tasks:
-                if env['verbose'] >= 1: log('\nI will now attempt to %s' % description)
+                if env['verbose'] >= 1: env['log']('\nI will now attempt to %s' % description)
                 definitions = task(definitions, output_file_name, temp_file_name, **env)
 
 
-        if env['verbose'] >= 1: log('\nI will now attempt to remove empty sections')
+        if env['verbose'] >= 1: env['log']('\nI will now attempt to remove empty sections')
         try_strip_empty_sections(output_file_name, temp_file_name, **env)
 
         if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-            if env['verbose'] >= 1: log('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
             try_strip_newlines(output_file_name, **env)
+
+    return True
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    os.chdir(args.directory)
+    def prepend_coqbin(prog):
+        if args.coqbin != '':
+            return os.path.join(args.coqbin, prog)
+        else:
+            return prog
+    bug_file_name = args.bug_file.name
+    output_file_name = args.output_file
+    temp_file_name = args.temp_file
+    log = make_logger(args.log_files)
+    admit_opaque = args.admit_opaque
+    aggressive = args.aggressive
+    admit_transparent = args.admit_transparent
+    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
+    if args.quiet is None: args.quiet = 0
+    verbose = args.verbose - args.quiet
+    env = {
+        'libnames': args.libnames,
+        'verbose': verbose,
+        'fast_merge_imports': args.fast_merge_imports,
+        'log': log,
+        'coqc': prepend_coqbin(args.coqc),
+        'coqtop': prepend_coqbin(args.coqtop),
+        'as_modules': args.wrap_modules,
+        'max_consecutive_newlines': args.max_consecutive_newlines,
+        'header': args.header,
+        'dynamic_header': args.dynamic_header,
+        'strip_trailing_space': args.strip_trailing_space,
+        'timeout': args.timeout,
+        'absolutize': args.absolutize,
+        'minimize_before_inlining': args.minimize_before_inlining,
+        'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
+        'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
+        'coq_makefile': args.coq_makefile,
+        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
+        'passing_coqc' : (prepend_coqbin(args.passing_coqc)
+                          if args.passing_coqc != ''
+                          else (prepend_coqbin(args.coqc)
+                                if args.passing_coqc_args is not None
+                                else None)),
+        'walk_tree': args.walk_tree
+        }
+
+    if bug_file_name[-2:] != '.v':
+        print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        #log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        sys.exit(1)
+    if output_file_name[-2:] != '.v':
+        print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        #log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        sys.exit(1)
+    if os.path.exists(output_file_name):
+        print('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        #log('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        if not yes_no_prompt():
+            sys.exit(1)
+
+    remove_temp_file = False
+    if temp_file_name == '':
+        temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=False)
+        temp_file_name = temp_file.name
+        temp_file.close()
+        remove_temp_file = True
+
+    try:
+
+        if temp_file_name[-2:] != '.v':
+            print('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
+            log('\nError: TEMP_FILE must end in .v (value: %s)' % temp_file_name)
+            sys.exit(1)
+
+
+        if env['minimize_before_inlining']:
+            if env['verbose'] >= 1: log('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
+            inlined_contents = normalize_requires(bug_file_name, **env)
+            args.bug_file.close()
+            inlined_contents = add_admit_tactic(inlined_contents)
+            write_to_file(output_file_name, inlined_contents)
+        else:
+            if env['verbose'] >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+            inlined_contents = include_imports(bug_file_name, **env)
+            args.bug_file.close()
+            if inlined_contents:
+                inlined_contents = add_admit_tactic(inlined_contents)
+                if env['verbose'] >= 1: log('Stripping trailing ends')
+                while re.search(r'End [^ \.]*\.\s*$', inlined_contents):
+                    inlined_contents = re.sub(r'End [^ \.]*\.\s*$', '', inlined_contents)
+                write_to_file(output_file_name, inlined_contents)
+            else:
+                if env['verbose'] >= 1: log('Failed to inline inputs.')
+                sys.exit(1)
+
+        extra_args = get_coq_prog_args(inlined_contents)
+        env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
+        env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
+        env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + list(extra_args))
+        for dirname, libname in env['libnames']:
+            env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
+            env['coqtop_args'] = tuple(list(env['coqtop_args']) + ['-R', dirname, libname])
+            env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + ['-R', dirname, libname])
+
+        coqc_version = get_coqc_version(env['coqc'])
+        coqtop_version = get_coqtop_version(env['coqtop'])
+        old_header = get_old_header(inlined_contents, env['dynamic_header'])
+        env['header_dict'] = {'original_line_count':0,
+                              'old_header':old_header,
+                              'coqc_version':coqc_version,
+                              'coqtop_version':coqtop_version}
+
+        if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
+        env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
+
+        # initial run before we (potentially) do fancy things with the requires
+        minimize_file(output_file_name, **env)
+
+        if env['minimize_before_inlining']: # if we've not already inlined everything
+            # so long as we keep changing, we will pull all the
+            # requires to the top, then try to replace them in reverse
+            # order.  As soon as we succeed, we reset the list
+            last_output = ''
+            clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
+            cur_output = add_admit_tactic(normalize_requires(output_file_name, **env)).strip() + '\n'
+            while cur_output != last_output:
+                last_output = cur_output
+                requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **env)
+                if os.path.exists(output_file_name + '.require-bak'):
+                    os.remove(output_file_name + '.require-bak')
+                write_to_file(output_file_name, cur_output, do_backup=True, backup_ext='.require-bak')
+
+                for req_module in reversed(requires):
+                    rep = '\nRequire %s.\n' % req_module
+                    if rep not in '\n' + cur_output:
+                        if env['verbose'] >= 1: log('\nWarning: I cannot find Require %s.' % req_module)
+                        if env['verbose'] >= 3: log('in contents:\n' + cur_output)
+                        continue
+                    try:
+                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
+                    except IOError:
+                        if env['verbose'] >= 1: log('\nWarning: Cannot inline %s' % req_module)
+                        continue
+                    write_to_file(output_file_name, test_output)
+                    try:
+                        ret = minimize_file(output_file_name, die=(lambda x: False), **env)
+                    except Exception as e:
+                        restore_file(output_file_name, backup_ext='.require-bak', backup_backup_ext=None)
+                        raise e
+                    else:
+                        if os.path.exists(output_file_name + '.require-bak'):
+                            os.remove(output_file_name + '.require-bak')
+                    if ret:
+                        break
+                    else: # just in case this is the last iteration
+                        write_to_file(output_file_name, cur_output)
+
+                clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
+                cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env)).strip() + '\n'
+
+            # and we make one final run, or, in case there are no requires, one run
+            minimize_file(output_file_name, **env)
 
     finally:
         if remove_temp_file:
             clean_v_file(temp_file_name)
+        if os.path.exists(output_file_name + '.require-bak'):
+            os.remove(output_file_name + '.require-bak')
