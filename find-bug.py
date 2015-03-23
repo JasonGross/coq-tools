@@ -991,6 +991,9 @@ Axiom proof_admitted : False.
 Tactic Notation "admit" := case proof_admitted.
 End AdmitTactic.
 %s""" % inlined_contents
+            if env['verbose'] >= 1: log('Stripping trailing ends')
+            while re.search(r'End [^ \.]*\.\s*$', inlined_contents):
+                inlined_contents = re.sub(r'End [^ \.]*\.\s*$', '', inlined_contents)
             write_to_file(output_file_name, inlined_contents)
         else:
             if env['verbose'] >= 1: log('Failed to inline inputs.')
