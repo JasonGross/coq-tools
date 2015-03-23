@@ -2,7 +2,6 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 from import_util import filename_of_lib, lib_of_filename, get_file, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
-from file_util import clean_extra_coq_files
 
 __all__ = ["include_imports", "normalize_requires", "get_required_contents"]
 
