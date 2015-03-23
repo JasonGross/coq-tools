@@ -41,7 +41,7 @@ nosetests.xml
 /tmp*.v
 .*.aux
 
-/.coq-native
+.coq-native
 
 /examples/example_*_log.log
 /examples/example_*_output.v
