@@ -764,10 +764,10 @@ def try_split_imports(definitions, output_file_name, temp_file_name, **kwargs):
         if (len(cur_definition['statements']) > 1
             or any(ch in cur_definition['statement'] for ch in '*()')
             or cur_definition['statement'].strip()[-1] != '.'
-            or cur_definition['statement'].strip().split(' ')[0] not in ('Import', 'Export')):
+            or cur_definition['statement'].strip().split(' ')[0].strip() not in ('Import', 'Export')):
             return cur_definition
         else:
-            terms = [i for i in cur_definition['statement'].strip()[:-1].split(' ') if i != '']
+            terms = [i.strip() for i in cur_definition['statement'].strip()[:-1].split(' ') if i.strip() != '']
             import_or_export, terms = terms[0], terms[1:]
             pat = import_or_export + ' %s.'
             rtn_part = dict(cur_definition)
