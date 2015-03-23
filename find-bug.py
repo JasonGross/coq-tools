@@ -1002,7 +1002,6 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
         return die(None)
 
-
     recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
                        ('remove unused Ltacs', try_remove_ltac),
                        ('remove unused definitions', try_remove_definitions),
@@ -1190,30 +1189,32 @@ if __name__ == '__main__':
                     os.remove(output_file_name + '.require-bak')
                 write_to_file(output_file_name, cur_output, do_backup=True, backup_ext='.require-bak')
 
-                for req_module in reversed(requires):
-                    rep = '\nRequire %s.\n' % req_module
-                    if rep not in '\n' + cur_output:
-                        if env['verbose'] >= 1: log('\nWarning: I cannot find Require %s.' % req_module)
-                        if env['verbose'] >= 3: log('in contents:\n' + cur_output)
-                        continue
-                    try:
-                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
-                    except IOError:
-                        if env['verbose'] >= 1: log('\nWarning: Cannot inline %s' % req_module)
-                        continue
-                    write_to_file(output_file_name, test_output)
-                    try:
-                        ret = minimize_file(output_file_name, die=(lambda x: False), **env)
-                    except Exception as e:
-                        restore_file(output_file_name, backup_ext='.require-bak', backup_backup_ext=None)
-                        raise e
-                    else:
-                        if os.path.exists(output_file_name + '.require-bak'):
-                            os.remove(output_file_name + '.require-bak')
-                    if ret:
-                        break
-                    else: # just in case this is the last iteration
-                        write_to_file(output_file_name, cur_output)
+                try:
+                    for req_module in reversed(requires):
+                        rep = '\nRequire %s.\n' % req_module
+                        if rep not in '\n' + cur_output:
+                            if env['verbose'] >= 1: log('\nWarning: I cannot find Require %s.' % req_module)
+                            if env['verbose'] >= 3: log('in contents:\n' + cur_output)
+                            continue
+                        try:
+                            test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
+                        except IOError:
+                            if env['verbose'] >= 1: log('\nWarning: Cannot inline %s' % req_module)
+                            continue
+                        write_to_file(output_file_name, test_output)
+                        diagnose_error.reset_timeout()
+                        if minimize_file(output_file_name, die=(lambda x: False), **env):
+                            if os.path.exists(output_file_name + '.require-bak'):
+                                os.remove(output_file_name + '.require-bak')
+                            break
+                        else: # just in case this is the last iteration
+                            write_to_file(output_file_name, cur_output)
+                            if os.path.exists(output_file_name + '.require-bak'):
+                                os.remove(output_file_name + '.require-bak')
+
+                except BaseException:
+                    restore_file(output_file_name, backup_ext='.require-bak', backup_backup_ext=None)
+                    raise
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
                 cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env)).strip() + '\n'
