@@ -5,9 +5,9 @@ PS4='$ '
 set -x
 python ../../find-bug.py example_8.v bug_8.v --minimize-before-inlining || exit $?
 LINES="$(cat bug_8.v | wc -l)"
-if [ "$LINES" -ne 13 ]
+if [ "$LINES" -ne 11 ]
 then
-    echo "Expected only Fail Fail Check axA."
+    echo "Expected 11 lines"
     cat bug_8.v
     exit 1
 fi
