@@ -10,7 +10,7 @@ GET_EXPECT = {
     'Top.A': 'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.omega.Omega.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n',
     'Top.B': 'Module Export Top_DOT_B.\nModule Export Top.\nModule B.\nImport Top.A.\n\nEnd B.\n\nEnd Top.\n\nEnd Top_DOT_B.\n',
     'Top.C': 'Module Export Top_DOT_C.\nModule Export Top.\nModule C.\nImport Top.A.\n\nEnd C.\n\nEnd Top.\n\nEnd Top_DOT_C.\n',
-    'Top.D': 'Module Export Top_DOT_D.\nModule Export Top.\nModule D.\nImport Top.C Top.B.\nImport Top.A.\n\nEnd D.\n\nEnd Top.\n\nEnd Top_DOT_D.\n'
+    'Top.D': 'Module Export Top_DOT_D.\nModule Export Top.\nModule D.\nImport Top.C Top.B.\nExport Top.A.\n\nEnd D.\n\nEnd Top.\n\nEnd Top_DOT_D.\n'
 }
 
 def trace(frame, event, arg):
