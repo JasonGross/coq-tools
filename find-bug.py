@@ -1182,6 +1182,8 @@ if __name__ == '__main__':
             last_output = ''
             clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
             cur_output = add_admit_tactic(normalize_requires(output_file_name, **env)).strip() + '\n'
+            # keep a list of libraries we've already tried to inline, and don't try them again
+            libname_blacklist = []
             while cur_output != last_output:
                 last_output = cur_output
                 requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **env)
@@ -1191,6 +1193,10 @@ if __name__ == '__main__':
 
                 try:
                     for req_module in reversed(requires):
+                        if req_module in libname_blacklist:
+                            continue
+                        else:
+                            libname_blacklist.append(req_module)
                         rep = '\nRequire %s.\n' % req_module
                         if rep not in '\n' + cur_output:
                             if env['verbose'] >= 1: log('\nWarning: I cannot find Require %s.' % req_module)
