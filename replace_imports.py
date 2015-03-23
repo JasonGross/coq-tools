@@ -2,8 +2,9 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 from import_util import filename_of_lib, lib_of_filename, get_file, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
+from file_util import clean_extra_coq_files
 
-__all__ = ["include_imports"]
+__all__ = ["include_imports", "normalize_requires", "get_required_contents"]
 
 file_contents = {}
 lib_imports_fast = {}
@@ -16,6 +17,21 @@ IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|
 
 def DEFAULT_LOG(text):
     print(text)
+
+def fill_kwargs(kwargs):
+    defaults = {
+        'verbose':DEFAULT_VERBOSE,
+        'fast':False,
+        'log':DEFAULT_LOG,
+        'libnames':DEFAULT_LIBNAMES,
+        'coqc':'coqc',
+        'absolutize':ALL_ABSOLUTIZE_TUPLE,
+        'coq_makefile':'coq_makefile'
+    }
+    for k, v in defaults.items():
+        if k not in kwargs.keys():
+            kwargs[k] = v
+    return kwargs
 
 def contents_without_imports(lib, **kwargs):
     v_file = filename_of_lib(lib, ext='.v', **kwargs)
@@ -56,8 +72,15 @@ def construct_import_list(import_libs, import_all_directories=False):
     else:
         return map(escape_lib, import_libs)
 
+def strip_requires(contents):
+    reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
+    contents = reg1.sub(r'\1', contents)
+    reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
+    contents = reg2.sub(r'', contents)
+    return contents
 
-def contents_as_module_without_require(lib, other_imports, **kwargs):
+
+def contents_as_module_without_require(lib, other_imports, export=False, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
     if import_all_directories:
         transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
@@ -65,25 +88,38 @@ def contents_as_module_without_require(lib, other_imports, **kwargs):
         transform_base = lambda x: x
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
-    reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
-    contents = reg1.sub(r'\1', contents)
-    reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
-    contents = reg2.sub(r'', contents)
+    contents = strip_requires(contents)
     if kwargs['verbose'] > 2: kwargs['log'](contents)
     module_name = escape_lib(lib)
     # import the top-level wrappers
-    if len(other_imports) > 0:
+    if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
         for imp in reversed(construct_import_list(other_imports, import_all_directories=import_all_directories)):
             contents = 'Import %s.\n%s' % (imp, contents)
     # wrap the contents in directory modules
     lib_parts = list(map(escape_lib, lib.split('.')))
+    maybe_export = 'Export ' if export else ''
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
-        contents = 'Module %s.\n%s\nEnd %s.\n' % (name, contents, name) # or Module Export?
-    contents = 'Module %s.\n%s\nEnd %s.\n' % (module_name, contents, module_name)
+        contents = 'Module %s%s.\n%s\nEnd %s.\n' % (maybe_export, name, contents, name) # or Module Export?
+    contents = 'Module %s%s.\n%s\nEnd %s.\n' % (maybe_export, module_name, contents, module_name)
     return contents
 
+def normalize_requires(filename, **kwargs):
+    """Return the contents of filename, with all [Require]s split out and ordered at the top."""
+    if filename[-2:] != '.v': filename += '.v'
+    kwargs = fill_kwargs(kwargs)
+    lib = lib_of_filename(filename, libnames=tuple(kwargs['libnames']))
+    all_imports = recursively_get_imports(lib, **kwargs)
+
+    v_name = filename_of_lib(lib, ext='.v', **kwargs)
+    contents = get_file(v_name, **kwargs)
+    contents = strip_requires(contents)
+    contents = ''.join('Require %s.\n' % i for i in all_imports[:-1]) + '\n' + contents.strip() + '\n'
+    return contents
+
+def get_required_contents(libname, **kwargs):
+    return contents_as_module_without_require(libname, other_imports=[], export=True, **fill_kwargs(kwargs))
 
 def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
