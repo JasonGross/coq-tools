@@ -942,121 +942,120 @@ def default_on_fatal(message):
 
 def minimize_file(output_file_name, die=default_on_fatal, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
-    if True: # kludge for not needing to de-indent this at the moment; remove this and indentation soon
-        contents = read_from_file(output_file_name)
-        if not check_change_and_write_to_file('', contents, output_file_name,
-                                              unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
-                                              failure_description='validate all coq runs', changed_description='The',
-                                              **env):
-            return die('Fatal error: Sanity check failed.')
+    contents = read_from_file(output_file_name)
+    if not check_change_and_write_to_file('', contents, output_file_name,
+                                          unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
+                                          failure_description='validate all coq runs', changed_description='The',
+                                          **env):
+        return die('Fatal error: Sanity check failed.')
 
-        if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-            try_strip_newlines(output_file_name, **env)
+    if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
+        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        try_strip_newlines(output_file_name, **env)
 
-        contents = read_from_file(output_file_name)
-        original_line_count = len(contents.split('\n'))
-        env['header_dict']['original_line_count'] = original_line_count
+    contents = read_from_file(output_file_name)
+    original_line_count = len(contents.split('\n'))
+    env['header_dict']['original_line_count'] = original_line_count
 
-        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip the comments from this file...')
-        try_strip_comments(output_file_name, **env)
-
+    if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip the comments from this file...')
+    try_strip_comments(output_file_name, **env)
 
 
-        contents = read_from_file(output_file_name)
-        if env['verbose'] >= 1:
-            env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
-            strings = re.findall(r'"[^"\n\r]+"', contents)
-            bad_strings = [i for i in strings if re.search(r'\.\s', i)]
-            if bad_strings:
-                env['log']('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
-                env['log']('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
-        statements = split_coq_file_contents(contents)
-        if not check_change_and_write_to_file('', '\n'.join(statements), output_file_name, temp_file_name=temp_file_name,
-                                              unchanged_message='Invalid empty file!',
-                                              success_message='Splitting successful.',
-                                              failure_description='split file to statements',
-                                              changed_description='Split',
-                                              **env):
-            if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
-            if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
-            return die(None)
 
-        if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
-        output = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
-        line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
-        try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
+    contents = read_from_file(output_file_name)
+    if env['verbose'] >= 1:
+        env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
+        strings = re.findall(r'"[^"\n\r]+"', contents)
+        bad_strings = [i for i in strings if re.search(r'\.\s', i)]
+        if bad_strings:
+            env['log']('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
+            env['log']('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
+    statements = split_coq_file_contents(contents)
+    if not check_change_and_write_to_file('', '\n'.join(statements), output_file_name, temp_file_name=temp_file_name,
+                                          unchanged_message='Invalid empty file!',
+                                          success_message='Splitting successful.',
+                                          failure_description='split file to statements',
+                                          changed_description='Split',
+                                          **env):
+        if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
+        if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
+        return die(None)
 
-
-        if env['verbose'] >= 1: env['log']('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
-        contents = read_from_file(output_file_name)
-        statements = split_coq_file_contents(contents)
-        if env['verbose'] >= 3: env['log']('I am using the following file: %s' % '\n'.join(statements))
-        definitions = split_statements_to_definitions(statements, **env)
-        if not check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
-                                              unchanged_message='Invalid empty file!',
-                                              success_message='Splitting to definitions successful.',
-                                              failure_description='split file to definitions',
-                                              changed_description='Split',
-                                              **env):
-            if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
-            if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
-            return die(None)
+    if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
+    output = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
+    line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
+    try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
 
 
-        recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
-                           ('remove unused Ltacs', try_remove_ltac),
-                           ('remove unused definitions', try_remove_definitions),
-                           ('remove unused non-instance, non-canonical structure definitions', try_remove_non_instance_definitions),
-                           ('remove unused variables', try_remove_variables),
-                           ('remove unused contexts', try_remove_contexts))
-
-        tasks = recursive_tasks
-        if admit_opaque:
-            tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
-                      # we've probably just removed a lot, so try to remove definitions again
-                      recursive_tasks +
-                      (('admit [abstract ...]s', try_admit_abstracts),) +
-                      # we've probably just removed a lot, so try to remove definitions again
-                      recursive_tasks)
-
-        if not aggressive:
-            tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
-
-        if admit_transparent:
-            tasks += (('admit lemmas', try_admit_lemmas),
-                      ('admit definitions', try_admit_definitions))
-
-        if not aggressive:
-            tasks += (('remove hints', try_remove_hints),)
-
-        tasks += (('export modules', try_export_modules),
-                  ('split imports and exports', try_split_imports),
-                  ('split := definitions', try_split_oneline_definitions))
-
-        if aggressive:
-            tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
-                      # we've probably just removed a lot, so try to remove definitions again
-                      recursive_tasks)
+    if env['verbose'] >= 1: env['log']('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
+    contents = read_from_file(output_file_name)
+    statements = split_coq_file_contents(contents)
+    if env['verbose'] >= 3: env['log']('I am using the following file: %s' % '\n'.join(statements))
+    definitions = split_statements_to_definitions(statements, **env)
+    if not check_change_and_write_to_file('', join_definitions(definitions), output_file_name, temp_file_name=temp_file_name,
+                                          unchanged_message='Invalid empty file!',
+                                          success_message='Splitting to definitions successful.',
+                                          failure_description='split file to definitions',
+                                          changed_description='Split',
+                                          **env):
+        if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
+        if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
+        return die(None)
 
 
-        old_definitions = ''
-        while old_definitions != join_definitions(definitions):
-            old_definitions = join_definitions(definitions)
-            if env['verbose'] >= 2: env['log']('Definitions:')
-            if env['verbose'] >= 2: env['log'](definitions)
+    recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
+                       ('remove unused Ltacs', try_remove_ltac),
+                       ('remove unused definitions', try_remove_definitions),
+                       ('remove unused non-instance, non-canonical structure definitions', try_remove_non_instance_definitions),
+                       ('remove unused variables', try_remove_variables),
+                       ('remove unused contexts', try_remove_contexts))
 
-            for description, task in tasks:
-                if env['verbose'] >= 1: env['log']('\nI will now attempt to %s' % description)
-                definitions = task(definitions, output_file_name, temp_file_name, **env)
+    tasks = recursive_tasks
+    if admit_opaque:
+        tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks +
+                  (('admit [abstract ...]s', try_admit_abstracts),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks)
+
+    if not aggressive:
+        tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
+
+    if admit_transparent:
+        tasks += (('admit lemmas', try_admit_lemmas),
+                  ('admit definitions', try_admit_definitions))
+
+    if not aggressive:
+        tasks += (('remove hints', try_remove_hints),)
+
+    tasks += (('export modules', try_export_modules),
+              ('split imports and exports', try_split_imports),
+              ('split := definitions', try_split_oneline_definitions))
+
+    if aggressive:
+        tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
+                  # we've probably just removed a lot, so try to remove definitions again
+                  recursive_tasks)
 
 
-        if env['verbose'] >= 1: env['log']('\nI will now attempt to remove empty sections')
-        try_strip_empty_sections(output_file_name, temp_file_name, **env)
+    old_definitions = ''
+    while old_definitions != join_definitions(definitions):
+        old_definitions = join_definitions(definitions)
+        if env['verbose'] >= 2: env['log']('Definitions:')
+        if env['verbose'] >= 2: env['log'](definitions)
 
-        if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
-            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
-            try_strip_newlines(output_file_name, **env)
+        for description, task in tasks:
+            if env['verbose'] >= 1: env['log']('\nI will now attempt to %s' % description)
+            definitions = task(definitions, output_file_name, temp_file_name, **env)
+
+
+    if env['verbose'] >= 1: env['log']('\nI will now attempt to remove empty sections')
+    try_strip_empty_sections(output_file_name, temp_file_name, **env)
+
+    if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
+        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
+        try_strip_newlines(output_file_name, **env)
 
     return True
 
