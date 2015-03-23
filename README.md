@@ -8,7 +8,7 @@ coq-bug-minimizer
 
 Some scripts to help construct small reproducing examples of bugs.
 
-The script find-bug.py is the main program; run `find-bug.py -h` to
+The script `find-bug.py` is the main program; run `find-bug.py -h` to
 see the options.  The script will ask you two questions: whether or
 not it successfully determined the error you're seeking to reproduce,
 and whether or not it created a regular expression which captures that
