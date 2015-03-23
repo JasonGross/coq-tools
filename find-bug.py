@@ -764,10 +764,10 @@ def try_split_imports(definitions, output_file_name, temp_file_name, **kwargs):
         if (len(cur_definition['statements']) > 1
             or any(ch in cur_definition['statement'] for ch in '*()')
             or cur_definition['statement'].strip()[-1] != '.'
-            or cur_definition['statement'].strip().split(' ')[0].strip() not in ('Import', 'Export')):
+            or cur_definition['statement'].strip().replace('\n', ' ').split(' ')[0] not in ('Import', 'Export')):
             return cur_definition
         else:
-            terms = [i.strip() for i in cur_definition['statement'].strip()[:-1].split(' ') if i.strip() != '']
+            terms = [i for i in cur_definition['statement'].strip().replace('\n', ' ')[:-1].split(' ') if i != '']
             import_or_export, terms = terms[0], terms[1:]
             pat = import_or_export + ' %s.'
             rtn_part = dict(cur_definition)
@@ -1058,6 +1058,21 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
 
     return True
 
+def deduplicate_trailing_dir_bindings(args):
+    args = list(args)
+    dir_bindings = []
+    ret = []
+    while len(args) > 0:
+        if args[0] == '-R' and len(args) >= 3:
+            if tuple(args[:3]) not in dir_bindings:
+                dir_bindings.append(tuple(args[:3]))
+            args = args[3:]
+        else:
+            ret.append(args.pop(0))
+    for binding in dir_bindings:
+        ret.extend(binding)
+    return tuple(ret)
+
 if __name__ == '__main__':
     args = parser.parse_args()
     os.chdir(args.directory)
@@ -1153,13 +1168,12 @@ if __name__ == '__main__':
                 sys.exit(1)
 
         extra_args = get_coq_prog_args(inlined_contents)
-        env['coqc_args'] = tuple(list(env['coqc_args']) + list(extra_args))
-        env['coqtop_args'] = tuple(list(env['coqtop_args']) + list(extra_args))
-        env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + list(extra_args))
-        for dirname, libname in env['libnames']:
-            env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
-            env['coqtop_args'] = tuple(list(env['coqtop_args']) + ['-R', dirname, libname])
-            env['passing_coqc_args'] = tuple(list(env['passing_coqc_args']) + ['-R', dirname, libname])
+        for args_name in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
+            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
+            for dirname, libname in env['libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name])
+
 
         coqc_version = get_coqc_version(env['coqc'])
         coqtop_version = get_coqtop_version(env['coqtop'])
