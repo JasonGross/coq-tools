@@ -163,7 +163,7 @@ def restore_file(file_name, backup_ext='.bak', backup_backup_ext='.unbak'):
         if backup_backup_ext:
             backup(file_name, backup_backup_ext)
         else:
-            os.remove(filename)
+            os.remove(file_name)
     os.rename(file_name + backup_ext, file_name)
 
 def write_to_file(file_name, contents, do_backup=False, backup_ext='.bak'):
