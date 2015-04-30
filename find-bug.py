@@ -921,6 +921,9 @@ def try_strip_empty_sections(output_file_name, temp_file_name, **kwargs):
 
 def add_admit_tactic(contents):
     tac_code = r"""Module Export AdmitTactic.
+Module Import LocalFalse.
+Inductive False := .
+End LocalFalse.
 Axiom proof_admitted : False.
 Tactic Notation "admit" := case proof_admitted.
 End AdmitTactic.
