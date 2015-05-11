@@ -8,7 +8,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help
 from custom_arguments import add_libname_arguments
 from file_util import clean_v_file
 from util import yes_no_prompt
@@ -123,16 +123,18 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
                     help=('The path to the coqtop program (default: %s).' % DEFAULT_COQTOP))
-parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, nargs='?',
+parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
-parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, nargs='?',
+parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, action='append',
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
                     help='The path to the coqc program that should compile the file successfully.')
-parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, nargs='?',
+parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
+                    help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
 
 def DEFAULT_LOG(text):
@@ -1061,18 +1063,37 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
 
     return True
 
-def deduplicate_trailing_dir_bindings(args):
+HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
+
+def all_tags(coqc_help):
+    return HELP_REG.findall(coqc_help)
+
+def get_single_tags(coqc_help):
+    return tuple(i for i in all_tags(coqc_help) if ' ' not in i)
+
+def get_multiple_tags(coqc_help):
+    return dict((i.split(' ')[0], len(i.split(' ')))
+                for i in all_tags(coqc_help)
+                if ' ' in i)
+
+def deduplicate_trailing_dir_bindings(args, coqc_help):
     args = list(args)
-    dir_bindings = []
+    bindings = []
     ret = []
+    single_tags = get_single_tags(coqc_help)
+    multiple_tags = get_multiple_tags(coqc_help)
     while len(args) > 0:
-        if args[0] == '-R' and len(args) >= 3:
-            if tuple(args[:3]) not in dir_bindings:
-                dir_bindings.append(tuple(args[:3]))
-            args = args[3:]
+        if args[0] in multiple_tags.keys() and len(args) >= multiple_tags[args[0]]:
+            cur_binding, args = tuple(args[:multiple_tags[args[0]]]), args[multiple_tags[args[0]]:]
+            if cur_binding not in bindings:
+                bindings.append(cur_binding)
+        elif args[0] in single_tags:
+            cur = args.pop(0)
+            if cur not in ret:
+                ret.append(cur)
         else:
             ret.append(args.pop(0))
-    for binding in dir_bindings:
+    for binding in bindings:
         ret.extend(binding)
     return tuple(ret)
 
@@ -1109,10 +1130,16 @@ if __name__ == '__main__':
         'timeout': args.timeout,
         'absolutize': args.absolutize,
         'minimize_before_inlining': args.minimize_before_inlining,
-        'coqc_args': tuple(i.strip() for i in process_maybe_list(args.coqc_args, log=log, verbose=verbose)),
-        'coqtop_args': tuple(i.strip() for i in process_maybe_list(args.coqtop_args, log=log, verbose=verbose)),
+        'coqc_args': tuple(i.strip()
+                           for i in (list(process_maybe_list(args.coqc_args, log=log, verbose=verbose))
+                                     + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
+        'coqtop_args': tuple(i.strip()
+                             for i in (list(process_maybe_list(args.coqtop_args, log=log, verbose=verbose))
+                                       + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
         'coq_makefile': args.coq_makefile,
-        'passing_coqc_args': tuple(i.strip() for i in process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose)),
+        'passing_coqc_args': tuple(i.strip()
+                                   for i in (list(process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose))
+                                             + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
         'passing_coqc' : (prepend_coqbin(args.passing_coqc)
                           if args.passing_coqc != ''
                           else (prepend_coqbin(args.coqc)
@@ -1170,21 +1197,22 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        extra_args = get_coq_prog_args(inlined_contents)
-        for args_name in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
-            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
-            for dirname, libname in env['libnames']:
-                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name])
-
-
         coqc_version = get_coqc_version(env['coqc'])
         coqtop_version = get_coqtop_version(env['coqtop'])
+        coqc_help = get_coqc_help(env['coqc'])
         old_header = get_old_header(inlined_contents, env['dynamic_header'])
         env['header_dict'] = {'original_line_count':0,
                               'old_header':old_header,
                               'coqc_version':coqc_version,
                               'coqtop_version':coqtop_version}
+
+        extra_args = get_coq_prog_args(inlined_contents)
+        for args_name in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
+            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
+            for dirname, libname in env['libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help)
+
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
         env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
