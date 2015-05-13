@@ -214,10 +214,11 @@ def get_error_reg_string(output_file_name, **kwargs):
         if kwargs['verbose']: kwargs['log']('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
-        output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
+        output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'])
         if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
+        if kwargs['verbose']: kwargs['log']('\nRan command: "%s"' % '" "'.join(cmds))
         print("\nThis file produces the following output when Coq'ed:\n%s" % output)
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
@@ -358,10 +359,10 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
 
-    output = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
+    output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
-            passing_output = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'])
+            passing_output, cmds = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'])
             if not diagnose_error.has_error(passing_output):
                 return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
             else:
@@ -987,7 +988,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         return die(None)
 
     if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
-    output = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
+    output, cmds = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'])
     line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
     try_strip_extra_lines(output_file_name, line_num, temp_file_name=temp_file_name, **env)
 

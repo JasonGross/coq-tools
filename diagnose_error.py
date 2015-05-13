@@ -124,11 +124,12 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
         f.write(contents)
         file_name = f.name
     start = time.time()
-    (stdout, stderr) = memory_robust_timeout_Popen_communicate([coqc, '-q'] + list(coqc_args) + [file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout if timeout > 0 else None))
+    cmds = [coqc, '-q'] + list(coqc_args) + [file_name]
+    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout if timeout > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    return clean_output(stdout)
+    return (clean_output(stdout), tuple(cmds))
