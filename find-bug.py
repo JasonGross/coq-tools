@@ -1077,7 +1077,10 @@ def get_multiple_tags(coqc_help):
                 for i in all_tags(coqc_help)
                 if ' ' in i)
 
-def deduplicate_trailing_dir_bindings(args, coqc_help):
+def topname_of_filename(file_name):
+    return os.path.splitext(os.path.basename(file_name))[0]
+
+def deduplicate_trailing_dir_bindings(args, coqc_help, file_name):
     args = list(args)
     bindings = []
     ret = []
@@ -1094,6 +1097,8 @@ def deduplicate_trailing_dir_bindings(args, coqc_help):
                 ret.append(cur)
         else:
             ret.append(args.pop(0))
+    if "-top" not in [i[0] for i in bindings]:
+        bindings.append(("-top", topname_of_filename(file_name)))
     for binding in bindings:
         ret.extend(binding)
     return tuple(ret)
@@ -1212,7 +1217,7 @@ if __name__ == '__main__':
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env['libnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help)
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name)
 
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
