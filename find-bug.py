@@ -8,7 +8,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top
 from custom_arguments import add_libname_arguments
 from file_util import clean_v_file
 from util import yes_no_prompt
@@ -1084,7 +1084,7 @@ def get_multiple_tags(coqc_help):
 def topname_of_filename(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
-def deduplicate_trailing_dir_bindings(args, coqc_help, file_name):
+def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
     args = list(args)
     bindings = []
     ret = []
@@ -1104,7 +1104,8 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, file_name):
     if '-top' not in [i[0] for i in bindings] and '-top' in multiple_tags.keys():
         bindings.append(('-top', topname_of_filename(file_name)))
     for binding in bindings:
-        ret.extend(binding)
+        if coq_accepts_top or binding[0] != '-top':
+            ret.extend(binding)
     return tuple(ret)
 
 if __name__ == '__main__':
@@ -1217,11 +1218,11 @@ if __name__ == '__main__':
                               'coqtop_version':coqtop_version}
 
         extra_args = get_coq_prog_args(inlined_contents)
-        for args_name in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
+        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env['libnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name)
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
