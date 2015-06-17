@@ -1101,8 +1101,8 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, file_name):
                 ret.append(cur)
         else:
             ret.append(args.pop(0))
-    if "-top" not in [i[0] for i in bindings]:
-        bindings.append(("-top", topname_of_filename(file_name)))
+    if '-top' not in [i[0] for i in bindings] and '-top' in multiple_tags.keys():
+        bindings.append(('-top', topname_of_filename(file_name)))
     for binding in bindings:
         ret.extend(binding)
     return tuple(ret)
