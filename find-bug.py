@@ -360,9 +360,13 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
 
     output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'])
+    if kwargs['verbose'] >= 2:
+        kwargs['log']('Ran command:\n%s' % ' '.join(cmds))
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
             passing_output, cmds = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'])
+            if kwargs['verbose'] >= 2:
+                kwargs['log']('Ran command:\n%s' % ' '.join(cmds))
             if not diagnose_error.has_error(passing_output):
                 return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
             else:
