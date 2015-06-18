@@ -1212,9 +1212,9 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        coqc_version = get_coqc_version(env['coqc'])
-        coqtop_version = get_coqtop_version(env['coqtop'])
-        coqc_help = get_coqc_help(env['coqc'])
+        coqc_version = get_coqc_version(env['coqc'], **env)
+        coqtop_version = get_coqtop_version(env['coqtop'], **env)
+        coqc_help = get_coqc_help(env['coqc'], **env)
         old_header = get_old_header(inlined_contents, env['dynamic_header'])
         env['header_dict'] = {'original_line_count':0,
                               'old_header':old_header,
