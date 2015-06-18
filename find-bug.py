@@ -123,6 +123,8 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
                     help='The path to the coqc program.')
 parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, default=DEFAULT_COQTOP,
                     help=('The path to the coqtop program (default: %s).' % DEFAULT_COQTOP))
+parser.add_argument('--coqc-is-coqtop', dest='coqc_is_coqtop', default=False, action='store_const', const=True,
+                    help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--coqc coqtop'")
 parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, action='append',
@@ -133,6 +135,8 @@ parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=
                     help='The path to the coqc program that should compile the file successfully.')
 parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
+                    help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
 parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
                     help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
@@ -1125,6 +1129,8 @@ if __name__ == '__main__':
     admit_opaque = args.admit_opaque
     aggressive = args.aggressive
     admit_transparent = args.admit_transparent
+    coqc_is_coqtop = args.coqc_is_coqtop
+    passing_coqc_is_coqtop = args.passing_coqc_is_coqtop
     if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
@@ -1226,6 +1232,15 @@ if __name__ == '__main__':
             for dirname, libname in env['libnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
+
+        if coqc_is_coqtop:
+            if env['coqc'] == 'coqc': env['coqc'] = 'coqtop'
+            env['coqc_args'] = tuple([env['coqc']] + list(env['coqc_args']))
+            env['coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
+        if passing_coqc_is_coqtop:
+            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = 'coqtop'
+            env['passing_coqc_args'] = tuple([env['passing_coqc']] + list(env['passing_coqc_args']))
+            env['passing_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
 
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')

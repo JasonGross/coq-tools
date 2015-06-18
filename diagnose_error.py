@@ -124,7 +124,7 @@ def get_coq_output(coqc, coqc_args, contents, timeout):
         f.write(contents)
         file_name = f.name
     start = time.time()
-    cmds = [coqc, '-q'] + list(coqc_args) + [file_name]
+    cmds = [coqc] + list(coqc_args) + [file_name, "-q"]
     (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout if timeout > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
