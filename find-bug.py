@@ -374,7 +374,10 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
         else:
             return (CHANGE_SUCCESS, new_padded_contents, (output,), None, 'Change successful.  ')
     else:
-        return (CHANGE_FAILURE, new_padded_contents, (output,), 0, '')
+        extra_desc = ''
+        if kwargs['verbose'] >= 2:
+            extra_desc = 'The error was:\n%s\n' % output
+        return (CHANGE_FAILURE, new_padded_contents, (output,), 0, error_desc)
 
 def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    unchanged_message='No change.', success_message='Change successful.',
