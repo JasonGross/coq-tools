@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e
+
 function strip_v() {
     for i in "$@"
     do
@@ -13,6 +16,7 @@ function strip_v() {
     done
 }
 
-cd "$(dirname "$0")"
+#cd "$(dirname "$0")"
 
-exec $(strip_v "$@")
+#echo exec $(strip_v "$@")
+echo | exec $(strip_v "$@")

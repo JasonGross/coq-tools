@@ -113,23 +113,36 @@ def memory_robust_timeout_Popen_communicate(*args, **kwargs):
             print('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)))
             time.sleep(10)
 
-@memoize
-def get_coq_output(coqc, coqc_args, contents, timeout):
+COQ_OUTPUT = {}
+
+def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, verbose_base=1, **kwargs):
     """Returns the coqc output of running through the given
     contents."""
     global TIMEOUT
-    if timeout < 0 and TIMEOUT is not None:
-        return get_coq_output(coqc, coqc_args, contents, TIMEOUT)
-    with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
-        f.write(contents)
-        file_name = f.name
+    if timeout_val < 0 and TIMEOUT is not None:
+        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, verbose_base=verbose_base, **kwargs)
+
+    key = (coqc_prog, tuple(coqc_prog_args), contents, timeout_val)
+    if key in COQ_OUTPUT.keys():
+        file_name = COQ_OUTPUT[key][0]
+    else:
+        with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
+            f.write(contents)
+            file_name = f.name
+
+    cmds = [coqc_prog] + list(coqc_prog_args) + [file_name, "-q"]
+    if kwargs['verbose'] >= verbose_base:
+        kwargs['log']('\nRunning command: "%s"' % '" "'.join(cmds))
+
+    if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
+
     start = time.time()
-    cmds = [coqc] + list(coqc_args) + [file_name, "-q"]
-    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout if timeout > 0 else None))
+    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    return (clean_output(stdout), tuple(cmds))
+    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds)))
+    return COQ_OUTPUT[key][1]
