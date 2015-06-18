@@ -13,7 +13,7 @@ def get_coqc_version_helper(coqc):
 
 def get_coqc_version(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
-        kwargs['log']('\nRunning command: "%s"' % '" "'.join([coqc_prog, "-v"]))
+        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-v"]))
     return get_coqc_version_helper(coqc_prog)
 
 @memoize
@@ -24,7 +24,7 @@ def get_coqc_help_helper(coqc):
 
 def get_coqc_help(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
-        kwargs['log']('\nRunning command: "%s"' % '" "'.join([coqc_prog, "-help"]))
+        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-help"]))
     return get_coqc_help_helper(coqc_prog)
 
 @memoize
@@ -35,7 +35,7 @@ def get_coqtop_version_helper(coqtop):
 
 def get_coqtop_version(coqtop_prog, **kwargs):
     if kwargs['verbose'] >= 2:
-        kwargs['log']('\nRunning command: "%s"' % '" "'.join([coqtop_prog, "-v"]))
+        kwargs['log']('Running command: "%s"' % '" "'.join([coqtop_prog, "-v"]))
     return get_coqtop_version_helper(coqtop_prog)
 
 @memoize
