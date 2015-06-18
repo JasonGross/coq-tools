@@ -1212,13 +1212,6 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        extra_args = get_coq_prog_args(inlined_contents)
-        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
-            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
-            for dirname, libname in env['libnames']:
-                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
-
         if coqc_is_coqtop:
             if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
             env['coqc_args'] = tuple([env['coqc']] + list(env['coqc_args']))
@@ -1238,7 +1231,12 @@ if __name__ == '__main__':
                               'coqc_version':coqc_version,
                               'coqtop_version':coqtop_version}
 
-
+        extra_args = get_coq_prog_args(inlined_contents)
+        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
+            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
+            for dirname, libname in env['libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
         env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
