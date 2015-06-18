@@ -1234,11 +1234,11 @@ if __name__ == '__main__':
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
         if coqc_is_coqtop:
-            if env['coqc'] == 'coqc': env['coqc'] = 'coqtop'
+            if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
             env['coqc_args'] = tuple([env['coqc']] + list(env['coqc_args']))
             env['coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
         if passing_coqc_is_coqtop:
-            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = 'coqtop'
+            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
             env['passing_coqc_args'] = tuple([env['passing_coqc']] + list(env['passing_coqc_args']))
             env['passing_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
 
