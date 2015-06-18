@@ -1212,15 +1212,6 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        coqc_version = get_coqc_version(env['coqc'], **env)
-        coqtop_version = get_coqtop_version(env['coqtop'], **env)
-        coqc_help = get_coqc_help(env['coqc'], **env)
-        old_header = get_old_header(inlined_contents, env['dynamic_header'])
-        env['header_dict'] = {'original_line_count':0,
-                              'old_header':old_header,
-                              'coqc_version':coqc_version,
-                              'coqtop_version':coqtop_version}
-
         extra_args = get_coq_prog_args(inlined_contents)
         for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
@@ -1236,6 +1227,17 @@ if __name__ == '__main__':
             if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
             env['passing_coqc_args'] = tuple([env['passing_coqc']] + list(env['passing_coqc_args']))
             env['passing_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
+
+
+        coqc_version = get_coqc_version(env['coqc'], **env)
+        coqtop_version = get_coqtop_version(env['coqtop'], **env)
+        coqc_help = get_coqc_help(env['coqc'], **env)
+        old_header = get_old_header(inlined_contents, env['dynamic_header'])
+        env['header_dict'] = {'original_line_count':0,
+                              'old_header':old_header,
+                              'coqc_version':coqc_version,
+                              'coqtop_version':coqtop_version}
+
 
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
