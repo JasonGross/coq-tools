@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse, tempfile, sys, os, re
+import custom_arguments
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
@@ -20,7 +21,7 @@ import diagnose_error
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
-parser = argparse.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
+parser = custom_arguments.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
 parser.add_argument('--directory', '-d', metavar='DIRECTORY', dest='directory', type=str, default='.',
                     help='The directory in which to execute')
 parser.add_argument('bug_file', metavar='BUGGY_FILE', type=argparse.FileType('r'),
@@ -1111,7 +1112,13 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_to
     return tuple(ret)
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as exc:
+        if exc.message == 'expected one argument':
+            exc.reraise('\nNote that argparse does not accept arguments with leading dashes.\nTry --foo=bar or --foo " -bar", if this was your intent.\nSee Python issue 9334.')
+        else:
+            exc.reraise()
     os.chdir(args.directory)
     def prepend_coqbin(prog):
         if args.coqbin != '':
