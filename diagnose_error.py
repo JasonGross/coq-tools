@@ -143,7 +143,7 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
     start = time.time()
-    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None))
+    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
