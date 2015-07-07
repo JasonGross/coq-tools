@@ -384,6 +384,8 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    failure_description='make a change', changed_description='Changed file',
                                    verbose_base=1,
                                    **kwargs):
+    if kwargs['verbose'] >= 2 + verbose_base:
+        kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents)
     change_result, contents, outputs, output_i, error_desc = classify_contents_change(old_contents, new_contents, **kwargs)
     if change_result == CONTENTS_UNCHANGED:
         if kwargs['verbose'] >= verbose_base: kwargs['log']('\n%s' % unchanged_message)
