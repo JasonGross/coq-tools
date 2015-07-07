@@ -30,6 +30,8 @@ def fill_kwargs(kwargs):
     for k, v in defaults.items():
         if k not in kwargs.keys():
             kwargs[k] = v
+    if 'make_coqc' in kwargs.keys(): # handle the case where coqc for the makefile is different
+        kwargs['coqc'] = kwargs['make_coqc']
     return kwargs
 
 def contents_without_imports(lib, **kwargs):
@@ -170,6 +172,8 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=Fal
     >>> names = [i for i in names if os.path.exists(i)]
     >>> for name in names: os.remove(name)
     """
+    if 'make_coqc' in kwargs.keys():
+        coqc = kwargs['make_coqc']
     if filename[-2:] != '.v': filename += '.v'
     lib = lib_of_filename(filename, libnames=tuple(libnames))
     all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, libnames=tuple(libnames), coqc=coqc, coq_makefile=coq_makefile, **kwargs)

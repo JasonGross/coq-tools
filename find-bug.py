@@ -1199,6 +1199,13 @@ if __name__ == '__main__':
             sys.exit(1)
 
 
+        if env['coqc_is_coqtop']:
+            if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
+            env['make_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + env['coqc']
+        if env['passing_coqc_is_coqtop']:
+            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
+
+
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: log('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = normalize_requires(bug_file_name, **env)
@@ -1218,12 +1225,6 @@ if __name__ == '__main__':
             else:
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
-
-        if env['coqc_is_coqtop']:
-            if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
-        if env['passing_coqc_is_coqtop']:
-            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
-
 
         coqc_version = get_coqc_version(env['coqc'], **env)
         coqtop_version = get_coqtop_version(env['coqtop'], **env)
