@@ -958,6 +958,17 @@ def default_on_fatal(message):
 def minimize_file(output_file_name, die=default_on_fatal, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
+
+    coqc_version = get_coqc_version(env['coqc'], **env)
+    coqtop_version = get_coqtop_version(env['coqtop'], **env)
+    coqc_help = get_coqc_help(env['coqc'], **env)
+    old_header = get_old_header(contents, env['dynamic_header'])
+    env['header_dict'] = {'original_line_count':0,
+                          'old_header':old_header,
+                          'coqc_version':coqc_version,
+                          'coqtop_version':coqtop_version}
+
+
     if not check_change_and_write_to_file('', contents, output_file_name,
                                           unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
                                           failure_description='validate all coq runs', changed_description='The',
@@ -1228,14 +1239,7 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        coqc_version = get_coqc_version(env['coqc'], **env)
-        coqtop_version = get_coqtop_version(env['coqtop'], **env)
         coqc_help = get_coqc_help(env['coqc'], **env)
-        old_header = get_old_header(inlined_contents, env['dynamic_header'])
-        env['header_dict'] = {'original_line_count':0,
-                              'old_header':old_header,
-                              'coqc_version':coqc_version,
-                              'coqtop_version':coqtop_version}
 
         extra_args = get_coq_prog_args(inlined_contents)
         for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
