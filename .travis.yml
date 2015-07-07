@@ -16,3 +16,4 @@ script:
  - yes "y" | examples/run-example-7.sh
  - yes "y" | examples/run-example-8.py
  - yes "y" | examples/run-example-8-2.sh
+ - yes "y" | examples/run-example-8-3.sh

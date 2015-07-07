@@ -115,12 +115,12 @@ def memory_robust_timeout_Popen_communicate(*args, **kwargs):
 
 COQ_OUTPUT = {}
 
-def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, verbose_base=1, **kwargs):
+def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=False, verbose_base=1, **kwargs):
     """Returns the coqc output of running through the given
     contents."""
     global TIMEOUT
     if timeout_val < 0 and TIMEOUT is not None:
-        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, verbose_base=verbose_base, **kwargs)
+        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, is_coqtop=is_coqtop, verbose_base=verbose_base, **kwargs)
 
     key = (coqc_prog, tuple(coqc_prog_args), contents, timeout_val)
     if key in COQ_OUTPUT.keys():
@@ -130,7 +130,13 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, verbose_bas
             f.write(contents)
             file_name = f.name
 
-    cmds = [coqc_prog] + list(coqc_prog_args) + [file_name, "-q"]
+    file_name_root = os.path.splitext(file_name)[0]
+
+    cmds = [coqc_prog] + list(coqc_prog_args)
+    if is_coqtop:
+        cmds.extend(['-load-vernac-source', file_name_root, '-q'])
+    else:
+        cmds.extend([file_name, '-q'])
     if kwargs['verbose'] >= verbose_base:
         kwargs['log']('\nRunning command: "%s"' % '" "'.join(cmds))
 

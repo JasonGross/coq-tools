@@ -219,7 +219,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if kwargs['verbose']: kwargs['log']('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
-        output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=1, **kwargs)
+        output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=1, **kwargs)
         if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
@@ -363,10 +363,10 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
 
-    output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], verbose_base=2, **kwargs)
+    output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
-            passing_output, cmds = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], verbose_base=2, **kwargs)
+            passing_output, cmds = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
             if not diagnose_error.has_error(passing_output):
                 return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
             else:
@@ -995,7 +995,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         return die(None)
 
     if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
-    output, cmds = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], verbose_base=2, **env)
+    output, cmds = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], is_coqtop=env['coqc_is_coqtop'], verbose_base=2, **env)
     line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
     try_strip_extra_lines(output_file_name, line_num, **env)
 
@@ -1131,8 +1131,6 @@ if __name__ == '__main__':
     admit_opaque = args.admit_opaque
     aggressive = args.aggressive
     admit_transparent = args.admit_transparent
-    coqc_is_coqtop = args.coqc_is_coqtop
-    passing_coqc_is_coqtop = args.passing_coqc_is_coqtop
     if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
@@ -1167,7 +1165,9 @@ if __name__ == '__main__':
                                 if args.passing_coqc_args is not None
                                 else None)),
         'walk_tree': args.walk_tree,
-        'temp_file_name': args.temp_file
+        'temp_file_name': args.temp_file,
+        'coqc_is_coqtop': args.coqc_is_coqtop,
+        'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop
         }
 
     if bug_file_name[-2:] != '.v':
@@ -1219,14 +1219,10 @@ if __name__ == '__main__':
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
 
-        if coqc_is_coqtop:
+        if env['coqc_is_coqtop']:
             if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
-            env['coqc_args'] = tuple([env['coqc']] + list(env['coqc_args']))
-            env['coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
-        if passing_coqc_is_coqtop:
+        if env['passing_coqc_is_coqtop']:
             if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
-            env['passing_coqc_args'] = tuple([env['passing_coqc']] + list(env['passing_coqc_args']))
-            env['passing_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh')
 
 
         coqc_version = get_coqc_version(env['coqc'], **env)
