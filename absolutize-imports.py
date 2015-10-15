@@ -22,6 +22,8 @@ parser.add_argument('--quiet', '-q', dest='quiet',
 parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
                     default=[sys.stderr],
                     help='The files to log output to.  Use - for stdout.')
+parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
+                    help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
@@ -75,15 +77,20 @@ if __name__ == '__main__':
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
     log = make_logger(args.log_files)
+    def prepend_coqbin(prog):
+        if args.coqbin != '':
+            return os.path.join(args.coqbin, prog)
+        else:
+            return prog
     env = {
         'libnames': args.libnames,
         'verbose': verbose,
         'log': log,
-        'coqc': args.coqc,
+        'coqc': prepend_coqbin(args.coqc),
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
         'absolutize': args.absolutize,
-        'coq_makefile': args.coq_makefile
+        'coq_makefile': prepend_coqbin(args.coq_makefile)
         }
 
     for f in args.input_files:
