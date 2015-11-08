@@ -15,7 +15,7 @@ DEFAULT_LIBNAMES=(('.', 'Top'), )
 IMPORT_ABSOLUTIZE_TUPLE = ('lib', )# 'mod')
 ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')# , 'mod', 'modtype')
 
-IMPORT_REG = re.compile('^R[0-9]+:[0-9]+ ([^ ]+) <> <> lib$', re.MULTILINE)
+IMPORT_REG = re.compile('^R([0-9]+):([0-9]+) ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
 def warning(*objs):
@@ -215,20 +215,45 @@ def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
                     kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
     return file_contents[filename]
 
+def get_require_dict(lib, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    lib = norm_libname(lib, **kwargs)
+    glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
+    v_name = filename_of_lib(lib, ext='.v', **kwargs)
+    if lib not in lib_imports_slow.keys():
+        make_globs([lib], **kwargs)
+        print(glob_name)
+        if os.path.isfile(glob_name): # making succeeded
+            with open(glob_name, 'r') as f:
+                contents = f.read()
+            lines = contents.split('\n')
+            lib_imports_slow[lib] = {}
+            for start, end, name in IMPORT_REG.findall(contents):
+                name = norm_libname(name, **kwargs)
+                if name not in lib_imports_slow[lib].keys():
+                    lib_imports_slow[lib][name] = []
+                lib_imports_slow[lib][name].append((int(start), int(end)))
+            for name in lib_imports_slow[lib].keys():
+                lib_imports_slow[lib][name] = tuple(lib_imports_slow[lib][name])
+    if lib in lib_imports_slow.keys():
+        return lib_imports_slow[lib]
+    return {}
+
+def get_require_names(lib, **kwargs):
+    return tuple(sorted(get_require_dict(lib, **kwargs).keys()))
+
+def get_require_locations(lib, **kwargs):
+    return sorted(set(loc for name, locs in get_require_dict(lib, **kwargs).items()
+                      for loc in locs))
+
+
 def get_imports(lib, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if not fast:
-        if lib not in lib_imports_slow.keys():
-            make_globs([lib], **kwargs)
-            if os.path.isfile(glob_name): # making succeeded
-                with open(glob_name, 'r') as f:
-                    contents = f.read()
-                lines = contents.split('\n')
-                lib_imports_slow[lib] = tuple(sorted(set(norm_libname(name, **kwargs)
-                                                         for name in IMPORT_REG.findall(contents))))
+        get_require_dict(lib, **kwargs)
         if lib in lib_imports_slow.keys():
             return lib_imports_slow[lib]
     # making globs failed, or we want the fast way, fall back to regexp
