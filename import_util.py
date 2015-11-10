@@ -222,7 +222,6 @@ def get_require_dict(lib, **kwargs):
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if lib not in lib_imports_slow.keys():
         make_globs([lib], **kwargs)
-        print(glob_name)
         if os.path.isfile(glob_name): # making succeeded
             with open(glob_name, 'r') as f:
                 contents = f.read()
