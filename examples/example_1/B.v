@@ -12,5 +12,5 @@ Qed.
 
 
 Definition B : Type.
-  refine (_ * _); refine (_ * _); abstract exact True.
+  refine (_ * _)%type; refine (_ * _)%type; abstract exact True.
 Defined.
