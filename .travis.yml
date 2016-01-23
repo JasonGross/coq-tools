@@ -1,10 +1,14 @@
 language: python
 
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - coq
+
 python:
  - "2.7"
-
-before_script:
- - sudo apt-get install -q coq
 
 script:
  - yes "y" | examples/run-example-1.sh
