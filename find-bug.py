@@ -109,15 +109,15 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "Default: -1"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
-parser.add_argument('--minimize-before-inlining', dest='minimize_before_inlining',
-                    action='store_const', const=True, default=False,
-                    help=("Run the full minimization script before inlining [Requires], " +
+parser.add_argument('--no-minimize-before-inlining', dest='minimize_before_inlining',
+                    action='store_const', const=False, default=True,
+                    help=("Don't run the full minimization script before inlining [Requires], " +
                           "and between the inlining of every individual [Require].\n\n" +
                           "Note that this option will not work well in conjunction with " +
                           "--passing-coqc.\n"
-                          "Note also that this option resulting in a much more fragile " +
-                          "run; it requires that the compiled dependencies of the file " +
-                          "being debugged remain in place for the duration of the run."))
+                          "Passing this option results in a much more robust " +
+                          "run; it removes the requirement that the compiled dependencies " +
+                          "of the file being debugged remain in place for the duration of the run."))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
                     help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
