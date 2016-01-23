@@ -75,6 +75,11 @@ parser.add_argument('--no-admit-transparent', dest='admit_transparent',
 parser.add_argument('--no-aggressive', dest='aggressive',
                     action='store_const', const=False, default=True,
                     help=("Be less aggressive; don't try to remove _all_ definitions/lines."))
+parser.add_argument('--no-remove-typeclasses', dest='save_typeclasses',
+                    action='store_const', const=True, default=False,
+                    help=("Don't remove Hints, Instances, or Canonical Structures; " +
+                          "this should mostly preserve typeclass logs, and can be useful " +
+                          "for debugging slow typeclass bugs."))
 parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
                     help=("A line to be placed at the top of the " +
@@ -356,6 +361,10 @@ def prepend_header(contents, dynamic_header='', header='', header_dict={}, **kwa
     #    use_header = ','.join(OrderedSet(use_header[:-3].split(','))) + ' *)'
     return '%s%s\n%s' % (coq_prog_args, use_header, contents)
 
+INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
+CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
+TC_HINT_REG = re.compile("(?<![\w'])Hint\s")
+
 CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
 def classify_contents_change(old_contents, new_contents, **kwargs):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE)
@@ -431,7 +440,14 @@ def try_transform_each(definitions, output_file_name, transformer, skip_n=1, **k
     while i >= 0:
         old_definition = definitions[i]
         new_definition = transformer(old_definition, definitions[i + 1:])
-        if not new_definition: new_definitions = []
+        if not new_definition:
+            if kwargs['save_typeclasses'] and \
+               (INSTANCE_REG.search(old_definition['statement']) or
+                CANONICAL_STRUCTURE_REG.search(old_definition['statement']) or
+                TC_HINT_REG.search(old_definition['statement'])):
+                if kwargs['verbose'] >= 3: kwargs['log']('Ignoring Instance/Canonical Structure/Hint: %s' % old_definition['statement'])
+                continue
+            new_definitions = []
         elif isinstance(new_definition, dict):
             if not new_definition['statement'].strip(): new_definitions = []
             else: new_definitions = [new_definition]
@@ -491,8 +507,15 @@ def try_transform_reversed(definitions, output_file_name, transformer, skip_n=1,
                 if kwargs['verbose'] >= 3: kwargs['log']('No change to %s' % new_definition['statement'])
             definitions[i] = new_definition
         else:
-            if kwargs['verbose'] >= 2: kwargs['log']('Removing %s' % definitions[i]['statement'])
-            definitions = definitions[:i] + definitions[i + 1:]
+            if kwargs['save_typeclasses'] and \
+               (INSTANCE_REG.search(definitions[i]['statement']) or
+                CANONICAL_STRUCTURE_REG.search(definitions[i]['statement']) or
+                TC_HINT_REG.search(definitions[i]['statement'])):
+                if kwargs['verbose'] >= 3: kwargs['log']('Ignoring Instance/Canonical Structure/Hint: %s' % definitions[i]['statement'])
+                pass
+            else:
+                if kwargs['verbose'] >= 2: kwargs['log']('Removing %s' % definitions[i]['statement'])
+                definitions = definitions[:i] + definitions[i + 1:]
 
     if check_change_and_write_to_file('', join_definitions(definitions), output_file_name,
                                       success_message=kwargs['noun_description']+' successful.', failure_description=kwargs['verb_description'],
@@ -559,8 +582,6 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs):
     return transformer
 
 
-INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
-CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
 def try_remove_non_instance_definitions(definitions, output_file_name, **kwargs):
     def get_names(definition):
         if INSTANCE_REG.search(definition['statements'][0]):
@@ -1162,6 +1183,7 @@ if __name__ == '__main__':
         'timeout': args.timeout,
         'absolutize': args.absolutize,
         'minimize_before_inlining': args.minimize_before_inlining,
+        'save_typeclasses': args.save_typeclasses,
         'coqc_args': tuple(i.strip()
                            for i in (list(process_maybe_list(args.coqc_args, log=log, verbose=verbose))
                                      + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
