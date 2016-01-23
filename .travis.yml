@@ -6,6 +6,7 @@ addons:
   apt:
     packages:
     - coq
+    - libcoq-ocaml-dev
 
 python:
  - "2.7"
