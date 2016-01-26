@@ -1,12 +1,12 @@
 Require Import D.
 
-Definition foo' : True.
+Definition e_foo' : True.
 Proof.
   idtac. (*Fail Timeout 1 repeat pose 1.*)
   exact I.
 Qed.
 
-Definition foo
-  := D.foo.
+Definition e_foo
+  := D.d_foo.
 
-Fail Check foo : True.
+Fail Check e_foo : True.

@@ -1,9 +1,9 @@
 Require Import A.
 
-Definition foo
-  := A.foo.
+Definition c_foo
+  := A.a_foo.
 
-Definition foo' : True.
+Definition c_foo' : True.
 Proof.
   idtac. (*Fail Timeout 1 repeat pose 1.*)
   exact I.
