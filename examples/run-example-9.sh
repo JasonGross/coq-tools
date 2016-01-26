@@ -4,7 +4,7 @@ cd "$DIR/example_9"
 PS4='$ '
 set -x
 python ../../find-bug.py example_9.v bug_9.v || exit $?
-EXPECTED='^(\* File reduced by coq-bug-finder from original input, then from 30 lines to 7 lines, then from 43 lines to 6 lines, then from 40 lines to 6 lines, then from 36 lines to 10 lines, then from 24 lines to 10 lines \*)$'
+EXPECTED='^(\* File reduced by coq-bug-finder from original input, then from 36 lines to 10 lines, then from 24 lines to 10 lines \*)$'
 LINES="$(grep -c "$EXPECTED" bug_9.v)"
 if [ "$LINES" -ne 1 ]
 then
