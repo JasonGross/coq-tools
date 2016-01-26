@@ -79,6 +79,7 @@ if __name__ == '__main__':
 
     env = {
         'libnames': args.libnames,
+        'non_recursive_libnames': args.non_recursive_libnames,
         'verbose': verbose,
         'log': log,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),

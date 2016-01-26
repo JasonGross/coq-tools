@@ -263,7 +263,8 @@ if __name__ == '__main__':
     verbose = args.verbose - args.quiet
     env = {
         'libnames': args.libnames,
-        'lib_to_dir': lib_to_dir_map(args.libnames),
+        'non_recursive_libnames': args.non_recursive_libnames,
+        'lib_to_dir': lib_to_dir_map(args.libnames + args.non_recursive_libnames),
         'verbose': verbose,
         'log': log,
         'hide_reg': args.hide_reg

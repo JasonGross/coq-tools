@@ -29,12 +29,13 @@ def DEFAULT_LOG(text):
 
 def fill_kwargs(kwargs):
     rtn = {
-        'libnames'    : DEFAULT_LIBNAMES,
-        'verbose'     : DEFAULT_VERBOSE,
-        'log'         : DEFAULT_LOG,
-        'coqc'        : 'coqc',
-        'coq_makefile': 'coq_makefile',
-        'walk_tree'   : True
+        'libnames'              : DEFAULT_LIBNAMES,
+        'non_recursive_libnames': tuple(),
+        'verbose'               : DEFAULT_VERBOSE,
+        'log'                   : DEFAULT_LOG,
+        'coqc'                  : 'coqc',
+        'coq_makefile'          : 'coq_makefile',
+        'walk_tree'             : True
         }
     rtn.update(kwargs)
     return rtn
@@ -65,8 +66,8 @@ def clear_libimport_cache(libname):
         del lib_imports_slow[libname]
 
 @memoize
-def filename_of_lib_helper(lib, libnames, ext):
-    for physical_name, logical_name in libnames:
+def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
+    for physical_name, logical_name in list(libnames) + list(non_recursive_libnames):
         if lib.startswith(libname_with_dot(logical_name)):
             lib = lib[len(libname_with_dot(logical_name)):]
             lib = os.path.join(physical_name, lib.replace('.', os.sep))
@@ -81,23 +82,23 @@ def filename_of_lib_helper(lib, libnames, ext):
 
 def filename_of_lib(lib, ext='.v', **kwargs):
     kwargs = fill_kwargs(kwargs)
-    return filename_of_lib_helper(lib, libnames=tuple(kwargs['libnames']), ext=ext)
+    return filename_of_lib_helper(lib, libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), ext=ext)
 
 @memoize
-def lib_of_filename_helper(filename, libnames, exts):
+def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
     filename = os.path.relpath(os.path.normpath(filename), '.')
     for ext in exts:
         if filename.endswith(ext):
             filename = filename[:-len(ext)]
             break
-    for physical_name, logical_name in ((os.path.relpath(os.path.normpath(phys), '.'), libname_with_dot(logical)) for phys, logical in libnames):
+    for physical_name, logical_name in ((os.path.relpath(os.path.normpath(phys), '.'), libname_with_dot(logical)) for phys, logical in list(libnames) + list(non_recursive_libnames)):
         if filename.startswith(physical_name) or (physical_name == '.' and not filename.startswith('..' + os.sep)):
             return (filename, logical_name + filename.replace(os.sep, '.'))
     return (filename, filename.replace(os.sep, '.'))
 
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
     kwargs = fill_kwargs(kwargs)
-    filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), exts=exts)
+    filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), exts=exts)
     if '.' in filename and kwargs['verbose']:
         kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return libname
@@ -153,10 +154,12 @@ def get_all_v_files(directory, exclude=tuple()):
     return tuple(map(fix_path, all_files))
 
 @memoize
-def get_makefile_contents_helper(coqc, coq_makefile, libnames, v_files, verbose, log):
+def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_libnames, v_files, verbose, log):
     cmds = [coq_makefile, 'COQC', '=', coqc]
     for physical_name, logical_name in libnames:
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    for physical_name, logical_name in non_recursive_libnames:
+        cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     cmds += list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
@@ -175,7 +178,7 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, v_files, verbose,
 
 def get_makefile_contents(v_files, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), v_files=v_files, verbose=kwargs['verbose'], log=kwargs['log'])
+    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), v_files=v_files, verbose=kwargs['verbose'], log=kwargs['log'])
 
 
 def make_globs(logical_names, **kwargs):

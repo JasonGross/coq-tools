@@ -34,6 +34,8 @@ def add_libname_arguments(parser):
                         help='The name to bind to the current directory using -R .')
     parser.add_argument('-R', metavar=('DIR', 'COQDIR'), dest='libnames', type=str, default=[('.', 'Top')], nargs=2, action=CoqLibnameAction,
                         help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
+    parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
+                        help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
 class ArgumentParser(argparse.ArgumentParser):

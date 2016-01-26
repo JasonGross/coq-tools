@@ -446,6 +446,7 @@ def try_transform_each(definitions, output_file_name, transformer, skip_n=1, **k
                 CANONICAL_STRUCTURE_REG.search(old_definition['statement']) or
                 TC_HINT_REG.search(old_definition['statement'])):
                 if kwargs['verbose'] >= 3: kwargs['log']('Ignoring Instance/Canonical Structure/Hint: %s' % old_definition['statement'])
+                i -= 1
                 continue
             new_definitions = []
         elif isinstance(new_definition, dict):
@@ -1170,6 +1171,7 @@ if __name__ == '__main__':
     verbose = args.verbose - args.quiet
     env = {
         'libnames': args.libnames,
+        'non_recursive_libnames': args.non_recursive_libnames,
         'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
@@ -1268,6 +1270,8 @@ if __name__ == '__main__':
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env['libnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
+            for dirname, libname in env['non_recursive_libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
         if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
@@ -1281,7 +1285,7 @@ if __name__ == '__main__':
             # requires to the top, then try to replace them in reverse
             # order.  As soon as we succeed, we reset the list
             last_output = ''
-            clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
+            clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
             cur_output = add_admit_tactic(normalize_requires(output_file_name, **env)).strip() + '\n'
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
@@ -1323,7 +1327,7 @@ if __name__ == '__main__':
                     restore_file(output_file_name, backup_ext='.require-bak', backup_backup_ext=None)
                     raise
 
-                clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames'])))
+                clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
                 cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env)).strip() + '\n'
 
             # and we make one final run, or, in case there are no requires, one run
