@@ -46,7 +46,7 @@ def make_reg_string(output):
 
     Precondition: has_error(output)
     """
-    error_string = get_error_string(output).strip()
+    error_string = get_error_string(output).strip().decode('utf-8')
     if 'Universe inconsistency' in error_string:
         re_string = re.sub(r'(Universe\\ inconsistency.*) because(.|\n)*',
                            r'\1 because.*',
@@ -73,7 +73,7 @@ def make_reg_string(output):
         re_string = re.sub(r'[\d]+',
                            r'[\d]+',
                            re_string)
-    return DEFAULT_ERROR_REG_STRING_GENERIC % re_string
+    return (DEFAULT_ERROR_REG_STRING_GENERIC % re_string).encode('utf-8')
 
 TIMEOUT = None
 
