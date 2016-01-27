@@ -1,6 +1,6 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/example_7"
+cd "$DIR/example_07"
 PS4='$ '
 set -x
 python ../../find-bug.py --no-minimize-before-inlining A-dash.v bug_A.v || exit $?
