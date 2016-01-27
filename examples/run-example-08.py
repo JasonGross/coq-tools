@@ -23,8 +23,8 @@ if __name__ == '__main__':
         sys.path.insert(0, cmd_subfolder)
     from replace_imports import normalize_requires, get_required_contents
     os.chdir(DIR)
-    os.chdir('example_8')
-    NORM_FOUND = normalize_requires("example_8.v")
+    os.chdir('example_08')
+    NORM_FOUND = normalize_requires("example_08.v")
     print('if %s != %s:' % (repr(NORM_FOUND), repr(NORM_EXPECT)))
     if NORM_FOUND != NORM_EXPECT:
         print('sys.exit(1)')

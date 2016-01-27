@@ -1,6 +1,6 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/example_6"
+cd "$DIR/example_06"
 PS4='$ '
 set -x
 COQC_84="$(readlink -f ~/.local64/coq/coq-8.4pl4/bin/coqc)"
