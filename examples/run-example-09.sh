@@ -5,7 +5,7 @@ PS4='$ '
 set -x
 EXPECTED_ERROR="Error: The command has not failed"
 ACTUAL_PRE="$(echo "y" | python ../../find-bug.py example_09.v bug_09.v 2>&1)"
-if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -ne 1 ]
+if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
