@@ -52,3 +52,4 @@ nosetests.xml
 /examples/example_07/bug_A.v
 /examples/example_08/bug_08.v
 /examples/example_09/bug_09.v
+/examples/example_10/bug_10.v
