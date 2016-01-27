@@ -3,7 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/example_9"
 PS4='$ '
 set -x
-EXPECTED_ERROR="Error: The command has not failed!"
+EXPECTED_ERROR="Error: The command has not failed"
 ACTUAL_PRE="$(echo "y" | python ../../find-bug.py example_9.v bug_9.v 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -ne 1 ]
 then
