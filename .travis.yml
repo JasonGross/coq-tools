@@ -11,17 +11,4 @@ addons:
 python:
  - "2.7"
 
-script:
- - yes "y" | examples/run-example-01.sh
- - yes "y" | examples/run-example-02.sh
- - yes "y" | examples/run-example-03.sh
- - yes "y" | examples/run-example-04.sh
- - yes "y" | examples/run-example-05.sh
-# - yes "y" | examples/run-example-06.sh # needs two Coq's
- - yes "y" | examples/run-example-07.sh
- - yes "y" | examples/run-example-08.py
- - yes "y" | examples/run-example-08-2.sh
- - yes "y" | examples/run-example-08-3.sh
- - yes "y" | examples/run-example-09.sh
-# - yes "y" | examples/run-example-10.sh # needs Coq 8.5
-- yes "y" | examples/run-example-11.sh
+script: make check CAT_ALL_LOGS=1
