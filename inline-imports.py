@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from custom_arguments import add_libname_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames
 from replace_imports import include_imports
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -78,8 +78,6 @@ if __name__ == '__main__':
     log = make_logger(args.log_files)
 
     env = {
-        'libnames': args.libnames,
-        'non_recursive_libnames': args.non_recursive_libnames,
         'verbose': verbose,
         'log': log,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
@@ -89,6 +87,7 @@ if __name__ == '__main__':
         'coq_makefile': args.coq_makefile,
         'walk_tree': args.walk_tree
         }
+    update_env_with_libnames(env, args)
 
     filename = args.input_file.name
     args.input_file.close()

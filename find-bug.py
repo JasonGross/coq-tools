@@ -10,7 +10,7 @@ from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top
-from custom_arguments import add_libname_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames
 from file_util import clean_v_file
 from util import yes_no_prompt
 import diagnose_error
@@ -1170,8 +1170,6 @@ if __name__ == '__main__':
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
     env = {
-        'libnames': args.libnames,
-        'non_recursive_libnames': args.non_recursive_libnames,
         'verbose': verbose,
         'fast_merge_imports': args.fast_merge_imports,
         'log': log,
@@ -1206,6 +1204,7 @@ if __name__ == '__main__':
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop
         }
+    update_env_with_libnames(env, args)
 
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)

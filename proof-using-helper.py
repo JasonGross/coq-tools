@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import with_statement
 import os, sys, re, argparse
-from custom_arguments import add_libname_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames
 from memoize import memoize
 
 # TODO:
@@ -262,13 +262,12 @@ if __name__ == '__main__':
     if args.quiet is None: args.quiet = 0
     verbose = args.verbose - args.quiet
     env = {
-        'libnames': args.libnames,
-        'non_recursive_libnames': args.non_recursive_libnames,
         'lib_to_dir': lib_to_dir_map(args.libnames + args.non_recursive_libnames),
         'verbose': verbose,
         'log': log,
         'hide_reg': args.hide_reg
         }
+    update_env_with_libnames(env, args)
     for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, start='The proof of ', **env):
         filenames = list(reversed(split_to_file_and_rest(theorem_id, **env)))
         if filenames:

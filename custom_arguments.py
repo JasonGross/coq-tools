@@ -2,7 +2,7 @@ from __future__ import print_function
 import sys
 import argparse
 
-__all__ = ["add_libname_arguments", "ArgumentParser"]
+__all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -32,10 +32,14 @@ class DeprecatedAction(argparse.Action):
 def add_libname_arguments(parser):
     parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top', action=DeprecatedAction, replacement='-R',
                         help='The name to bind to the current directory using -R .')
-    parser.add_argument('-R', metavar=('DIR', 'COQDIR'), dest='libnames', type=str, default=[('.', 'Top')], nargs=2, action=CoqLibnameAction,
+    parser.add_argument('-R', metavar=('DIR', 'COQDIR'), dest='libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
     parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
+
+def update_env_with_libnames(env, args):
+    env['libnames'] = (args.libnames if len(args.libnames + args.non_recursive_libnames) > 0 else [('.', 'Top')])
+    env['non_recursive_libnames'] = args.non_recursive_libnames
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
 class ArgumentParser(argparse.ArgumentParser):
