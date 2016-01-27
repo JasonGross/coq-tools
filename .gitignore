@@ -46,9 +46,9 @@ nosetests.xml
 
 /examples/example_*_log.log
 /examples/example_*_output.v
-/examples/example_4/A_abs.v
-/examples/example_4/B_abs.v
-/examples/example_6/bug_A.v
-/examples/example_7/bug_A.v
-/examples/example_8/bug_8.v
-/examples/example_9/bug_9.v
+/examples/example_04/A_abs.v
+/examples/example_04/B_abs.v
+/examples/example_06/bug_A.v
+/examples/example_07/bug_A.v
+/examples/example_08/bug_08.v
+/examples/example_09/bug_09.v
