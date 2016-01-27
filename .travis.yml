@@ -24,3 +24,4 @@ script:
  - yes "y" | examples/run-example-08-3.sh
  - yes "y" | examples/run-example-09.sh
 # - yes "y" | examples/run-example-10.sh # needs Coq 8.5
+- yes "y" | examples/run-example-11.sh
