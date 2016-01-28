@@ -108,6 +108,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
+    python ../prefix-grep.py "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0

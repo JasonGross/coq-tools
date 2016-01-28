@@ -97,9 +97,8 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-R" "\." "Top" "-top" "example_[0-9]\+") -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-
-Fail Check Set\.
-
+Notation "(+ \*) " := (Set Set)\.
+Check (+ \*) \.
 EOF
 )
 
@@ -112,6 +111,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
+    python ../prefix-grep.py "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0

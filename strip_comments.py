@@ -15,19 +15,34 @@ def strip_comments(contents):
     rtn = []
     is_string = False
     comment_level = 0
+    just_ended_comment = False
     for token in tokens:
+        if just_ended_comment and token == '':
+            just_ended_comment = False
+            continue
+        just_ended_comment = (token == '*)')
+        do_append = False
         if is_string:
             if token.count('"') % 2 == 1: # there are an odd number of '"' characters, indicating that we've ended the string
                 is_string = False
-            rtn.append(token)
+            do_append = True
         elif token == '(*':
+            if len(rtn) > 0 and rtn[-1] == '':
+                del rtn[-1]
             comment_level += 1
         elif comment_level > 0:
             if token == '*)':
                 comment_level -= 1
         elif token.count('"') % 2 == 1: # there are an odd number of '"' characters, so we're starting a string
             is_string = True
-            rtn.append(token)
+            do_append = True
         else:
+            do_append = True
+        if do_append:
+            # handle (*, *)
+            if token in ('(*', '*)') and len(rtn) > 0 and rtn[-1] == '':
+                del rtn[-1]
             rtn.append(token)
+            if len(rtn) > 0 and rtn[-1] in ('(*', '*)') and token == '':
+                del rtn[-1]
     return ' '.join(rtn).strip('\n\t ')
