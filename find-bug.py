@@ -1014,7 +1014,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     if env['verbose'] >= 1:
         env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
         strings = re.findall(r'"[^"\n\r]+"', contents)
-        bad_strings = [i for i in strings if re.search(r'\.\s', i)]
+        bad_strings = [i for i in strings if re.search(r'(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s', i)]
         if bad_strings:
             env['log']('If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].')
             env['log']('You have the following strings with periods in them:\n%s' % '\n'.join(bad_strings))
