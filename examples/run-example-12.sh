@@ -32,14 +32,6 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting example_12\.v
-getting example_12\.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_12\.v)\.\.\.
-
-Running command: "coqc" "-nois" "-R" "\." "Top" \("-top" "example_12" \)/?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 2
 
 This file produces the following output when Coq'ed:
