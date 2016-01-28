@@ -11,4 +11,4 @@ addons:
 python:
  - "2.7"
 
-script: make check CAT_ALL_LOGS=1
+script: make has-all-tests && make check CAT_ALL_LOGS=1
