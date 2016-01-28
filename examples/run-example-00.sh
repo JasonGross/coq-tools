@@ -29,6 +29,7 @@ set -x
 #
 # If you don't need to test the output of the initial requests, feel
 # free to remove this section.
+touch "$EXAMPLE_OUTPUT"
 EXPECTED_ERROR=$(cat <<EOF
 Warning: OUT_FILE (bug_00\.v) already exists\.  Would you like to overwrite?
 Please enter (y)es/(n)o:\s
