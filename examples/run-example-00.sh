@@ -30,9 +30,6 @@ set -x
 # If you don't need to test the output of the initial requests, feel
 # free to remove this section.
 EXPECTED_ERROR=$(cat <<EOF
-Warning: OUT_FILE (bug_00\.v) already exists\.  Would you like to overwrite?
-Please enter (y)es/(n)o:\s
-First, I will attempt to factor out all of the \[Require\]s example_00\.v, and store the result in bug_00\.v\.\.\.
 getting example_00\.v
 getting example_00\.glob
 
