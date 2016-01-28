@@ -29,7 +29,6 @@ set -x
 #
 # If you don't need to test the output of the initial requests, feel
 # free to remove this section.
-touch "$EXAMPLE_OUTPUT"
 EXPECTED_ERROR=$(cat <<EOF
 Warning: OUT_FILE (bug_00\.v) already exists\.  Would you like to overwrite?
 Please enter (y)es/(n)o:\s
@@ -63,6 +62,8 @@ Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
 EOFError: EOF when reading a line
 EOF
 )
+# pre-build the files to normalize the output for the run we're testing
+echo "y" | python ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>/dev/null >/dev/null
 ACTUAL_PRE="$((echo "y"; echo "y") | python ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
