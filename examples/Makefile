@@ -5,11 +5,12 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11
+DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12
 CONDITIONAL_TESTS = 06 10
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS))
 OTHER_RUNS = run-example-08.py
+IGNORE = prefix-grep.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
@@ -112,7 +113,7 @@ test-suite-verbose-report test-suite-report::
 
 
 
-MISSING_FILES = $(filter-out $(MAIN_RUNS) $(OTHER_RUNS), $(wildcard *.sh *.py))
+MISSING_FILES = $(filter-out $(MAIN_RUNS) $(OTHER_RUNS) $(IGNORE), $(wildcard *.sh *.py))
 ifneq (,$(MISSING_FILES))
 has-all-tests::
 	@echo "$(RED)Missing files: $(MISSING_FILES)$(NC)"

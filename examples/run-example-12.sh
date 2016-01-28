@@ -9,9 +9,9 @@
 
 ##########################################################
 # Various options that must be updated for each example
-EXAMPLE_DIRECTORY="example_00"
-EXAMPLE_INPUT="example_00.v"
-EXAMPLE_OUTPUT="bug_00.v"
+EXAMPLE_DIRECTORY="example_12"
+EXAMPLE_INPUT="example_12.v"
+EXAMPLE_OUTPUT="bug_12.v"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -30,26 +30,30 @@ set -x
 # If you don't need to test the output of the initial requests, feel
 # free to remove this section.
 EXPECTED_ERROR=$(cat <<EOF
-getting example_00\.v
-getting example_00\.glob
+getting example_12\.v
+getting example_12\.glob
 
 Now, I will attempt to coq the file, and find the error\.\.\.
 
-Coqing the file (bug_00\.v)\.\.\.
+Coqing the file (bug_12\.v)\.\.\.
 
-Running command: "coqc" "-nois" "-R" "\." "Top" "-top" "example_00" "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
+Running command: "coqc" "-nois" "-R" "\." "Top" "-top" "example_12" "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 2
 
 This file produces the following output when Coq'ed:
-Set
-     : Type
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 10, characters 0-15:
-Error: The command has not failed!
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 11, characters 6-10:
+Error: Illegal application (Non-functional construction):\s
+The expression "Set" of type "Type"
+cannot be applied to the term
+ "Set" : "Type"
 
 Does this output display the correct error? \[(y)es/(n)o\]\s
-I think the error is 'Error: The command has not failed!
+I think the error is 'Error: Illegal application (Non-functional construction):\s
+The expression "Set" of type "Type"
+cannot be applied to the term
+ "Set" : "Type"
 '\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ The\\\\ command\\\\ has\\\\ not\\\\ failed\\\\!)'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ Illegal\\\\ application\\\\ \\\\(Non\\\\-functional\\\\ construction\\\\)\\\\:\\\\ \\\\\\\\nThe\\\\ expression\\\\ \\\\"Set\\\\"\\\\ of\\\\ type\\\\ \\\\"Type\\\\"\\\\\\\\ncannot\\\\ be\\\\ applied\\\\ to\\\\ the\\\\ term\\\\\\\\n\\\\ \\\\"Set\\\\"\\\\ \\\\:\\\\ \\\\"Type\\\\")'\.
 Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in <module>
     env\['error_reg_string'\] = get_error_reg_string(output_file_name, \*\*env)
