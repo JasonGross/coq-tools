@@ -47,7 +47,7 @@ The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 '\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ Illegal\\\\ application\\\\ \\\\(Non\\\\-functional\\\\ construction\\\\)\\\\:\\\\ \\\\\\\\nThe\\\\ expression\\\\ \\\\"Set\\\\"\\\\ of\\\\ type\\\\ \\\\"Type\\\\"\\\\\\\\ncannot\\\\ be\\\\ applied\\\\ to\\\\ the\\\\ term\\\\\\\\n\\\\ \\\\"Set\\\\"\\\\ \\\\:\\\\ \\\\"Type\\\\")'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ Illegal\\\\ application\\\\ \\\\(Non\\\\-functional\\\\ construction\\\\)\\\\:\\\\ \\\\nThe\\\\ expression\\\\ \\\\"Set\\\\"\\\\ of\\\\ type\\\\ \\\\"Type\\\\"\\\\ncannot\\\\ be\\\\ applied\\\\ to\\\\ the\\\\ term\\\\n\\\\ \\\\"Set\\\\"\\\\ \\\\:\\\\ \\\\"Type\\\\")'\.
 Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in <module>
     env\['error_reg_string'\] = get_error_reg_string(output_file_name, \*\*env)
