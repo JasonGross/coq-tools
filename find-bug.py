@@ -238,7 +238,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            print("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\n', '\\n')))
+            print("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')))
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
