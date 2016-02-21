@@ -2,6 +2,7 @@
 import argparse, tempfile, sys, os, re
 import custom_arguments
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
+from import_util import get_file
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents
@@ -977,14 +978,14 @@ def default_on_fatal(message):
     if message is not None: print(message)
     sys.exit(1)
 
-def minimize_file(output_file_name, die=default_on_fatal, **env):
+def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
     coqc_version = get_coqc_version(env['coqc'], **env)
     coqtop_version = get_coqtop_version(env['coqtop'], **env)
     coqc_help = get_coqc_help(env['coqc'], **env)
-    old_header = get_old_header(contents, env['dynamic_header'])
+    if old_header is None: old_header = get_old_header(contents, env['dynamic_header'])
     env['header_dict'] = {'original_line_count':0,
                           'old_header':old_header,
                           'coqc_version':coqc_version,
@@ -1285,6 +1286,7 @@ if __name__ == '__main__':
             # order.  As soon as we succeed, we reset the list
             last_output = ''
             clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
+            old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
             cur_output = add_admit_tactic(normalize_requires(output_file_name, **env)).strip() + '\n'
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
@@ -1313,7 +1315,7 @@ if __name__ == '__main__':
                             continue
                         write_to_file(output_file_name, test_output)
                         diagnose_error.reset_timeout()
-                        if minimize_file(output_file_name, die=(lambda x: False), **env):
+                        if minimize_file(output_file_name, die=(lambda x: False), old_header=old_header, **env):
                             if os.path.exists(output_file_name + '.require-bak'):
                                 os.remove(output_file_name + '.require-bak')
                             break
@@ -1327,10 +1329,11 @@ if __name__ == '__main__':
                     raise
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
+                old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
                 cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env)).strip() + '\n'
 
             # and we make one final run, or, in case there are no requires, one run
-            minimize_file(output_file_name, **env)
+            minimize_file(output_file_name, old_header=old_header, **env)
 
     finally:
         if env['remove_temp_file']:
