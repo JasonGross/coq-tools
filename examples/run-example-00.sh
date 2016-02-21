@@ -9,9 +9,10 @@
 
 ##########################################################
 # Various options that must be updated for each example
-EXAMPLE_DIRECTORY="example_00"
-EXAMPLE_INPUT="example_00.v"
-EXAMPLE_OUTPUT="bug_00.v"
+N="00"
+EXAMPLE_DIRECTORY="example_$N"
+EXAMPLE_INPUT="example_$N.v"
+EXAMPLE_OUTPUT="bug_$N.v"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
