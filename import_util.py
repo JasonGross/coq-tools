@@ -346,7 +346,7 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
         if not fast: make_globs(imports, **kwargs)
-        imports_list = [recur(i, fast=fast, **kwargs)
-                        for i in imports]
+        imports_list = [recur(k, fast=fast, **kwargs)
+                        for k, v in sorted(imports.items(), key=(lambda kv: kv[1]))]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
     return [lib]
