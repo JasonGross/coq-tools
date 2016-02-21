@@ -6,7 +6,7 @@ CAT_ALL_LOGS=0
 ####
 
 DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12
-CONDITIONAL_TESTS = 06 10
+CONDITIONAL_TESTS = 06 10 13
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
@@ -41,6 +41,7 @@ BOLD=$(shell tput bold)
 NORMAL=$(shell tput sgr0)
 
 COQC_SUPPORTS_Q=$(shell coqc --help 2>&1 | grep -c -- -Q)
+COQC_SUPPORTS_FROM=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>/dev/null >/dev/null; echo $$?)
 
 check::
 	$(MAKE) -B test-suite
@@ -57,6 +58,10 @@ test-suite: $(DEFAULT_LOGS)
 
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
 test-suite: example_10_result.log
+endif
+
+ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
+test-suite: example_13_result.log
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
@@ -122,3 +127,6 @@ else
 has-all-tests::
 
 endif
+
+clean::
+	rm -f */bug*.v */*.vo */*.v.d */*.glob $(DEFAULT_LOGS) $(CONDITIONAL_LOGS)
