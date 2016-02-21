@@ -12,7 +12,7 @@ lib_imports_slow = {}
 DEFAULT_VERBOSE=1
 DEFAULT_LIBNAMES=(('.', 'Top'), )
 
-IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
+IMPORT_LINE_REG = re.compile(r'^\s*(?:From|Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
 def DEFAULT_LOG(text):
     print(text)

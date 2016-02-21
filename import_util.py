@@ -123,6 +123,52 @@ def get_constr_name(code):
     last_component = first_word.split('.')[-1]
     return last_component
 
+def move_strings_once(before, after, possibility):
+    for i in possibility:
+        if before[-len(i):] == i:
+            return before[:-len(i)], before[-len(i):] + after
+    return None, None
+
+def move_strings_pre(before, after, possibility):
+    while len(before) > 0:
+        new_before, new_after = move_strings_once(before, after, possibility)
+        if new_before is None or new_after is None:
+            return before, after
+        before, after = new_before, new_after
+    return (before, after)
+
+def move_function(before, after, get_len):
+    while len(before) > 0:
+        n = get_len(before)
+        if n is None or n <= 0:
+            return before, after
+        before, after = before[:-n], before[n:] + after
+    return before, after
+
+def move_strings(before, after, *possibilities):
+    for possibility in possibilities:
+        before, after = move_strings_pre(before, after, possibility)
+    return before, after
+
+def move_space(before, after):
+    return move_strings(before, after, '\n\t\r ')
+
+def remove_from_require_before(contents, location):
+    """removes "From ... " from things like "From ... Require ..." """
+    before, after = contents[:location], contents[location:]
+    before, after = move_space(before, after)
+    before, after = move_strings_once(before, after, ('Import', 'Export'))
+    if before is None or after is None: return contents
+    before, after = move_space(before, after)
+    before, after = move_strings_once(before, after, ('Require',))
+    if before is None or after is None: return contents
+    before, _ = move_space(before, after)
+    before, _ = move_function(before, after, (lambda b: 1 if b[-1] not in ' \t\r\n' else None))
+    if before is None: return contents
+    before, _ = move_space(before, after)
+    before, _ = move_strings_once(before, after, ('From',))
+    if before is None: return contents
+    return before + after
 
 def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -142,6 +188,7 @@ def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambd
             if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, contents[start:end], rep))
             if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, contents[start:end], rep, start, end, loc, append, ty))
             contents = '%s%s%s' % (contents[:start], rep, contents[end:])
+            contents = remove_from_require_before(contents, start)
 
     return contents
 
