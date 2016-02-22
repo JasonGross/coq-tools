@@ -3,7 +3,7 @@ import os, sys, inspect
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
-NORM_EXPECT='Require Coq.omega.Omega.\nRequire Top.A.\nRequire Top.B.\nRequire Top.C.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n'
+NORM_EXPECT='Require Coq.omega.Omega.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n'
 
 GET_EXPECT = {
     'Coq.omega.Omega': None,
