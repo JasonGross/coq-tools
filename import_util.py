@@ -301,6 +301,9 @@ def get_imports(lib, fast=False, **kwargs):
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
+    ### XXX TODO: Make get_imports return the same type regardless of
+    ### whether it's called with fast=False (currently returns dict),
+    ### or fast=True (currently returns tuple)
     if not fast:
         get_require_dict(lib, **kwargs)
         if lib in lib_imports_slow.keys():
@@ -338,6 +341,11 @@ def internal_recursively_get_imports(lib, **kwargs):
 def recursively_get_imports(lib, **kwargs):
     return internal_recursively_get_imports(lib, **safe_kwargs(kwargs))
 
+def tuple_of_dict_or_tuple(imports):
+    if isinstance(imports, dict):
+        return tuple(k for k, v in sorted(imports.items(), key=(lambda kv: kv[1])))
+    return imports
+
 def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
@@ -346,7 +354,6 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
         if not fast: make_globs(imports, **kwargs)
-        imports_list = [recur(k, fast=fast, **kwargs)
-                        for k, v in sorted(imports.items(), key=(lambda kv: kv[1]))]
+        imports_list = [recur(k, fast=fast, **kwargs) for k in tuple_of_dict_or_tuple(imports)]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
     return [lib]
