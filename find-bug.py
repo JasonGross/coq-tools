@@ -142,6 +142,8 @@ parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=
                     help='The path to the coqc program that should compile the file successfully.')
 parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_coqc_args', type=str, action='append',
+                    help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
 parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
@@ -1186,10 +1188,11 @@ if __name__ == '__main__':
         'minimize_before_inlining': args.minimize_before_inlining,
         'save_typeclasses': args.save_typeclasses,
         'coqc_args': tuple(i.strip()
-                           for i in (list(process_maybe_list(args.coqc_args, log=log, verbose=verbose))
+                           for i in (list(process_maybe_list(args.nonpassing_coqc_args, log=log, verbose=verbose))
                                      + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
         'coqtop_args': tuple(i.strip()
                              for i in (list(process_maybe_list(args.coqtop_args, log=log, verbose=verbose))
+                                       + list(process_maybe_list(args.nonpassing_coqc_args, log=log, verbose=verbose))
                                        + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
         'coq_makefile': args.coq_makefile,
         'passing_coqc_args': tuple(i.strip()
