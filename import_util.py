@@ -201,12 +201,14 @@ def get_all_v_files(directory, exclude=tuple()):
     return tuple(map(fix_path, all_files))
 
 @memoize
-def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_libnames, v_files, verbose, log):
+def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_libnames, v_files, coqc_args, verbose, log):
     cmds = [coq_makefile, 'COQC', '=', coqc]
     for physical_name, logical_name in libnames:
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in non_recursive_libnames:
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    for arg in coqc_args:
+        cmds += ['-arg', arg]
     cmds += list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
@@ -225,7 +227,7 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
 
 def get_makefile_contents(v_files, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), v_files=v_files, verbose=kwargs['verbose'], log=kwargs['log'])
+    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), v_files=v_files, coqc_args=kwargs['coqc_args'], verbose=kwargs['verbose'], log=kwargs['log'])
 
 
 def make_globs(logical_names, **kwargs):
