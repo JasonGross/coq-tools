@@ -35,7 +35,8 @@ def fill_kwargs(kwargs):
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
         'coq_makefile'          : 'coq_makefile',
-        'walk_tree'             : True
+        'walk_tree'             : True,
+        'coqc_args'             : tuple(),
         }
     rtn.update(kwargs)
     return rtn
