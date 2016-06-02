@@ -71,6 +71,7 @@ $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_
 	$(VIECHO) "TEST run-example-$*.sh... $$RESULT" >&2
 
 test-suite-verbose-report::
+	$(Q)$(MAKE) test-suite-report
 	$(Q)for i in $(wildcard example_*_result.log); do                       \
 	        if [ "$$(cat $$i)" -ne 0 ]; then                                \
 	                echo "$(RED)$$i$(NC):";                                 \
