@@ -14,9 +14,6 @@ class CoqLibnameAction(argparse.Action):
         if not self.non_default:
             setattr(namespace, self.dest, [])
             self.non_default = True
-        if values[0] != '.':
-            print('ERROR: Only `-R . %s` is supported, not `-R %s %s`' % (values[1], values[0], values[1]), file=sys.stderr)
-            sys.exit(0)
         getattr(namespace, self.dest).append(tuple(values))
 
 class DeprecatedAction(argparse.Action):

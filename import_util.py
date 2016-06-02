@@ -94,7 +94,7 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
             break
     for physical_name, logical_name in ((os.path.relpath(os.path.normpath(phys), '.'), libname_with_dot(logical)) for phys, logical in list(libnames) + list(non_recursive_libnames)):
         if filename.startswith(physical_name) or (physical_name == '.' and not filename.startswith('..' + os.sep)):
-            return (filename, logical_name + filename.replace(os.sep, '.'))
+            return (filename, logical_name + os.path.relpath(filename, physical_name).replace(os.sep, '.'))
     return (filename, filename.replace(os.sep, '.'))
 
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
