@@ -98,8 +98,13 @@ if __name__ == '__main__':
     #p.stdin.close()
     #p.wait()
     text = sys.argv[1]
-    start = text.index(search_for)
-    end = start + len(search_for)
+    p = subprocess.Popen(["grep", "-o", search_for], universal_newlines=False, stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate(input=text)
+    p.stdin.close()
+    p.wait()
+    found = stdout
+    start = text.index(found)
+    end = start + len(found)
     pre, mid, post = text[:start], text[start:end], text[end:]
     print(pre + format_text(mid, GREEN) + post)
     if len(search_for) < len(sys.argv[2]):
