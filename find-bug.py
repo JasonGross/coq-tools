@@ -10,7 +10,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
 from custom_arguments import add_libname_arguments, update_env_with_libnames
 from file_util import clean_v_file
 from util import yes_no_prompt
@@ -1113,42 +1113,11 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
 
     return True
 
-HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
-
-def all_tags(coqc_help):
-    return HELP_REG.findall(coqc_help)
-
-def get_single_tags(coqc_help):
-    return tuple(i for i in all_tags(coqc_help) if ' ' not in i)
-
-def get_multiple_tags(coqc_help):
-    return dict((i.split(' ')[0], len(i.split(' ')))
-                for i in all_tags(coqc_help)
-                if ' ' in i)
-
 def topname_of_filename(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
-def args_to_bindings(args, coqc_help, file_name):
-    args = list(args)
-    bindings = []
-    single_tags = get_single_tags(coqc_help)
-    multiple_tags = get_multiple_tags(coqc_help)
-    while len(args) > 0:
-        if args[0] in multiple_tags.keys() and len(args) >= multiple_tags[args[0]]:
-            cur_binding, args = tuple(args[:multiple_tags[args[0]]]), args[multiple_tags[args[0]]:]
-            if cur_binding not in bindings:
-                bindings.append(cur_binding)
-        else:
-            cur = tuple([args.pop(0)])
-            if cur[0] not in single_tags or cur not in bindings:
-                bindings.append(cur)
-    if '-top' not in [i[0] for i in bindings] and '-top' in multiple_tags.keys():
-        bindings.append(('-top', topname_of_filename(file_name)))
-    return bindings
-
 def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
-    bindings = args_to_bindings(args, coqc_help, file_name)
+    bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
     ret = []
     for binding in bindings:
         if coq_accepts_top or binding[0] != '-top':
@@ -1156,7 +1125,7 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_to
     return tuple(ret)
 
 def has_dir_binding(args, coqc_help, file_name):
-    bindings = args_to_bindings(args, coqc_help, file_name)
+    bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
     return any(i[0] in ('-R', '-Q') for i in bindings)
 
 def maybe_add_coqlib_import(contents, **env):

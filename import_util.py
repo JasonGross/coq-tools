@@ -1,6 +1,7 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
+from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 
 __all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache"]
 
@@ -209,12 +210,16 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in non_recursive_libnames:
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    coqc_args = list(coqc_args)
-    while coqc_args and coqc_args[0] in ('-R', '-Q'):
-        cmds += coqc_args[:3]
-        coqc_args = coqc_args[3:]
-    for arg in coqc_args:
-        cmds += ['-arg', arg]
+    coq_makefile_help = get_coqc_help(coq_makefile, verbose=verbose, log=log)
+    grouped_args, unrecognized_args = group_coq_args_split_recognized(coqc_args, coq_makefile_help, is_coq_makefile=True)
+    for args in grouped_args:
+        cmds.extend(args)
+    if unrecognized_args:
+        if coq_makefile_supports_arg(coq_makefile_help):
+            for arg in unrecognized_args:
+                cmds += ['-arg', arg]
+        else:
+            if verbose: log('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
