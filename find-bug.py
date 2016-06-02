@@ -135,9 +135,11 @@ parser.add_argument('--coqtop', metavar='COQTOP', dest='coqtop', type=str, defau
 parser.add_argument('--coqc-is-coqtop', dest='coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--coqc coqtop'")
 parser.add_argument('--coqc-args', metavar='ARG', dest='coqc_args', type=str, action='append',
-                    help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+                    help=('Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)\n' +
+                          'NOTE: If you want to pass an argument to both coqc and coqtop, use --arg="-indices-matter", not --coqc-args="-indices-matter"'))
 parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str, action='append',
-                    help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+                    help=('Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)\n' +
+                          'NOTE: If you want to pass an argument to both coqc and coqtop, use --arg="-indices-matter", not --coqc-args="-indices-matter"'))
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
