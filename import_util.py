@@ -209,9 +209,13 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in non_recursive_libnames:
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    cmds += list(map(fix_path, v_files))
+    coqc_args = list(coqc_args)
+    while coqc_args and coqc_args[0] in ('-R', '-Q'):
+        cmds += coqc_args[:3]
+        coqc_args = coqc_args[3:]
     for arg in coqc_args:
         cmds += ['-arg', arg]
+    cmds += list(map(fix_path, v_files))
     if verbose:
         log(' '.join(cmds))
     try:
