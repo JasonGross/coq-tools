@@ -88,7 +88,7 @@ python ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $ARGS || exit $?
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs" "-R" "Baz" "Qux" "-nois"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
 (\* coqc version [^\*]*\*)
 
 Require Qux\.A\.

@@ -30,16 +30,14 @@ You can add `-v` for a more verbose output.
 If you are using a non-system version of Coq, you can pass `--coqtop
 /path/to/coqtop` and `--coqc /path/to/coqc`.  If you pass `-R . Foo`
 to, say, `coq_makefile`, you can inform `find-bug.py` of this fact
-using `-R . Foo`.  The script should be run from the main directory of
-your development; there is an experimental `--directory` argument to
-allow you to do otherwise.
+using `-R . Foo`.
 
 ### Examples
 
 There is an example in the examples directory.  You can run
-`run-example-1.sh` to see how the program works.  You can pass this
+`run-example-01.sh` to see how the program works.  You can pass this
 script the arguments `-v`, `-vv`, or `-vvv` for different levels of
-verbosity.  Look at the contents of `run-example-1.sh` to see how to
+verbosity.  Look at the contents of `run-example-01.sh` to see how to
 invoke the program.
 
 ### Known Bugs
@@ -51,12 +49,10 @@ coqtop.bat file which is chosen as the default coqtop program.
 Somehow running via a .bat file makes things work.  You will probably
 have to use a similar wrapper if you use a custom coqtop executable.
 
-The `--directory` argument has poor semantics.  It should be improved.
-
 proof-using-helper
 ------------------
 
-The script `proof-using-helper.py` is the main program; run 
+The script `proof-using-helper.py` is the main program; run
 `proof-using-helper.py -h` to see the options.
 
 ### Usage

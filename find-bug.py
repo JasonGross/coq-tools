@@ -23,8 +23,6 @@ SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
 parser = custom_arguments.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
-parser.add_argument('--directory', '-d', metavar='DIRECTORY', dest='directory', type=str, default='.',
-                    help='The directory in which to execute')
 parser.add_argument('bug_file', metavar='BUGGY_FILE', type=argparse.FileType('r'),
                     help='a .v file which displays the bug')
 parser.add_argument('output_file', metavar='OUT_FILE', type=str,
@@ -1163,7 +1161,6 @@ if __name__ == '__main__':
             exc.reraise('\nNote that argparse does not accept arguments with leading dashes.\nTry --foo=bar or --foo " -bar", if this was your intent.\nSee Python issue 9334.')
         else:
             exc.reraise()
-    os.chdir(args.directory)
     def prepend_coqbin(prog):
         if args.coqbin != '':
             return os.path.join(args.coqbin, prog)
