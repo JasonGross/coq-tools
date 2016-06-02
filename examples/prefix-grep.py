@@ -48,7 +48,12 @@ def binary_search_on_string(f, arg):
     while end + 1 < len(arg) and f(arg[start:end + 1]) == GOOD:
         sys.stderr.write("This should be impossible (2)\n")
         end += 1
-    return arg[start:end]
+    orig_end = end
+    while end + 1 < len(arg):
+        end += 1
+        if f(arg[start:end]) == GOOD:
+            orig_end = end
+    return arg[start:orig_end]
 
 def check_grep_for(in_str, search_for):
     #print("echo %s | grep -q %s" % (repr(in_str), repr(search_for)))
