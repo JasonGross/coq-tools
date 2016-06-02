@@ -1125,10 +1125,9 @@ def get_multiple_tags(coqc_help):
 def topname_of_filename(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
-def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
+def args_to_bindings(args, coqc_help, file_name):
     args = list(args)
     bindings = []
-    ret = []
     single_tags = get_single_tags(coqc_help)
     multiple_tags = get_multiple_tags(coqc_help)
     while len(args) > 0:
@@ -1136,18 +1135,25 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_to
             cur_binding, args = tuple(args[:multiple_tags[args[0]]]), args[multiple_tags[args[0]]:]
             if cur_binding not in bindings:
                 bindings.append(cur_binding)
-        elif args[0] in single_tags:
-            cur = args.pop(0)
-            if cur not in ret:
-                ret.append(cur)
         else:
-            ret.append(args.pop(0))
+            cur = tuple([args.pop(0)])
+            if cur[0] not in single_tags or cur not in bindings:
+                bindings.append(cur)
     if '-top' not in [i[0] for i in bindings] and '-top' in multiple_tags.keys():
         bindings.append(('-top', topname_of_filename(file_name)))
+    return bindings
+
+def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
+    bindings = args_to_bindings(args, coqc_help, file_name)
+    ret = []
     for binding in bindings:
         if coq_accepts_top or binding[0] != '-top':
             ret.extend(binding)
     return tuple(ret)
+
+def has_dir_binding(args, coqc_help, file_name):
+    bindings = args_to_bindings(args, coqc_help, file_name)
+    return any(i[0] in ('-R', '-Q') for i in bindings)
 
 if __name__ == '__main__':
     try:
@@ -1208,7 +1214,6 @@ if __name__ == '__main__':
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop
         }
-    update_env_with_libnames(env, args)
 
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
@@ -1231,20 +1236,25 @@ if __name__ == '__main__':
         temp_file.close()
         env['remove_temp_file'] = True
 
+    if env['coqc_is_coqtop']:
+        if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
+        env['make_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + env['coqc']
+    if env['passing_coqc_is_coqtop']:
+        if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
+
+    coqc_help = get_coqc_help(env['coqc'], **env)
+
+    if has_dir_binding(env['coqc_args'], coqc_help=coqc_help, file_name=bug_file_name):
+        update_env_with_libnames(env, args, default=tuple([]))
+    else:
+        update_env_with_libnames(env, args)
+
     try:
 
         if env['temp_file_name'][-2:] != '.v':
             print('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
             log('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
             sys.exit(1)
-
-
-        if env['coqc_is_coqtop']:
-            if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
-            env['make_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + env['coqc']
-        if env['passing_coqc_is_coqtop']:
-            if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
-
 
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: log('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
@@ -1265,8 +1275,6 @@ if __name__ == '__main__':
             else:
                 if env['verbose'] >= 1: log('Failed to inline inputs.')
                 sys.exit(1)
-
-        coqc_help = get_coqc_help(env['coqc'], **env)
 
         extra_args = get_coq_prog_args(inlined_contents)
         for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):

@@ -34,8 +34,8 @@ def add_libname_arguments(parser):
     parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
 
-def update_env_with_libnames(env, args):
-    env['libnames'] = (args.libnames if len(args.libnames + args.non_recursive_libnames) > 0 else [('.', 'Top')])
+def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
+    env['libnames'] = (args.libnames if len(args.libnames + args.non_recursive_libnames) > 0 else list(default))
     env['non_recursive_libnames'] = args.non_recursive_libnames
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
