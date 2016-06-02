@@ -1,6 +1,26 @@
 from __future__ import with_statement
 import subprocess, sys
 
+NO_COLOR = 'no_color'
+RED = 'red'
+GREEN = 'green'
+
+COLORS = (RED, GREEN)
+
+FORMATS = {NO_COLOR : r'\033[0m',
+           RED      : r'\033[0;31m',
+           GREEN    : r'\033[0;32m'}
+
+def format_text_helper(text, fmt):
+    if fmt in COLORS:
+        return '%s%s%s' % (FORMATS[fmt], text, FORMATS[NO_COLOR])
+    return text
+
+def format_text(text, *fmts):
+    for fmt in fmts:
+        text = format_text_helper(text, fmt)
+    return text
+
 GOOD = True
 BAD = False
 INVALID = None
@@ -73,10 +93,15 @@ if __name__ == '__main__':
     def check_grep(search_for):
         return check_grep_for(sys.argv[1], search_for)
     search_for = binary_search_on_string(check_grep, sys.argv[2])
-    p = subprocess.Popen(["grep", "--color=auto", search_for], universal_newlines=False, stdin=subprocess.PIPE)
-    p.communicate(input=sys.argv[1])
-    p.stdin.close()
-    p.wait()
+    #p = subprocess.Popen(["grep", "--color=auto", search_for], universal_newlines=False, stdin=subprocess.PIPE)
+    #p.communicate(input=sys.argv[1])
+    #p.stdin.close()
+    #p.wait()
+    text = sys.argv[1]
+    start = text.index(search_for)
+    end = start + len(search_for)
+    pre, mid, post = text[:start], text[start:end], text[end:]
+    print(pre + format_text(mid, GREEN) + post)
     if len(search_for) < len(sys.argv[2]):
         print("Mismatch: bad next characters: %s" % (repr(sys.argv[2][len(search_for):][:10])))
     #sys.exit(p.errorcode)
