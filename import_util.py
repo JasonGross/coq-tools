@@ -36,7 +36,8 @@ def fill_kwargs(kwargs):
         'coqc'                  : 'coqc',
         'coq_makefile'          : 'coq_makefile',
         'walk_tree'             : True,
-        'coqc_args'             : tuple()
+        'coqc_args'             : tuple(),
+        'inline_coqlib'         : None,
         }
     rtn.update(kwargs)
     return rtn
@@ -348,6 +349,13 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
+        if kwargs['inline_coqlib']:
+            try:
+                coqlib_imports = get_imports('Coq.Init.Prelude', fast=fast, **kwargs)
+                if imports and not any(i in imports for i in coqlib_imports):
+                    imports = tuple(list(coqlib_imports) + list(imports))
+            except IOError as e:
+                kwargs['log']("WARNING: --inline-coqlib passed, but no Coq.Init.Prelude found on disk.\n  Try passing `-R %s Coq'\n  (Error was: %s)\n\n" % (os.path.join(kwargs['inline_coqlib'], 'theories'), repr(e)))
         if not fast: make_globs(imports, **kwargs)
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
