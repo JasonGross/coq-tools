@@ -45,8 +45,8 @@ The timeout has been set to: 2
 
 This file produces the following output when Coq'ed:\(
 .*?\)\?
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-41:
-Error: The term "eq_refl" has type "forall x : ?[0-9], eq x x"
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line [0-9]\+, characters 6-41:
+Error: The term "eq_refl" has type "forall x : ?[0-9]\+, eq x x"
  while it is expected to have type "eq v (forall x : Prop, x)"\.
 
 Does this output display the correct error? \[(y)es/(n)o\]\s
