@@ -1,4 +1,4 @@
-__all__ = ["prompt", "yes_no_prompt", "format_text", "NO_COLOR", "RED", "GREEN"]
+__all__ = ["prompt", "yes_no_prompt"]
 
 
 def prompt(options, case_sensitive=False, strip=True, sep='/', prefix='Please enter ', postfix=': '):
@@ -19,23 +19,3 @@ def yes_no_prompt(**kwargs):
     return prompt(({'value':True, 'display':'(y)es', 'values':('y', 'yes')},
                    {'value':False, 'display':'(n)o', 'values':('n', 'no')}),
                   **kwargs)
-
-NO_COLOR = 'no_color'
-RED = 'red'
-GREEN = 'green'
-
-COLORS = (RED, GREEN)
-
-FORMATS = {NO_COLOR : r'\033[0m',
-           RED      : r'\033[0;31m',
-           GREEN    : r'\033[0;32m'}
-
-def format_text_helper(text, fmt):
-    if fmt in COLORS:
-        return '%s%s%s' % (FORMATS[fmt], text, FORMATS[NO_COLOR])
-    return text
-
-def format_text(text, *fmts):
-    for fmt in fmts:
-        text = format_text_helper(text, fmt)
-    return text
