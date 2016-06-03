@@ -103,12 +103,6 @@ if __name__ == '__main__':
     p.stdin.close()
     p.wait()
     found = stdout
-    print(stdout)
-    print('\n')
-    print(stderr)
-    print('\n')
-    print(text)
-    print('\n')
     start = text.index(found)
     end = start + len(found)
     pre, mid, post = text[:start], text[start:end], text[end:]
