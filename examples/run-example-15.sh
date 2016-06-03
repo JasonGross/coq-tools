@@ -36,14 +36,14 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting example_15/example_15\.v
-getting example_15/example_15\.glob
+getting example_[0-9]\+/example_[0-9]\+\.v
+getting example_[0-9]\+/example_[0-9]\+\.glob
 
 Now, I will attempt to coq the file, and find the error\.\.\.
 
-Coqing the file (example_15/bug_15\.v)\.\.\.
+Coqing the file (example_[0-9]\+/bug_[0-9]\+\.v)\.\.\.
 
-Running command: "coqc" "-nois" "-R" "example_15" "Top" \("-top" "example_15" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
+Running command: "coqc" "-nois" "-R" "example_[0-9]\+" "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 2
 
 This file produces the following output when Coq'ed:
@@ -90,7 +90,7 @@ python "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit $?
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-R" "example_15" "Top"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-R" "example_[0-9]\+" "Top"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
