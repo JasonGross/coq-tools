@@ -33,24 +33,9 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting example_14\.v
-getting example_14\.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_14\.v)\.\.\.
-
-Running command: "coqc" "-impredicative-set" "-nois" "-R" "\." "Top" \("-top" "example_14" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: 2
-
-This file produces the following output when Coq'ed:\(
-.*?\)\?
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line [0-9]\+, characters 6-41:
 Error: The term "eq_refl" has type "forall x : ?[0-9]\+, eq x x"
  while it is expected to have type "eq v (forall x : Prop, x)"\.
-
-Does this output display the correct error? \[(y)es/(n)o\]\s
-I think the error is 'Error: The term.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing

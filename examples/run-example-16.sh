@@ -34,23 +34,9 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting example_16\.v
-getting example_16\.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_16\.v)\.\.\.
-
-Running command: "coqc" "-R" "Baz" "Qux" "-nois" \("-top" "example_16" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: 2
-
-This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 12, characters 6-13:
 Error: The term "X" has type "Set -> Set" while it is expected to have type
  "Set"\.
-
-Does this output display the correct error? \[(y)es/(n)o\]\s
-I think the error is 'Error: .*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
