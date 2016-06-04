@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
 from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from custom_arguments import add_libname_arguments
+from custom_arguments import add_libname_arguments, add_logging_arguments, process_logging_arguments
+from file_util import write_to_file
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -13,15 +14,6 @@ parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='
 parser.add_argument('--all', '-a', dest='absolutize', action='store_const',
                     const=ALL_ABSOLUTIZE_TUPLE, default=IMPORT_ABSOLUTIZE_TUPLE,
                     help='Absolutize all constants, and not just imports.')
-parser.add_argument('--verbose', '-v', dest='verbose',
-                    action='count',
-                    help='display some extra information')
-parser.add_argument('--quiet', '-q', dest='quiet',
-                    action='count',
-                    help='the inverse of --verbose')
-parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
-                    default=[sys.stderr],
-                    help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
                     help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
@@ -29,36 +21,8 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
 add_libname_arguments(parser)
+add_logging_arguments(parser)
 
-DEFAULT_VERBOSITY=1
-
-def make_logger(log_files):
-    def log(text):
-        for i in log_files:
-            i.write(str(text) + '\n')
-            i.flush()
-            if i.fileno() > 2: # stderr
-                os.fsync(i.fileno())
-    return log
-
-DEFAULT_LOG = make_logger([sys.stderr])
-
-def backup(file_name, ext='.bak'):
-    if not ext:
-        raise ValueError
-    if os.path.exists(file_name):
-        backup(file_name + ext)
-        os.rename(file_name, file_name + ext)
-
-def write_to_file(file_name, contents, do_backup=False, ext='.bak'):
-    if do_backup:
-        backup(file_name, ext=ext)
-    try:
-        with open(file_name, 'w', encoding='UTF-8') as f:
-            f.write(contents)
-    except TypeError:
-        with open(file_name, 'w') as f:
-            f.write(contents)
 
 def absolutize_imports(infile, **kwargs):
     filename = infile.name
@@ -72,11 +36,7 @@ def absolutize_imports(infile, **kwargs):
         print(absolutized_contents)
 
 if __name__ == '__main__':
-    args = parser.parse_args()
-    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
-    if args.quiet is None: args.quiet = 0
-    verbose = args.verbose - args.quiet
-    log = make_logger(args.log_files)
+    args = process_logging_arguments(parser.parse_args())
     def prepend_coqbin(prog):
         if args.coqbin != '':
             return os.path.join(args.coqbin, prog)
@@ -84,8 +44,8 @@ if __name__ == '__main__':
             return prog
     env = {
         'libnames': args.libnames,
-        'verbose': verbose,
-        'log': log,
+        'verbose': args.verbose,
+        'log': args.log,
         'coqc': prepend_coqbin(args.coqc),
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,

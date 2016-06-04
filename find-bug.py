@@ -11,8 +11,8 @@ from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
-from custom_arguments import add_libname_arguments, update_env_with_libnames
-from file_util import clean_v_file
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
+from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt
 import diagnose_error
 
@@ -29,18 +29,9 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=str,
                     help='a .v file which will hold intermediate results, as well as the final reduced file')
 parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, default='',
                     help='a .v file which will be used to build up intermediate files while they are being tested')
-parser.add_argument('--verbose', '-v', dest='verbose',
-                    action='count',
-                    help='display some extra information')
-parser.add_argument('--quiet', '-q', dest='quiet',
-                    action='count',
-                    help='the inverse of --verbose')
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
-parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
-                    default=[sys.stdout],
-                    help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                     action='store_const', const=False, default=True,
                     help=("Don't wrap imports in Modules.  By default, the " +
@@ -153,69 +144,7 @@ parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', d
 parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
                     help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
-
-def DEFAULT_LOG(text):
-    print(text)
-
-DEFAULT_VERBOSITY=1
-
-def make_logger(log_files):
-    def log(text):
-        for i in log_files:
-            i.write(str(text) + '\n')
-            i.flush()
-            if i.fileno() > 2: # stderr
-                os.fsync(i.fileno())
-    return log
-
-def backup(file_name, ext='.bak'):
-    if not ext:
-        raise ValueError
-    if os.path.exists(file_name):
-        backup(file_name + ext)
-        os.rename(file_name, file_name + ext)
-
-def restore_file(file_name, backup_ext='.bak', backup_backup_ext='.unbak'):
-    if not os.path.exists(file_name + backup_ext):
-        raise IOError
-    if os.path.exists(file_name):
-        if backup_backup_ext:
-            backup(file_name, backup_backup_ext)
-        else:
-            os.remove(file_name)
-    os.rename(file_name + backup_ext, file_name)
-
-def write_to_file(file_name, contents, do_backup=False, backup_ext='.bak'):
-    backed_up = False
-    while not backed_up:
-        try:
-            if do_backup:
-                backup(file_name, ext=backup_ext)
-            backed_up = True
-        except IOError as e:
-            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
-            time.sleep(10)
-    written = False
-    while not written:
-        try:
-            try:
-                with open(file_name, 'w', encoding='UTF-8') as f:
-                    f.write(contents)
-            except TypeError:
-                with open(file_name, 'w') as f:
-                    f.write(contents)
-            written = True
-        except IOError as e:
-            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
-            time.sleep(10)
-
-def read_from_file(file_name):
-    try:
-        with open(file_name, 'r', encoding='UTF-8') as f:
-            return f.read()
-    except TypeError:
-        with open(file_name, 'r') as f:
-            return f.read()
+add_logging_arguments(parser)
 
 @memoize
 def re_compile(pattern, *args):
@@ -1135,7 +1064,7 @@ def maybe_add_coqlib_import(contents, **env):
 
 if __name__ == '__main__':
     try:
-        args = parser.parse_args()
+        args = process_logging_arguments(parser.parse_args())
     except argparse.ArgumentError as exc:
         if exc.message == 'expected one argument':
             exc.reraise('\nNote that argparse does not accept arguments with leading dashes.\nTry --foo=bar or --foo " -bar", if this was your intent.\nSee Python issue 9334.')
@@ -1148,17 +1077,13 @@ if __name__ == '__main__':
             return prog
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
-    log = make_logger(args.log_files)
     admit_opaque = args.admit_opaque
     aggressive = args.aggressive
     admit_transparent = args.admit_transparent
-    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
-    if args.quiet is None: args.quiet = 0
-    verbose = args.verbose - args.quiet
     env = {
-        'verbose': verbose,
+        'verbose': args.verbose,
         'fast_merge_imports': args.fast_merge_imports,
-        'log': log,
+        'log': args.log,
         'coqc': prepend_coqbin(args.coqc),
         'coqtop': prepend_coqbin(args.coqtop),
         'as_modules': args.wrap_modules,
@@ -1171,16 +1096,16 @@ if __name__ == '__main__':
         'minimize_before_inlining': args.minimize_before_inlining,
         'save_typeclasses': args.save_typeclasses,
         'coqc_args': tuple(i.strip()
-                           for i in (list(process_maybe_list(args.nonpassing_coqc_args, log=log, verbose=verbose))
-                                     + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
+                           for i in (list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
+                                     + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'coqtop_args': tuple(i.strip()
-                             for i in (list(process_maybe_list(args.coqtop_args, log=log, verbose=verbose))
-                                       + list(process_maybe_list(args.nonpassing_coqc_args, log=log, verbose=verbose))
-                                       + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
+                             for i in (list(process_maybe_list(args.coqtop_args, log=args.log, verbose=args.verbose))
+                                       + list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
+                                       + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'coq_makefile': args.coq_makefile,
         'passing_coqc_args': tuple(i.strip()
-                                   for i in (list(process_maybe_list(args.passing_coqc_args, log=log, verbose=verbose))
-                                             + list(process_maybe_list(args.coq_args, log=log, verbose=verbose)))),
+                                   for i in (list(process_maybe_list(args.passing_coqc_args, log=args.log, verbose=args.verbose))
+                                             + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'passing_coqc' : (prepend_coqbin(args.passing_coqc)
                           if args.passing_coqc != ''
                           else (prepend_coqbin(args.coqc)
@@ -1195,15 +1120,15 @@ if __name__ == '__main__':
 
     if bug_file_name[-2:] != '.v':
         print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
-        #log('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        #env['log']('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
         sys.exit(1)
     if output_file_name[-2:] != '.v':
         print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
-        #log('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        #env['log']('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
         sys.exit(1)
     if os.path.exists(output_file_name):
         print('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
-        #log('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        #env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
         if not yes_no_prompt():
             sys.exit(1)
 
@@ -1231,11 +1156,11 @@ if __name__ == '__main__':
 
         if env['temp_file_name'][-2:] != '.v':
             print('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
-            log('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
+            env['log']('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
             sys.exit(1)
 
         if env['minimize_before_inlining']:
-            if env['verbose'] >= 1: log('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
+            if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = normalize_requires(bug_file_name, **env)
             args.bug_file.close()
             inlined_contents = maybe_add_coqlib_import(inlined_contents, **env)
@@ -1244,19 +1169,19 @@ if __name__ == '__main__':
         else:
             if env['inline_coqlib']:
                 print('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.')
-                log('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.')
+                env['log']('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.')
                 sys.exit(1)
-            if env['verbose'] >= 1: log('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+            if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = include_imports(bug_file_name, **env)
             args.bug_file.close()
             if inlined_contents:
                 inlined_contents = add_admit_tactic(inlined_contents)
-                if env['verbose'] >= 1: log('Stripping trailing ends')
+                if env['verbose'] >= 1: env['log']('Stripping trailing ends')
                 while re.search(r'End [^ \.]*\.\s*$', inlined_contents):
                     inlined_contents = re.sub(r'End [^ \.]*\.\s*$', '', inlined_contents)
                 write_to_file(output_file_name, inlined_contents)
             else:
-                if env['verbose'] >= 1: log('Failed to inline inputs.')
+                if env['verbose'] >= 1: env['log']('Failed to inline inputs.')
                 sys.exit(1)
 
         if env['inline_coqlib']:
@@ -1273,7 +1198,7 @@ if __name__ == '__main__':
                 env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
-        if env['verbose'] >= 1: log('\nNow, I will attempt to coq the file, and find the error...')
+        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
         env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
 
         # initial run before we (potentially) do fancy things with the requires
@@ -1304,13 +1229,13 @@ if __name__ == '__main__':
                             libname_blacklist.append(req_module)
                         rep = '\nRequire %s.\n' % req_module
                         if rep not in '\n' + cur_output:
-                            if env['verbose'] >= 1: log('\nWarning: I cannot find Require %s.' % req_module)
-                            if env['verbose'] >= 3: log('in contents:\n' + cur_output)
+                            if env['verbose'] >= 1: env['log']('\nWarning: I cannot find Require %s.' % req_module)
+                            if env['verbose'] >= 3: env['log']('in contents:\n' + cur_output)
                             continue
                         try:
                             test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
                         except IOError:
-                            if env['verbose'] >= 1: log('\nWarning: Cannot inline %s' % req_module)
+                            if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s' % req_module)
                             continue
                         write_to_file(output_file_name, test_output)
                         diagnose_error.reset_timeout()

@@ -2,6 +2,7 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
+from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 
 __all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache"]
 
@@ -10,7 +11,6 @@ file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
-DEFAULT_VERBOSE=1
 DEFAULT_LIBNAMES=(('.', 'Top'), )
 
 IMPORT_ABSOLUTIZE_TUPLE = ('lib', )# 'mod')
@@ -25,14 +25,11 @@ def warning(*objs):
 def error(*objs):
     print("ERROR: ", *objs, file=sys.stderr)
 
-def DEFAULT_LOG(text):
-    print(text)
-
 def fill_kwargs(kwargs):
     rtn = {
         'libnames'              : DEFAULT_LIBNAMES,
         'non_recursive_libnames': tuple(),
-        'verbose'               : DEFAULT_VERBOSE,
+        'verbose'               : DEFAULT_VERBOSITY,
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
         'coq_makefile'          : 'coq_makefile',

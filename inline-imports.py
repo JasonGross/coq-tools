@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import argparse, shutil, os, os.path, sys
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from custom_arguments import add_libname_arguments, update_env_with_libnames
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from replace_imports import include_imports
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -15,18 +15,9 @@ parser.add_argument('input_file', metavar='IN_FILE', type=argparse.FileType('r')
                     help='a .v file to inline the imports of')
 parser.add_argument('output_file', metavar='OUT_FILE', type=argparse.FileType('w'),
                     help='a .v file to write to')
-parser.add_argument('--verbose', '-v', dest='verbose',
-                    action='count',
-                    help='display some extra information')
-parser.add_argument('--quiet', '-q', dest='quiet',
-                    action='count',
-                    help='the inverse of --verbose')
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
-parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
-                    default=[sys.stdout],
-                    help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--no-deps', dest='walk_tree',
                     action='store_const', const=False, default=True,
                     help=("Don't do dependency analysis on all files in the current " +
@@ -58,28 +49,14 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
 add_libname_arguments(parser)
-
-def make_logger(log_files):
-    def log(text):
-        for i in log_files:
-            i.write(str(text) + '\n')
-            i.flush()
-            if i.fileno() > 2: # stderr
-                os.fsync(i.fileno())
-    return log
-
-DEFAULT_VERBOSITY=1
+add_logging_arguments(parser)
 
 if __name__ == '__main__':
-    args = parser.parse_args()
-    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
-    if args.quiet is None: args.quiet = 0
-    verbose = args.verbose - args.quiet
-    log = make_logger(args.log_files)
+    args = process_logging_arguments(parser.parse_args())
 
     env = {
-        'verbose': verbose,
-        'log': log,
+        'verbose': args.verbose,
+        'log': args.log,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
         'absolutize': args.absolutize,
         'as_modules': args.wrap_modules,

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 from __future__ import with_statement
 import os, sys, re, argparse
-from custom_arguments import add_libname_arguments, update_env_with_libnames
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from memoize import memoize
+from file_util import read_from_file
 
 # TODO:
 # - handle fake ambiguities from [Definition foo] in a comment
@@ -11,17 +12,8 @@ from memoize import memoize
 # - make use of glob file?
 
 parser = argparse.ArgumentParser(description='Implement the suggestions of [Set Suggest Proof Using.]')
-parser.add_argument('--verbose', '-v', dest='verbose',
-                    action='count',
-                    help='display some extra information')
-parser.add_argument('--quiet', '-q', dest='quiet',
-                    action='count',
-                    help='the inverse of --verbose')
 parser.add_argument('source', metavar='SOURCE_FILE', type=argparse.FileType('r'), nargs='?', default=sys.stdin,
                     help='the source of set suggest proof using messages; use - for stdin.')
-parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
-                    default=[sys.stdout],
-                    help='The files to log output to.  Use - for stdout.')
 parser.add_argument('--hide', dest='hide_reg', nargs='*', type=str,
                     default=['.*_subproof[0-9]*$'], #, '.*_Proper$'],
                     help=('Regular expressions to not display warnings about on low verbosity.  ' +
@@ -29,67 +21,10 @@ parser.add_argument('--hide', dest='hide_reg', nargs='*', type=str,
                           'identifiers, and we might want to surpress them.'))
 parser.add_argument('--no-hide', dest='hide_reg', action='store_const', const=[])
 add_libname_arguments(parser)
-
-def DEFAULT_LOG(text):
-    print(text)
-
-DEFAULT_VERBOSITY=1
-
-def make_logger(log_files):
-    def log(text):
-        for i in log_files:
-            i.write(str(text) + '\n')
-            i.flush()
-            if i.fileno() > 2: # stderr
-                os.fsync(i.fileno())
-    return log
-
-@memoize # only back up each file once
-def backup(file_name, ext='.bak'):
-    if not ext:
-        raise ValueError
-    if os.path.exists(file_name):
-        backup(file_name + ext)
-        os.rename(file_name, file_name + ext)
-
-FILE_CACHE = {}
+add_logging_arguments(parser)
 
 def write_to_file(file_name, contents, do_backup=False):
-    backed_up = False
-    while not backed_up:
-        try:
-            if do_backup:
-                backup(file_name)
-            backed_up = True
-        except IOError as e:
-            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
-            time.sleep(10)
-    written = False
-    while not written:
-        try:
-            try:
-                with open(file_name, 'w', encoding='UTF-8') as f:
-                    f.write(contents)
-            except TypeError:
-                with open(file_name, 'w') as f:
-                    f.write(contents)
-            written = True
-            FILE_CACHE[file_name] = (os.stat(file_name).st_mtime, contents)
-        except IOError as e:
-            print('Warning: f.write(%s) failed with %s\nTrying again in 10s' % (file_name, repr(e)))
-            time.sleep(10)
-
-def read_from_file(file_name):
-    if file_name in FILE_CACHE.keys() and os.stat(file_name).st_mtime == FILE_CACHE[file_name][0]:
-        return FILE_CACHE[file_name][1]
-    try:
-        with open(file_name, 'r', encoding='UTF-8') as f:
-            FILE_CACHE[file_name] = (os.stat(file_name).st_mtime, f.read())
-            return FILE_CACHE[file_name][1]
-    except TypeError:
-        with open(file_name, 'r') as f:
-            FILE_CACHE[file_name] = (os.stat(file_name).st_mtime, f.read())
-            return FILE_CACHE[file_name][1]
+    return file_util.write_to_file(file_name, contents, do_backup=do_backup, memoize=True)
 
 REG_PROOF_USING = re.compile(r'The proof of ([^\s]+)\s*should start with:\s*(Proof using[^\.]+\.)', re.MULTILINE)
 
@@ -255,16 +190,12 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
     return contents
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+    args = process_logging_arguments(parser.parse_args())
     source = args.source
-    log = make_logger(args.log_files)
-    if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
-    if args.quiet is None: args.quiet = 0
-    verbose = args.verbose - args.quiet
     env = {
         'lib_to_dir': lib_to_dir_map(args.libnames + args.non_recursive_libnames),
-        'verbose': verbose,
-        'log': log,
+        'verbose': args.verbose,
+        'log': args.log,
         'hide_reg': args.hide_reg
         }
     update_env_with_libnames(env, args)
@@ -284,4 +215,4 @@ if __name__ == '__main__':
                     break
                 is_first = False
         else:
-            log('Warning: Could not find theorem %s' % theorem_id)
+            env['log']('Warning: Could not find theorem %s' % theorem_id)

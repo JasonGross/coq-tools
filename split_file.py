@@ -1,7 +1,21 @@
 from strip_comments import strip_comments
+from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+import subprocess
 import re
 
-__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments"]
+__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError"]
+
+def fill_kwargs(**kwargs):
+    ret = {
+        'verbose'               : DEFAULT_VERBOSITY,
+        'log'                   : DEFAULT_LOG,
+        'coqc'                  : 'coqc'
+    }
+    ret.update(kwargs)
+    return ret
+
+class UnsupportedCoqVersionError(Exception):
+    pass
 
 def merge_quotations(statements, sp=' '):
     """If there are an odd number of "s in a statement, assume that we
@@ -113,3 +127,16 @@ def split_coq_file_contents_with_comments(contents):
     #if contents != ''.join(cstatements):
     #    print('Splitting failed (comment merge)!')
     return list(split_merge_comments(merge_quotations(statements, sp='')))
+
+
+def get_coq_statement_ranges(coqc, file_name, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    # check for -time
+    p = subprocess.Popen([coqc, '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    if '-time' not in stdout:
+        raise UnsupportedCoqVersionError
+
+    p = subprocess.Popen([coqc, '-time'] + list(kwargs['coqc_args']) + file_name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    raw_input(stdout)

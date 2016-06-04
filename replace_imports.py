@@ -2,6 +2,7 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
+from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 
 __all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file"]
 
@@ -9,17 +10,13 @@ file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
-DEFAULT_VERBOSE=1
 DEFAULT_LIBNAMES=(('.', 'Top'), )
 
 IMPORT_LINE_REG = re.compile(r'^\s*(?:From|Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
-def DEFAULT_LOG(text):
-    print(text)
-
 def fill_kwargs(kwargs):
     defaults = {
-        'verbose':DEFAULT_VERBOSE,
+        'verbose':DEFAULT_VERBOSITY,
         'fast':False,
         'log':DEFAULT_LOG,
         'libnames':DEFAULT_LIBNAMES,
@@ -129,7 +126,7 @@ def recursively_get_requires_from_file(filename, **kwargs):
     return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
 
 
-def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSE, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
+def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.

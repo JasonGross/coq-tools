@@ -1,13 +1,9 @@
 import re, time
 from subprocess import Popen, PIPE, STDOUT
 import split_definitions_old
+from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
-
-DEFAULT_VERBOSITY=1
-
-def DEFAULT_LOG(text):
-    print(text)
 
 def get_definitions_diff(previous_definition_string, new_definition_string):
     """Returns a triple of lists (definitions_removed,
