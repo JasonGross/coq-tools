@@ -1,5 +1,5 @@
 from __future__ import print_function
-import sys
+import sys, os
 import argparse
 
 __all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]

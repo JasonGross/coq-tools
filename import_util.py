@@ -4,7 +4,7 @@ from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for"]
 
 file_mtimes = {}
 file_contents = {}
@@ -170,14 +170,15 @@ def remove_from_require_before(contents, location):
     if before is None: return contents
     return before + after
 
-def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
-    kwargs = fill_kwargs(kwargs)
-    all_globs = set((start, end, loc, append, ty.strip())
+def get_references_from_globs(globs):
+    all_globs = set((int(start), int(end) + 1, loc, append, ty.strip())
                     for start, end, loc, append, ty
                     in re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> ([^ ]+) ([^ ]+)$', globs, flags=re.MULTILINE))
-    for start, end, loc, append, ty in sorted(all_globs, key=(lambda x: int(x[0])), reverse=True):
-        ty = ty.strip() # clear trailing newlines
-        start, end = int(start), int(end) + 1
+    return tuple(sorted(all_globs, key=(lambda x: x[0]), reverse=True))
+
+def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    for start, end, loc, append, ty in get_references_from_globs(globs):
         if ty not in absolutize or loc == libname:
             if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
         # sanity check for correct replacement, to skip things like record builder notation
@@ -255,6 +256,32 @@ def make_globs(logical_names, **kwargs):
     p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
     (stdout_make, stderr_make) = p_make.communicate(stdout)
 
+def get_glob_file_for(filename, update_globs=False, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    filename = fix_path(filename)
+    if filename[-2:] != '.v': filename += '.v'
+    libname = lib_of_filename(filename, **kwargs)
+    globname = filename[:-2] + '.glob'
+    if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
+        file_contents[filename] = get_raw_file(filename, **kwargs)
+        file_mtimes[filename] = os.stat(filename).st_mtime
+    if update_globs:
+        make_globs([libname], **kwargs)
+    if os.path.isfile(globname):
+        if os.stat(globname).st_mtime >= file_mtimes[filename]:
+            return get_raw_file(globname, **kwargs)
+        elif kwargs['verbose']:
+            kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
+    return None
+
+
+def get_references_for(filename, types, **kwargs):
+    globs = get_glob_file_for(filename, **kwargs)
+    if globs is None: return None
+    references = get_references_from_globs(globs)
+    return tuple((start, end, loc, append, ty) for start, end, loc, append, ty in references
+                 if types is None or ty in types)
+
 def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
@@ -265,14 +292,9 @@ def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
         file_contents[filename] = get_raw_file(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
         if len(absolutize) > 0:
-            if update_globs:
-                make_globs([libname], **kwargs)
-            if os.path.isfile(globname):
-                if os.stat(globname).st_mtime >= file_mtimes[filename]:
-                    globs = get_raw_file(globname, **kwargs)
-                    file_contents[filename] = update_with_glob(file_contents[filename], globs, absolutize, libname, **kwargs)
-                elif kwargs['verbose']:
-                    kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
+            globs = get_glob_file_for(filename, update_globs=update_globs, **kwargs)
+            if globs is not None:
+                file_contents[filename] = update_with_glob(file_contents[filename], globs, absolutize, libname, **kwargs)
     return file_contents[filename]
 
 def get_require_dict(lib, **kwargs):

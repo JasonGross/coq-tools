@@ -5,11 +5,12 @@ import re
 
 __all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError"]
 
-def fill_kwargs(**kwargs):
+def fill_kwargs(kwargs):
     ret = {
         'verbose'               : DEFAULT_VERBOSITY,
         'log'                   : DEFAULT_LOG,
-        'coqc'                  : 'coqc'
+        'coqc'                  : 'coqc',
+        'coqc_args'             : tuple(),
     }
     ret.update(kwargs)
     return ret
@@ -128,8 +129,9 @@ def split_coq_file_contents_with_comments(contents):
     #    print('Splitting failed (comment merge)!')
     return list(split_merge_comments(merge_quotations(statements, sp='')))
 
+RANGE_REG = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+', flags=re.DOTALL)
 
-def get_coq_statement_ranges(coqc, file_name, **kwargs):
+def get_coq_statement_ranges(file_name, coqc, **kwargs):
     kwargs = fill_kwargs(kwargs)
     # check for -time
     p = subprocess.Popen([coqc, '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
@@ -137,6 +139,8 @@ def get_coq_statement_ranges(coqc, file_name, **kwargs):
     if '-time' not in stdout:
         raise UnsupportedCoqVersionError
 
-    p = subprocess.Popen([coqc, '-time'] + list(kwargs['coqc_args']) + file_name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    p = subprocess.Popen([coqc, '-q', '-time'] + list(kwargs['coqc_args']) + [file_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    raw_input(stdout)
+
+    ranges = tuple((int(start), int(finish)) for start, finish in RANGE_REG.findall(stdout))
+    return ranges
