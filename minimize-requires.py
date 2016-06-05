@@ -28,9 +28,9 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "If 0, there is no timeout.  If negative, then " +
                           "twice the initial run of the script is used.\n\n" +
                           "Default: -1"))
-#parser.add_argument('--no-exclude-exports', dest='exclude_exports',
-#                    action='store_const', default=True, const=False,
-#                    help=("Don't exclude Require lines that have Export in them"))
+parser.add_argument('--no-exclude-exports', dest='exclude_exports',
+                    action='store_const', default=True, const=False,
+                    help=("Don't exclude Require lines that have Export in them from analysis; allow removing them"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
@@ -72,6 +72,21 @@ def insert_references(contents, ranges, references, **kwargs):
     if prev < len(contents):
         ret.append((contents[prev:], tuple()))
     return tuple(reversed(ret))
+
+def remove_after_first_range(text, ranges):
+    if ranges:
+        start = min((start for start, end, loc in ranges))
+        return text[:start]
+    else:
+        return text
+
+def mark_exports(state):
+    return tuple((text, ranges, bool(ranges and 'Export' in remove_after_first_range(text, ranges)))
+                 for text, ranges in state)
+
+def strip_export_ranges(state):
+    return tuple((text, (ranges if not is_export else tuple()))
+                 for text, ranges, is_export in mark_exports(state))
 
 SKIP='SKIP'
 ABSOLUTIZE='ABSOLUTIZE'
@@ -186,6 +201,8 @@ if __name__ == '__main__':
             contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
             refs = get_references_for(name, types=('lib',), update_globs=True, **env)
             annotated_contents = insert_references(contents, ranges, refs, **env)
+            if env['exclude_exports']:
+                annotated_contents = strip_export_ranges(annotated_contents)
             save_state = make_save_state(name, **env)
             check_state = make_check_state(**env)
             verbose_check_state = make_check_state(verbose_base=4-env['verbose'], **env)
