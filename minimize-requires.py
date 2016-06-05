@@ -28,9 +28,9 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "If 0, there is no timeout.  If negative, then " +
                           "twice the initial run of the script is used.\n\n" +
                           "Default: -1"))
-parser.add_argument('--no-exclude-exports', dest='exclude_exports',
+parser.add_argument('--no-keep-exports', dest='keep_exports',
                     action='store_const', default=True, const=False,
-                    help=("Don't exclude Require lines that have Export in them from analysis; allow removing them"))
+                    help=("Allow the removal of Require lines that have Export in them"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
@@ -184,6 +184,7 @@ if __name__ == '__main__':
     env = {
         'verbose': args.verbose,
         'log': args.log,
+        'keep_exports': args.keep_exports,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
         'coqc_args': (args.coqc_args if args.coqc_args else tuple()),
         'timeout': args.timeout,
@@ -201,7 +202,7 @@ if __name__ == '__main__':
             contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
             refs = get_references_for(name, types=('lib',), update_globs=True, **env)
             annotated_contents = insert_references(contents, ranges, refs, **env)
-            if env['exclude_exports']:
+            if env['keep_exports']:
                 annotated_contents = strip_export_ranges(annotated_contents)
             save_state = make_save_state(name, **env)
             check_state = make_check_state(**env)
