@@ -235,8 +235,8 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
         sys.exit(1)
 
 def get_makefile_contents(v_files, **kwargs):
-    kwargs = fill_kwargs(kwargs)
-    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), v_files=v_files, coqc_args=kwargs['coqc_args'], verbose=kwargs['verbose'], log=kwargs['log'])
+    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=kwargs['libnames'], non_recursive_libnames=kwargs['non_recursive_libnames'], v_files=v_files, coqc_args=kwargs['coqc_args'], verbose=kwargs['verbose'], log=kwargs['log'])
 
 
 def make_globs(logical_names, **kwargs):
