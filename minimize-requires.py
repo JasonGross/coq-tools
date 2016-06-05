@@ -213,7 +213,7 @@ if __name__ == '__main__':
                 failed = True
                 continue
             valid_actions = (REMOVE,)
-            if env['absolutize']:
+            if args.absolutize:
                 valid_actions = (REMOVE, ABSOLUTIZE)
             final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
             if final_state is not None:
