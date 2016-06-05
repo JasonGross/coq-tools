@@ -68,10 +68,16 @@ def run_binary_search(initial_state, check_state, step_state, save_good_state, v
     def is_good(state):
         return check_state(state)
 
-    def step_default(st):
-        return step_state(st, valid_actions[0])
     def step_none(st):
         return step_state(st, None)
+
+    def step_default(st):
+        for action in valid_actions:
+            try:
+                return step_state(st, action)
+            except ValueError:
+                pass
+        return step_none(st)
 
     last_good = None
     cur = initial_state

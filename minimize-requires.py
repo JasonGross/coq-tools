@@ -80,13 +80,9 @@ def remove_after_first_range(text, ranges):
     else:
         return text
 
-def mark_exports(state):
-    return tuple((text, ranges, bool(ranges and 'Export' in remove_after_first_range(text, ranges)))
+def mark_exports(state, keep_exports):
+    return tuple((text, ranges, bool(keep_exports and ranges and 'Export' in remove_after_first_range(text, ranges)))
                  for text, ranges in state)
-
-def strip_export_ranges(state):
-    return tuple((text, (ranges if not is_export else tuple()))
-                 for text, ranges, is_export in mark_exports(state))
 
 SKIP='SKIP'
 ABSOLUTIZE='ABSOLUTIZE'
@@ -120,36 +116,36 @@ def step_state(state, action):
     ret = []
     state = list(state)
     while len(state) > 0:
-        (text, references), state = state[0], state[1:]
+        (text, references, force_keep), state = state[0], state[1:]
         if references:
             (start, end, loc), new_references = references[0], tuple(references[1:])
             if action == SKIP or action is None:
-                ret.append((text, new_references))
+                ret.append((text, new_references, force_keep))
             elif action == ABSOLUTIZE:
-                ret.append((text[:start] + loc + text[end:], new_references))
-            elif action == REMOVE:
+                ret.append((text[:start] + loc + text[end:], new_references, force_keep))
+            elif action == REMOVE and not force_keep:
                 if new_references: # still other imports, safe to just remove
                     pre_text, post_text = gobble_whitespace(text[:start], text[end:])
-                    ret.append((pre_text + post_text, new_references))
+                    ret.append((pre_text + post_text, new_references, force_keep))
                 else: # no other imports; remove this line completely
                     if ret and state:
                         prev_text, post_text = gobble_whitespace(ret[-1][0], state[0][0])
-                        ret[-1] = (prev_text, ret[-1][1])
-                        state[0] = (post_text, state[0][1])
+                        ret[-1] = (prev_text,) + ret[-1][1:]
+                        state[0] = (post_text,) + state[0][1:]
                     elif ret:
-                        ret[-1] = (ret[-1][0].rstrip(), ret[-1][1])
+                        ret[-1] = (ret[-1][0].rstrip(),) + ret[-1][1:]
                     elif state:
-                        state[0] = (state[0][0].lstrip(), state[0][1])
+                        state[0] = (state[0][0].lstrip(),) + state[0][1:]
             else:
                 raise ValueError
             ret.extend(state)
             return tuple(ret)
         else:
-            ret.append((text, references))
+            ret.append((text, references, force_keep))
     return None
 
 def state_to_contents(state):
-    return ''.join(reversed([text for text, refs in state]))
+    return ''.join(reversed([v[0] for v in state]))
 
 def make_check_state(verbose_base=0, **kwargs):
     @memoize
@@ -201,9 +197,7 @@ if __name__ == '__main__':
             ranges = get_coq_statement_ranges(name, **env)
             contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
             refs = get_references_for(name, types=('lib',), update_globs=True, **env)
-            annotated_contents = insert_references(contents, ranges, refs, **env)
-            if env['keep_exports']:
-                annotated_contents = strip_export_ranges(annotated_contents)
+            annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
             save_state = make_save_state(name, **env)
             check_state = make_check_state(**env)
             verbose_check_state = make_check_state(verbose_base=4-env['verbose'], **env)
