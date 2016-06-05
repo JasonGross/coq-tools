@@ -32,8 +32,6 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-The timeout has been set to: 2
-
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 11, characters 6-10:
 Error: Illegal application (Non-functional construction):\s

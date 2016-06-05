@@ -45,6 +45,8 @@ Coqing the file (bug_[0-9]\+\.v)\.\.\.
 Running command: "coqc" "-nois" "-R" "\." "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 2
 
+Warning: OUT_FILE (bug_[0-9]\+\.v) already exists.  Would you like to overwrite?
+Please enter (y)es/(n)o:.
 This file produces the following output when Coq'ed:
 Set
      : Type
