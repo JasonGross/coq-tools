@@ -17,7 +17,7 @@ def backup(file_name, ext='.bak'):
     if not ext:
         raise ValueError
     if os.path.exists(file_name):
-        backup(file_name + ext)
+        backup(file_name + ext, ext=ext)
         os.rename(file_name, file_name + ext)
 
 @memoize
