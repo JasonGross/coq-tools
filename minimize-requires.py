@@ -28,6 +28,9 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "If 0, there is no timeout.  If negative, then " +
                           "twice the initial run of the script is used.\n\n" +
                           "Default: -1"))
+#parser.add_argument('--no-exclude-exports', dest='exclude_exports',
+#                    action='store_const', default=True, const=False,
+#                    help=("Don't exclude Require lines that have Export in them"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
@@ -191,7 +194,10 @@ if __name__ == '__main__':
                 env['log']('ERROR: Failed to update %s' % name)
                 failed = True
                 continue
-            final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, (REMOVE, ABSOLUTIZE))
+            valid_actions = (REMOVE,)
+            if env['absolutize']:
+                valid_actions = (REMOVE, ABSOLUTIZE)
+            final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
             if final_state is not None:
                 if env['verbose']: env['log']('Saving final version of %s...' % name)
                 save_state(final_state, final=True)
