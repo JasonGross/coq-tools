@@ -33,6 +33,8 @@ parser.add_argument('--no-keep-exports', dest='keep_exports',
                     help=("Allow the removal of Require lines that have Export in them"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
+parser.add_argument('--keep-going', '-k', dest='keep_going', action='store_const', const=True, default=False,
+                    help=("Keep going when some files can't be minimized."))
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
                     help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
@@ -181,6 +183,7 @@ if __name__ == '__main__':
         'verbose': args.verbose,
         'log': args.log,
         'keep_exports': args.keep_exports,
+        'keep_going': args.keep_going,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
         'coqc_args': (args.coqc_args if args.coqc_args else tuple()),
         'timeout': args.timeout,
@@ -190,30 +193,50 @@ if __name__ == '__main__':
     update_env_with_libnames(env, args)
 
     try:
-        failed = False
+        failed = []
         for input_file in args.input_files:
             name = input_file.name
             input_file.close()
-            ranges = get_coq_statement_ranges(name, **env)
-            contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
-            refs = get_references_for(name, types=('lib',), update_globs=True, **env)
-            annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
-            save_state = make_save_state(name, **env)
-            check_state = make_check_state(**env)
-            verbose_check_state = make_check_state(verbose_base=4-env['verbose'], **env)
-            if env['verbose']: env['log']('Running coq on initial contents...')
-            if not verbose_check_state(annotated_contents):
-                env['log']('ERROR: Failed to update %s' % name)
-                failed = True
-                continue
-            valid_actions = (REMOVE,)
-            if args.absolutize:
-                valid_actions = (REMOVE, ABSOLUTIZE)
-            final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
-            if final_state is not None:
-                if env['verbose']: env['log']('Saving final version of %s...' % name)
-                save_state(final_state, final=True)
+            try:
+                ranges = get_coq_statement_ranges(name, **env)
+                contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
+                refs = get_references_for(name, types=('lib',), update_globs=True, **env)
+                if refs is None:
+                    env['log']('ERROR: Failed to get references for %s' % name)
+                    failed.append((name, 'failed to get references'))
+                    if env['keep_going']:
+                        continue
+                    else:
+                        break
+                annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
+                save_state = make_save_state(name, **env)
+                check_state = make_check_state(**env)
+                verbose_check_state = make_check_state(verbose_base=4-env['verbose'], **env)
+                if env['verbose']: env['log']('Running coq on initial contents...')
+                if not verbose_check_state(annotated_contents):
+                    env['log']('ERROR: Failed to update %s' % name)
+                    failed.append((name, 'failed to update'))
+                    if env['keep_going']:
+                        continue
+                    else:
+                        break
+                valid_actions = (REMOVE,)
+                if args.absolutize:
+                    valid_actions = (REMOVE, ABSOLUTIZE)
+                final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
+                if final_state is not None:
+                    if env['verbose']: env['log']('Saving final version of %s...' % name)
+                    save_state(final_state, final=True)
+            except BaseException as e:
+                if env['keep_going']:
+                    env['log']('Failure on %s with error %s' % (name, repr(e)))
+                    failed.append((name, e))
+                else:
+                    raise e
         if failed:
+            env['log']('The following files failed:')
+            for name, e in failed:
+                env['log'](name)
             sys.exit(1)
     except UnsupportedCoqVersionError:
         env['log']('ERROR: Your version of coqc (%s) does not support -time' % env['coqc'])
