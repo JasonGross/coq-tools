@@ -895,7 +895,7 @@ Module Import LocalFalse.
 Inductive False := .
 End LocalFalse.
 Axiom proof_admitted : False.
-Tactic Notation "admit" := case proof_admitted.
+Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
 """
     return '%s%s' % (tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents))
