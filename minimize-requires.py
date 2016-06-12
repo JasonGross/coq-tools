@@ -153,7 +153,7 @@ def make_check_state(verbose_base=0, **kwargs):
     @memoize
     def check_contents(contents):
         output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
-        if diagnose_error.has_error(output):
+        if diagnose_error.has_error(output) or diagnose_error.has_error(output, 'Error')):
             if kwargs['verbose'] + verbose_base >= 3:
                 kwargs['log']('Failed change.  Error when running "%s":\n%s' % ('" "'.join(cmds), output))
         elif kwargs['verbose'] + verbose_base >= 4:
