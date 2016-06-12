@@ -149,11 +149,12 @@ def step_state(state, action):
 def state_to_contents(state):
     return ''.join(reversed([v[0] for v in state]))
 
-def make_check_state(verbose_base=0, **kwargs):
+def make_check_state(original_contents, verbose_base=0, **kwargs):
+    expected_output, orig_cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents, kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
     def check_contents(contents):
         output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
-        if diagnose_error.has_error(output) or diagnose_error.has_error(output, 'Error')):
+        if diagnose_output.has_error(output) or output != expected_output:
             if kwargs['verbose'] + verbose_base >= 3:
                 kwargs['log']('Failed change.  Error when running "%s":\n%s' % ('" "'.join(cmds), output))
         elif kwargs['verbose'] + verbose_base >= 4:
@@ -213,8 +214,8 @@ if __name__ == '__main__':
                         break
                 annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
                 save_state = make_save_state(name, **env)
-                check_state = make_check_state(**env)
-                verbose_check_state = make_check_state(verbose_base=4-env['verbose'], **env)
+                check_state = make_check_state(contents, **env)
+                verbose_check_state = make_check_state(contents, verbose_base=4-env['verbose'], **env)
                 if env['verbose']: env['log']('Running coq on initial contents...')
                 if not verbose_check_state(annotated_contents):
                     env['log']('ERROR: Failed to update %s' % name)
