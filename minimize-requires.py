@@ -192,6 +192,9 @@ if __name__ == '__main__':
         }
     update_env_with_libnames(env, args)
 
+    for dirname, libname in env['libnames']:
+        env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
+
     try:
         failed = []
         for input_file in args.input_files:
