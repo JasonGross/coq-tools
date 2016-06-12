@@ -232,6 +232,8 @@ if __name__ == '__main__':
                     save_state(final_state, final=True)
             except KeyboardInterrupt:
                 raise
+            except SystemExit:
+                raise
             except BaseException as e:
                 if env['keep_going']:
                     env['log']('Failure on %s with error %s' % (name, repr(e)))
