@@ -230,8 +230,14 @@ if __name__ == '__main__':
                     valid_actions = (REMOVE, ABSOLUTIZE)
                 final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
                 if final_state is not None:
-                    if env['verbose']: env['log']('Saving final version of %s...' % name)
-                    save_state(final_state, final=True)
+                    if not check_state(final_state):
+                        env['log']('Internal error: Inconsistent final state on %s...' % name)
+                        failed.append((name, 'inconsistent final state'))
+                        if not env['keep_going']:
+                            break
+                    else:
+                        if env['verbose']: env['log']('Saving final version of %s...' % name)
+                        save_state(final_state, final=True)
             except KeyboardInterrupt:
                 raise
             except SystemExit:
