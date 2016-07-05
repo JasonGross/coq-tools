@@ -31,7 +31,7 @@ def absolutize_imports(infile, **kwargs):
     infile.close()
     if kwargs['inplace']:
         do_backup = kwargs['suffix'] is not None and len(kwargs['suffix']) > 0
-        write_to_file(filename, absolutized_contents, do_backup=do_backup, ext=kwargs['suffix'])
+        write_to_file(filename, absolutized_contents, do_backup=do_backup, backup_ext=kwargs['suffix'])
     else:
         print(absolutized_contents)
 

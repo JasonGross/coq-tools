@@ -188,7 +188,7 @@ def move_from_proof(filename, **kwargs):
         return
     if kwargs['inplace']:
         do_backup = kwargs['suffix'] is not None and len(kwargs['suffix']) > 0
-        write_to_file(filename, ret, do_backup=do_backup, ext=kwargs['suffix'])
+        write_to_file(filename, ret, do_backup=do_backup, backup_ext=kwargs['suffix'])
     else:
         print(ret)
 
