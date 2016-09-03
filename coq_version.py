@@ -68,7 +68,7 @@ def get_multiple_help_tags(coqc_help, **kwargs):
 
 def coq_makefile_supports_arg(coq_makefile_help):
     tags = get_multiple_help_tags(coq_makefile_help, is_coq_makefile=True)
-    return any(tag[0] == '-arg' for tag in tags)
+    return any(tag == '-arg' for tag in tags.keys())
 
 def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefile=False):
     args = list(args)
