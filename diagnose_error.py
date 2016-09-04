@@ -5,39 +5,52 @@ from file_util import clean_v_file
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout"]
 
-DEFAULT_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n((?:.|\n)+)'
-DEFAULT_ERROR_REG_STRING_GENERIC = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(%s)'
+DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:'
+DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '\n((?:.|\n)+)'
+DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_ERROR_REG_STRING + '\n(%s)'
 
 def clean_output(output):
     return output.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
 
 @memoize
-def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING):
+def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
+    """Returns the final match of reg_string"""
+    locations = [0] + [m.start() for m in re.finditer(pre_reg_string, output)]
+    reg = re.compile(reg_string)
+    results = (reg.search(output[start_loc:]) for start_loc in reversed(locations))
+    for result in results:
+        if result: return result
+    return None
+
+@memoize
+def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
     """Returns True if the coq output encoded in output has an error
     matching the given regular expression, False otherwise.
     """
-    errors = re.search(reg_string, output)
+    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
     if errors:
         return True
     else:
         return False
 
 @memoize
-def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING):
+def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
     """Returns the line number that the error matching reg_string
     occured on.
 
     Precondition: has_error(output, reg_string)
     """
-    return int(re.search(reg_string, output).groups()[0])
+    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    return int(errors.groups()[0])
 
 @memoize
-def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING):
+def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
     """Returns the error string of the error matching reg_string.
 
     Precondition: has_error(output, reg_string)
     """
-    return re.search(reg_string, output).groups()[1]
+    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    return errors.groups()[1]
 
 @memoize
 def make_reg_string(output):
