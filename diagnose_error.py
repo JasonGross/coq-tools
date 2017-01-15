@@ -60,6 +60,9 @@ def make_reg_string(output):
     Precondition: has_error(output)
     """
     error_string = get_error_string(output).strip().decode('utf-8')
+    error_string = re.sub(r'tmp[A-Za-z_\d]+',
+                          r'tmp[A-Za-z_\d]+',
+                          error_string)
     if 'Universe inconsistency' in error_string:
         re_string = re.sub(r'(Universe\\ inconsistency.*) because(.|\n)*',
                            r'\1 because.*',
@@ -79,9 +82,6 @@ def make_reg_string(output):
                            re.DOTALL)
     else:
         re_string = re.escape(error_string)
-    re_string = re.sub(r'tmp[A-Za-z_\d]+',
-                       r'tmp[A-Za-z_\d]+',
-                       re_string)
     if r'Universe\ instance\ should\ have\ length\ ' not in re_string:
         re_string = re.sub(r'[\d]+',
                            r'[\d]+',
