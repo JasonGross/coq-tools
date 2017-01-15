@@ -79,7 +79,7 @@ def make_reg_string(output):
                            re.DOTALL)
     else:
         re_string = re.escape(error_string)
-    re_string = re.sub(r'tmp[A-Za-z_\d\\]+',
+    re_string = re.sub(r'tmp(?:[A-Za-z\d]|\\_)+',
                        r'tmp[A-Za-z_\d]+',
                        re_string)
     if r'Universe\ instance\ should\ have\ length\ ' not in re_string:
