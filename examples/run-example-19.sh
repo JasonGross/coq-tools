@@ -75,7 +75,7 @@ EXPECTED=$(cat <<EOF
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
 (\* coqc version [^\*]*\*)
 
-Inductive x\.
+Inductive x := \.
 Goal x\.
   fail\.
 
