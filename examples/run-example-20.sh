@@ -9,7 +9,7 @@
 
 ##########################################################
 # Various options that must be updated for each example
-N="19"
+N="20"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
@@ -34,7 +34,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 15, characters 2-39:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 15, characters 2-7:
 Error: Tactic failure\.
 EOF
 )
@@ -77,7 +77,7 @@ EXPECTED=$(cat <<EOF
 
 Inductive x := \.
 Goal x\.
-  lazymatch goal with \|- x => fail end\.
+  fail\.
 
 EOF
 )
