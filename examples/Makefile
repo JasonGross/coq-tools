@@ -40,6 +40,7 @@ GREEN=\033[0;32m
 BOLD=$(shell tput bold)
 NORMAL=$(shell tput sgr0)
 
+COQC_VERSION=$(subst version ,,$(shell coqc --version 2>&1 | grep -o 'version [^ ]*'))
 COQC_SUPPORTS_Q=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQC_SUPPORTS_FROM=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 
@@ -62,6 +63,10 @@ endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: example_13_result.log
+endif
+
+ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
+test-suite: example_20_result.log
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
