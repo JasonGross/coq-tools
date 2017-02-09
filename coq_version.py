@@ -101,5 +101,5 @@ def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
 def get_proof_term_works_with_time(coqc_prog, **kwargs):
     contents = r"""Lemma foo : forall _ : Type, Type.
 Proof (fun x => x)."""
-    output, cmds = get_coq_output(coqc_prog, ('-time', '-q'), contents, 1, verbose_base=3, **kwargs)
+    output, cmds, retcode = get_coq_output(coqc_prog, ('-time', '-q'), contents, 1, verbose_base=3, **kwargs)
     return 'Error: Attempt to save an incomplete proof' not in output

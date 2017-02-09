@@ -164,5 +164,5 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds)), returncode)
+    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds), returncode))
     return COQ_OUTPUT[key][1]

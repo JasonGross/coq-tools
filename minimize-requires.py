@@ -150,11 +150,12 @@ def state_to_contents(state):
     return ''.join(reversed([v[0] for v in state]))
 
 def make_check_state(original_contents, verbose_base=0, **kwargs):
-    expected_output, orig_cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents, kwargs['timeout'], verbose_base=2, **kwargs)
+    expected_output, orig_cmds, orig_retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents, kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
     def check_contents(contents):
-        output, cmds = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
-        retval = (diagnose_error.has_error(output) or output != expected_output)
+        output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
+        # TODO: Should we be checking the error message and the retcode and the output, or just the retcode?
+        retval = (diagnose_error.has_error(output) or output != expected_output or retcode != orig_retcode)
         if retval:
             if kwargs['verbose'] + verbose_base >= 3:
                 kwargs['log']('Failed change.  Error when running "%s":\n%s' % ('" "'.join(cmds), output))
