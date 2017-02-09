@@ -1,6 +1,8 @@
 import re, time
 from subprocess import Popen, PIPE, STDOUT
 import split_definitions_old
+from split_file import postprocess_split_proof_term
+from coq_version import get_coq_accepts_time, get_proof_term_works_with_time
 from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
@@ -27,10 +29,10 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         if verbose: log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
         return split_definitions_old.split_statements_to_definitions(statements, verbose=verbose, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
     # check for -time
-    p = Popen([coqtop, '-help'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-    (stdout, stderr) = p.communicate()
-    if '-time' not in stdout:
+    if not get_coq_accepts_time(coqtop, verbose=verbose, log=log):
         return fallback()
+    if not get_proof_term_works_with_time(coqtop, is_coqtop=True, verbose=verbose, log=log, **kwargs):
+        statements = postprocess_split_proof_term(statements, log=log, verbose=verbose, **kwargs)
     p = Popen([coqtop, '-emacs', '-q', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
                            flags=re.DOTALL)

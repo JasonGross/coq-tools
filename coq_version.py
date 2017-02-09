@@ -1,9 +1,10 @@
 from __future__ import with_statement
 import subprocess, tempfile, re
+from diagnose_error import get_coq_output
 from file_util import clean_v_file
 from memoize import memoize
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -48,6 +49,8 @@ def get_coq_accepts_top(coqc):
     clean_v_file(temp_file_name)
     return '-top: no such file or directory' not in stdout
 
+def get_coq_accepts_time(coqc_prog, **kwargs):
+    return '-time' in get_coqc_help(coqc_prog, **kwargs)
 
 HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
 HELP_MAKEFILE_REG = re.compile(r'^\[(-[^\n\]]*)\]', re.MULTILINE)
@@ -94,3 +97,9 @@ def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefi
 def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
     bindings, unrecognized_bindings = group_coq_args_split_recognized(args, coqc_help, topname=topname, is_coq_makefile=is_coq_makefile)
     return bindings + [tuple([v]) for v in unrecognized_bindings]
+
+def get_proof_term_works_with_time(coqc_prog, **kwargs):
+    contents = r"""Lemma foo : forall _ : Type, Type.
+Proof (fun x => x)."""
+    output = get_coq_output(coqc_prog, ('-time', '-q'), contents, 1, verbose_base=3, **kwargs)
+    raw_input(output)

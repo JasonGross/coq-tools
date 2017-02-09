@@ -1,9 +1,10 @@
 from strip_comments import strip_comments
 from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+from coq_version import get_coq_accepts_time
 import subprocess
 import re
 
-__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError"]
+__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term"]
 
 def fill_kwargs(kwargs):
     ret = {
@@ -129,14 +130,43 @@ def split_coq_file_contents_with_comments(contents):
     #    print('Splitting failed (comment merge)!')
     return list(split_merge_comments(merge_quotations(statements, sp='')))
 
+PROOF_TERM_REG = re.compile(r'(\s*)Proof(\s+)(.*?)\.(\s*)', flags=re.DOTALL | re.MULTILINE)
+def postprocess_split_proof_term_iter(statements, on_first_example=None):
+    """Returns an iterator for the statements passed which changes [Proof
+    term.] into [Proof. exact (term). Qed.] unless "term" begins with
+    "with" or "using"."""
+    for statement_num, statement in enumerate(statements):
+        match = PROOF_TERM_REG.match(statement)
+        if match:
+            indent, after_proof_space, proof_term, post_space = match.groups()
+            if re.split(r'\s', proof_term)[0] not in ('using', 'with'): # Proof using ... and Proof with ... are special
+                if on_first_example:
+                    on_first_example(statement_num, statement, proof_term)
+                    on_first_example = None
+                yield indent + 'Proof.'
+                yield after_proof_space + 'exact (' + proof_term + ').'
+                yield ' Qed.' + post_space
+            else:
+                yield statement
+        else:
+            yield statement
+def postprocess_split_proof_term(statements, do_warn=True, **kwargs):
+    def do_warn_method(statement_num, statement, proof_term):
+        if kwargs['verbose'] > 0:
+            kwargs['log']("""Warning: Your version of Coq suffers from bug #5349 (https://coq.inria.fr/bugs/show_bug.cgi?id=5349)
+and does not support [Proof (term).] with -time.  Falling back to
+replacing [Proof (term).] with [Proof. exact (term). Qed.], which may fail.""")
+    if do_warn and 'verbose' in kwargs.keys() and 'log' in kwargs.keys():
+        do_warn = do_warn_method
+    else:
+        do_warn = None
+    return list(postprocess_split_proof_term_iter(statements, do_warn))
+
 RANGE_REG = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+', flags=re.DOTALL)
 
 def get_coq_statement_ranges(file_name, coqc, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    # check for -time
-    p = subprocess.Popen([coqc, '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
-    if '-time' not in stdout:
+    if not get_coq_accepts_time(coqc, **kwargs):
         raise UnsupportedCoqVersionError
 
     p = subprocess.Popen([coqc, '-q', '-time'] + list(kwargs['coqc_args']) + [file_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
