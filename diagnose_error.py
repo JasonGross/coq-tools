@@ -98,24 +98,25 @@ def reset_timeout():
     TIMEOUT = None
 
 def timeout_Popen_communicate(*args, **kwargs):
-    ret = { 'value' : ('', '') }
+    ret = { 'value' : ('', ''), 'returncode': None }
     timeout = kwargs.get('timeout')
     del kwargs['timeout']
     p = subprocess.Popen(*args, **kwargs)
 
     def target():
         ret['value'] = p.communicate()
+        ret['returncode'] = p.returncode
 
     thread = threading.Thread(target=target)
     thread.start()
 
     thread.join(timeout)
     if not thread.is_alive():
-        return ret['value']
+        return (ret['value'], ret['returncode'])
 
     p.terminate()
     thread.join()
-    return tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value']))
+    return (tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value'])), ret['returncode'])
 
 
 def memory_robust_timeout_Popen_communicate(*args, **kwargs):
@@ -156,12 +157,12 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
     start = time.time()
-    (stdout, stderr) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None))
+    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None))
     finish = time.time()
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds)))
+    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds)), returncode)
     return COQ_OUTPUT[key][1]
