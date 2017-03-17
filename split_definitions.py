@@ -33,7 +33,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         return fallback()
     if not get_proof_term_works_with_time(coqtop, is_coqtop=True, verbose=verbose, log=log, **kwargs):
         statements = postprocess_split_proof_term(statements, log=log, verbose=verbose, **kwargs)
-    p = Popen([coqtop, '-emacs', '-q', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    p = Popen([coqtop, '-q', '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
                            flags=re.DOTALL)
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)

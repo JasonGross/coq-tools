@@ -56,14 +56,14 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
 #     'times': <a list of times for each statement>
 #     'output': <a string of the response from coqtop>
 #    }"""
-#    p = Popen_async([coqtop, '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+#    p = Popen_async([coqtop, '-q', '-emacs', '-time'], stdout=PIPE, stderr=STDOUT, stdin=PIPE)
 #    time.sleep(1)
 
 
 def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple()):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
-    p = Popen_async([coqtop, '-emacs'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    p = Popen_async([coqtop, '-q', '-emacs'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     time.sleep(1)
     prompt_reg = re.compile(r'<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'))
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
