@@ -3,7 +3,7 @@ from __future__ import with_statement
 import os, sys, re, argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from memoize import memoize
-from file_util import read_from_file
+from file_util import read_from_file, write_to_file
 
 # TODO:
 # - handle fake ambiguities from [Definition foo] in a comment
@@ -23,25 +23,31 @@ parser.add_argument('--no-hide', dest='hide_reg', action='store_const', const=[]
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 
-def write_to_file(file_name, contents, do_backup=False):
-    return file_util.write_to_file(file_name, contents, do_backup=do_backup, memoize=True)
+def mwrite_to_file(file_name, contents, do_backup=False):
+    return write_to_file(file_name, contents, do_backup=do_backup, memoize=True)
 
-REG_PROOF_USING = re.compile(r'The proof of ([^\s]+)\s*should start with:\s*(Proof using[^\.]+\.)', re.MULTILINE)
+REG_PROOF_USING = re.compile(r'The proof of ([^\s]+)\s*should start with(?: one of the following commands)?:((?:\s*Proof using[^\.]+\.)+)', re.MULTILINE)
+REG_SUB_PROOF_USING = re.compile(r'Proof using[^\.]+\.', re.MULTILINE)
 
-def all_matches(reg, source, start='', **env):
-    source_text = ''
-    for i in source:
-        if source_text[:len(start)] != start:
-            source_text = ''
-        source_text += i
-        cur_match = reg.search(source_text)
-        while cur_match:
-            ignoring = source_text[:cur_match.start()].strip()
-            if ignoring and env['verbose'] > 2:
-                env['log']('Ignoring: ' + repr(ignoring))
-            yield cur_match.groups()
-            source_text = source_text[cur_match.end():]
-            cur_match = reg.search(source_text)
+#def all_matches(reg, source, start='', **env):
+#    source_text = ''
+#    for i in source:
+#        if source_text[:len(start)] != start:
+#            source_text = ''
+#        source_text += i
+#        cur_match = reg.search(source_text)
+#        while cur_match:
+#            ignoring = source_text[:cur_match.start()].strip()
+#            if ignoring and env['verbose'] > 2:
+#                env['log']('Ignoring: ' + repr(ignoring))
+#            yield cur_match.groups()
+#            source_text = source_text[cur_match.end():]
+#            cur_match = reg.search(source_text)
+
+def pick_suggestion(suggestions):
+    for i in ('Proof using Type.', 'Proof using.', 'Proof using .', 'Proof using Type*.'):
+        if i in suggestions: return i
+    return suggestions[0]
 
 def lib_to_dir_map(libnames):
     return dict((lib, dirname) for dirname, lib in libnames)
@@ -65,29 +71,30 @@ def split_to_file_and_rest(theorem_id, **kwargs):
                 ret.append((filename, ('.'.join(rest_parts[split_i+1:]) + '#' + rest_part).strip('#')))
     return tuple(ret)
 
-ALL_DEFINITONS_STR = (r'[ \t]*(?:' +
-                      r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
-                      r'|Definition|Example|SubClass' +
-                      r'|Let|Fixpoint|CoFixpoint' +
-                      r'|Structure|Coercion|(?<!Existing )Instance' +
-                      r'|Add Parametric Morphism' +
+ALL_DEFINITIONS = ('Theorem', 'Lemma', 'Fact', 'Remark', 'Corollary', 'Proposition', 'Property',
+                   'Definition', 'Example', 'SubClass',
+                   'Let', 'Fixpoint', 'CoFixpoint',
+                   'Structure', 'Coercion', 'Instance', 'Existing Instance')
+ALL_DEFINITIONS_STR = (r'[ \t]*(?:' +
+                      '|'.join(ALL_DEFINITIONS) +
                       r')\s+%s(?=[\s\(:{\.]|$)')
 
 ALL_DEFINITIONS_LESS_PROPER_STR = (r'[ \t]*(?:Global\s+|Local\s+)?(?:' +
                                    r'Add\s+(?:Parametric\s+)?Morphism' +
                                    r')\s+(?:[^\.]+|\.[A-Za-z\(\)])+\.(?:\n|$)')
 
-ALL_DEFINITONS_STR_QUICK = (r'(?:' +
-                            r'Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property' +
-                            r'|Definition|Example|SubClass' +
-                            r'|Let|Fixpoint|CoFixpoint' +
-                            r'|Structure|Coercion|Instance' +
-                            r'|Add Parametric Morphism' +
+ALL_DEFINITIONS_QUICK = (r'Theorem', 'Lemma', 'Fact', 'Remark', 'Corollary', 'Proposition', 'Property',
+                         'Definition', 'Example', 'SubClass',
+                         'Let', 'Fixpoint', 'CoFixpoint'
+                         'Structure', 'Coercion', 'Instance',
+                         'Add Parametric Morphism')
+ALL_DEFINITIONS_STR_QUICK = (r'(?:' +
+                            '|'.join(ALL_DEFINITIONS_QUICK) +
                             r')\s+%s')
 
 
-ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'[^\.]+\.\n)',
-                             r'^([ \t]*)(' + ALL_DEFINITONS_STR_QUICK + r'(?:[^\.]+|\.[A-Za-z\(\)])+\.\n)')
+ALL_DEFINITIONS_FULL_STRS = (r'^([ \t]*)(' + ALL_DEFINITIONS_STR_QUICK + r'[^\.]+\.\n)',
+                             r'^([ \t]*)(' + ALL_DEFINITIONS_STR_QUICK + r'(?:[^\.]+|\.[A-Za-z\(\)])+\.\n)')
 
 ALL_DEFINITIONS_FULL_STRS_LESS_PROPER = (r'^([ \t]*)((?:Global\s+|Local\s+)?Add\s+(?:Parametric\s+)?Morphism\s+(?:[^\.]+|\.[A-Za-z\(\)])+?\s+as\s+%s\s*\.\n)',)
 
@@ -95,10 +102,51 @@ ALL_ENDINGS = (r'(?:Qed|Defined|Save|Admitted|Abort)\s*\.')
 
 FOUND_BUT_UNCHANGED = object()
 
+def get_indent(term):
+    return re.findall('^\s*', term)[0]
+
+COMMENT='comment'
+STRING='string'
+def get_end_of_first_line_location(term, **env):
+    stack = []
+    i = 0
+    while i < len(term):
+        if env['verbose'] >= 3:
+            env['log']('DEBUG: stack: %s, pre: %s' % (str(stack), repr(term[:i])))
+        if len(stack) == 0:
+            if term[i] == '.' and (len(term) == i + 1 or (term[i+1] in ' \t\r\n')):
+                return i+1
+            if term[i] == '.':
+                while i < len(term) and term[i] == '.':
+                    i += 1
+            else:
+                i += 1
+        elif stack[-1] == STRING:
+            if term[i] == '"':
+                stack.pop()
+            i += 1
+        elif stack[-1] == COMMENT:
+            if term[i:i+2] == '(*':
+                stack.extend(COMMENT)
+                i += 2
+            elif term[i:i+2] == '*)':
+                stack.pop()
+                i += 2
+            elif term[i] == '"':
+                stack.extend(STRING)
+                i += 1
+            else:
+                i += 1
+        else: # len(stack) == 0
+            assert(False)
+    return len(term) - 1
+
 def update_proof(name, before_match, match, after_match, filename, rest_id, suggestion, **env):
     ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
     if ending:
         proof_part = after_match[:ending.start()]
+        if env['verbose'] >= 2:
+            env['log']('Inspecting proof: %s' % proof_part)
         if proof_part.count('Proof') == 1:
             proof_match = re.search('Proof(?: using[^\.]*)?\.', proof_part)
             if proof_match:
@@ -117,19 +165,11 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
                 if env['verbose'] >= 0: env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id))
                 return FOUND_BUT_UNCHANGED
         elif proof_part.count('Proof') == 0:
-            extended_proof_part = match.group() + proof_part
-            for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS:
-                reg = re.compile(ALL_DEFINITIONS_FULL_STR % name, re.MULTILINE | re.DOTALL)
-                if env['verbose'] > 3: env['log']('re.search(%s, %s, re.MULTILINE | re.DOTALL)' % (repr(ALL_DEFINITIONS_FULL_STR % name), repr(extended_proof_part)))
-                if reg.search(extended_proof_part):
-                    return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
-            if name[-len('_Proper'):] == '_Proper':
-                for ALL_DEFINITIONS_FULL_STR in ALL_DEFINITIONS_FULL_STRS_LESS_PROPER:
-                    reg = re.compile(ALL_DEFINITIONS_FULL_STR % name[:-len('_Proper')], re.MULTILINE | re.DOTALL)
-                    if env['verbose'] > 3: env['log']('re.search(%s, %s, re.MULTILINE | re.DOTALL)' % (repr(ALL_DEFINITIONS_FULL_STR % name[:-len('_Proper')]), repr(extended_proof_part)))
-                    if reg.search(extended_proof_part):
-                        return before_match + reg.sub(r'\1\2\1%s\n' % suggestion, extended_proof_part) + after_match[ending.start():]
-            if env['verbose'] >= 0: env['log']('Warning: No Proof found in %s for %s' % (filename, rest_id))
+            loc = get_end_of_first_line_location(proof_part, **env)
+            indent = get_indent(match.group())
+            if env['verbose'] >= 3:
+                env['log']('Before proof: %s\nAfter proof: %s' % (proof_part[:loc], proof_part[loc:]))
+            return '%s%s%s\n%s%s\n%s%s' % (before_match, match.group(), proof_part[:loc], indent, suggestion, proof_part[loc:], after_match[ending.start():])
         else:
             if env['verbose'] >= 0: env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id))
     else:
@@ -137,7 +177,7 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
     return None
 
 def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env):
-    match = re.search(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)
+    match = re.search(ALL_DEFINITIONS_STR % name, contents, re.MULTILINE)
     if match:
         return update_proof(name, contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
     elif name[-len('_Proper'):] == '_Proper':
@@ -150,7 +190,7 @@ def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **e
 
 def update_definitions(contents, filename, rest_id, suggestion, **env):
     name = rest_id.split('#')[-1]
-    if len(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)) <= 1:
+    if len(re.findall(ALL_DEFINITIONS_STR % name, contents, re.MULTILINE)) <= 1:
         ret = unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env)
         if ret is None:
             return None
@@ -171,7 +211,7 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
                 if mod_body.count(cur_end) == 1:
                     post = mod_body[mod_body.index(cur_end):] + post
                     mod_body = mod_body[:mod_body.index(cur_end)]
-                    if len(re.findall(ALL_DEFINITONS_STR % name, mod_body, re.MULTILINE)) <= 1:
+                    if len(re.findall(ALL_DEFINITIONS_STR % name, mod_body, re.MULTILINE)) <= 1:
                         ret = unsafe_update_definitions(name, mod_body, filename, rest_id, suggestion, **env)
                         if ret is None:
                             return None
@@ -186,7 +226,7 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
                 if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_mod, rest_id, filename))
                 break
         if env['verbose'] >= 0: env['log']('Warning: Module disambiguation was insufficient to uniqueize %s in %s' % (rest_id, filename))
-        if env['verbose'] > 1: env['log']('Found: %s' % repr(re.findall(ALL_DEFINITONS_STR % name, contents, re.MULTILINE)))
+        if env['verbose'] > 1: env['log']('Found: %s' % repr(re.findall(ALL_DEFINITIONS_STR % name, contents, re.MULTILINE)))
     return contents
 
 if __name__ == '__main__':
@@ -199,7 +239,9 @@ if __name__ == '__main__':
         'hide_reg': args.hide_reg
         }
     update_env_with_libnames(env, args)
-    for theorem_id, suggestion in all_matches(REG_PROOF_USING, source, start='The proof of ', **env):
+    for theorem_id, suggestions in REG_PROOF_USING.findall('\n'.join(source)):
+        all_suggestions = REG_SUB_PROOF_USING.findall(suggestions)
+        suggestion = pick_suggestion(all_suggestions)
         filenames = list(reversed(split_to_file_and_rest(theorem_id, **env)))
         if filenames:
             is_first = True
@@ -209,7 +251,7 @@ if __name__ == '__main__':
                 if updated is not None:
                     if updated != orig:
                         if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
-                        write_to_file(filename, updated, do_backup=True)
+                        mwrite_to_file(filename, updated, do_backup=True)
                     elif len(filenames) > 1 and not is_first:
                         if env['verbose'] >= 1: env['log']('Found %s in %s' % (rest_id, filename))
                     break
