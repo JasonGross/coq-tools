@@ -1,5 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path
+import os, subprocess, re, sys, glob, os.path, tempfile
 from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
@@ -201,15 +201,18 @@ def get_all_v_files(directory, exclude=tuple()):
                       if os.path.normpath(name) not in exclude]
     return tuple(map(fix_path, all_files))
 
-@memoize
-def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_libnames, v_files, coqc_args, verbose, log):
-    cmds = [coq_makefile, 'COQC', '=', coqc]
-    for physical_name, logical_name in libnames:
+def run_coq_makefile_and_make(v_files, targets, **kwargs):
+    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', delete=False)
+    mkfile = f.name
+    f.close()
+    cmds = [kwargs['coq_makefile'], 'COQC', '=', kwargs['coqc'], '-o', mkfile]
+    for physical_name, logical_name in kwargs['libnames']:
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    for physical_name, logical_name in non_recursive_libnames:
+    for physical_name, logical_name in kwargs['non_recursive_libnames']:
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    coq_makefile_help = get_coqc_help(coq_makefile, verbose=verbose, log=log)
-    grouped_args, unrecognized_args = group_coq_args_split_recognized(coqc_args, coq_makefile_help, is_coq_makefile=True)
+    coq_makefile_help = get_coqc_help(kwargs['coq_makefile'], **kwargs)
+    grouped_args, unrecognized_args = group_coq_args_split_recognized(kwargs['coqc_args'], coq_makefile_help, is_coq_makefile=True)
     for args in grouped_args:
         cmds.extend(args)
     if unrecognized_args:
@@ -217,14 +220,14 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
             for arg in unrecognized_args:
                 cmds += ['-arg', arg]
         else:
-            if verbose: log('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
+            if kwargs['verbose']: kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
-    if verbose:
-        log(' '.join(cmds))
+    if kwargs['verbose']:
+        kwargs['log'](' '.join(cmds))
     try:
         p_make_makefile = subprocess.Popen(cmds,
                                            stdout=subprocess.PIPE)
-        return p_make_makefile.communicate()
+        (stdout, stderr) = p_make_makefile.communicate()
     except OSError as e:
         error("When attempting to run coq_makefile:")
         error(repr(e))
@@ -233,11 +236,15 @@ def get_makefile_contents_helper(coqc, coq_makefile, libnames, non_recursive_lib
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get a .glob files, to work around this.")
         sys.exit(1)
-
-def get_makefile_contents(v_files, **kwargs):
-    kwargs = safe_kwargs(fill_kwargs(kwargs))
-    return get_makefile_contents_helper(coqc=kwargs['coqc'], coq_makefile=kwargs['coq_makefile'], libnames=kwargs['libnames'], non_recursive_libnames=kwargs['non_recursive_libnames'], v_files=v_files, coqc_args=kwargs['coqc_args'], verbose=kwargs['verbose'], log=kwargs['log'])
-
+    if kwargs['verbose']:
+        kwargs['log'](' '.join(['make', '-k', '-f', mkfile] + targets))
+    try:
+        p_make = subprocess.Popen(['make', '-k', '-f', mkfile] + targets, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
+        return p_make.communicate()
+    finally:
+        for filename in (mkfile, mkfile + '.conf'):
+            if os.path.exists(filename):
+                os.remove(filename)
 
 def make_globs(logical_names, **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -250,11 +257,7 @@ def make_globs(logical_names, **kwargs):
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
     extra_filenames_v = (get_all_v_files('.', filenames_v) if kwargs['walk_tree'] else [])
-    (stdout, stderr) = get_makefile_contents(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), **kwargs)
-    if kwargs['verbose']:
-        kwargs['log'](' '.join(['make', '-k', '-f', '-'] + filenames_glob))
-    p_make = subprocess.Popen(['make', '-k', '-f', '-'] + filenames_glob, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
-    (stdout_make, stderr_make) = p_make.communicate(stdout)
+    (stdout_make, stderr_make) = run_coq_makefile_and_make(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), filenames_glob, **kwargs)
 
 def get_glob_file_for(filename, update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
