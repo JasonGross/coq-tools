@@ -203,8 +203,8 @@ def get_all_v_files(directory, exclude=tuple()):
 
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
-    f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', delete=False)
-    mkfile = f.name
+    f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
+    mkfile = os.path.basename(f.name)
     f.close()
     cmds = [kwargs['coq_makefile'], 'COQC', '=', kwargs['coqc'], '-o', mkfile]
     for physical_name, logical_name in kwargs['libnames']:
