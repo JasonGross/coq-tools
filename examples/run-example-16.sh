@@ -34,9 +34,9 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 12, characters 6-13:
-Error: The term "X" has type "Set -> Set" while it is expected to have type
- "Set"\.
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 12, characters 6-7:
+Error:
+The term "X" has type "Set -> Set" while it is expected to have type "Set"\.
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing

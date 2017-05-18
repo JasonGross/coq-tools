@@ -33,9 +33,10 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line [0-9]\+, characters 6-41:
-Error: The term "eq_refl" has type "forall x : ?[0-9]\+, eq x x"
- while it is expected to have type "eq v (forall x : Prop, x)"\.
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line [0-9]\+, characters 6-13:
+Error:
+The term "eq_refl" has type "forall x : ?[0-9A-Z]\+, eq x x"
+while it is expected to have type "eq v (forall x : Prop, x)"\.
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
@@ -71,10 +72,10 @@ python ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-impredicative-set" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
 (\* coqc version [^\*]*\*)
 
-Inductive eq {A} (x : A) : A -> Set := eq_refl : eq x x\.
+Inductive eq {A} (x : A) : \(A ->\|forall _ : A,\) Set := eq_refl : eq x x\.
 Definition v := ((forall x : Set, eq x x) : Set)\.
 Check eq_refl : eq v (forall x : Prop, x)\.
 
