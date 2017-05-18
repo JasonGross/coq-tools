@@ -2,22 +2,26 @@ language: python
 
 sudo: required
 
-python: "2.7"
-
 matrix:
   fast_finish: true
   include:
     - dist: trusty
+      python: "2.7"
       env: COQ_VERSION="trunk"    COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-trunk-daily"
     - dist: trusty
+      python: "2.7"
       env: COQ_VERSION="v8.6"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.6-daily"
     - dist: trusty
+      python: "2.7"
       env: COQ_VERSION="v8.5"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.5-daily"
     - dist: trusty
+      python: "2.7"
       env: COQ_VERSION="8.6"      COQ_PACKAGE="coq-8.6"                        PPA="ppa:jgross-h/many-coq-versions"
     - dist: trusty
+      python: "2.7"
       env: COQ_VERSION="8.5pl3"  COQ_PACKAGE="coq-8.5pl3 libcoq-ocaml-8.5pl3" PPA="ppa:jgross-h/many-coq-versions"
     - dist: precise
+      python: "2.7"
       env: COQ_VERSION="8.4pl6"  COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6" PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
   allow_failures:
     - env: COQ_VERSION="v8.5"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.5-daily"
