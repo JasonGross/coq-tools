@@ -1,1 +1,1 @@
-Axiom X : Set -> Set.
+Axiom X : forall _ : Set, Set.
