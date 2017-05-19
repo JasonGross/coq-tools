@@ -36,7 +36,7 @@ EXPECTED_ERROR=$(cat <<EOF
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line [0-9]\+, characters 6-\(13\|41\):
 Error:
 The term "eq_refl" has type "forall x : ?[0-9A-Z]\+, eq x x"
-while it is expected to have type "eq v (forall x : Prop, x)"\.
+\s*while it is expected to have type "eq v (forall x : Prop, x)"\.
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
