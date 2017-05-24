@@ -83,5 +83,5 @@ if __name__ == '__main__':
         p.communicate(input=sys.argv[1])
         p.stdin.close()
         p.wait()
-        print("Mismatch: bad next characters: %s" % (repr(sys.argv[2][len(search_for):][:10])))
+        print("Mismatch: bad next characters at %d: %s" % (len(search_for), repr(sys.argv[2][len(search_for):][:10])))
     #sys.exit(p.errorcode)
