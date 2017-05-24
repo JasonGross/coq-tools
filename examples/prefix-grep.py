@@ -78,5 +78,7 @@ if __name__ == '__main__':
     p.stdin.close()
     p.wait()
     if len(search_for) < len(sys.argv[2]):
+        print("Mismatch: good prefix:")
+        print(sys.argv[2][:len(search_for)])
         print("Mismatch: bad next characters: %s" % (repr(sys.argv[2][len(search_for):][:10])))
     #sys.exit(p.errorcode)
