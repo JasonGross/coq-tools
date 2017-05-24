@@ -73,7 +73,7 @@ $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_
 	$(VECHO) "TEST run-example-$*.sh..." >&2
 	$(Q)yes "y" | ./run-example-$*.sh >"example_$*_make.log" 2>&1; RV=$$?; (echo "$$RV" > "$@")
 	$(Q)RV="$$(cat "$@")"; if [ "$$RV" -eq 0 ]; then RESULT="$(GREEN)success!$(NC)"; else RESULT="$(RED)failure$(NC)"; fi; \
-	$(VIECHO) "TEST run-example-$*.sh... $$RESULT" >&2
+	echo "TEST run-example-$*.sh... $$RESULT" >&2
 
 test-suite-verbose-report::
 	$(Q)$(MAKE) test-suite-report
