@@ -79,6 +79,9 @@ if __name__ == '__main__':
     p.wait()
     if len(search_for) < len(sys.argv[2]):
         print("Mismatch: good prefix:")
-        print(sys.argv[2][:len(search_for)])
+        p = subprocess.Popen(["grep", "-o", "--color=auto", search_for], universal_newlines=False, stdin=subprocess.PIPE)
+        p.communicate(input=sys.argv[1])
+        p.stdin.close()
+        p.wait()
         print("Mismatch: bad next characters: %s" % (repr(sys.argv[2][len(search_for):][:10])))
     #sys.exit(p.errorcode)
