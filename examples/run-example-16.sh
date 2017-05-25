@@ -42,6 +42,9 @@ EOF
 # pre-build the files to normalize the output for the run we're testing
 coqc -nois -R Bar Qux Bar/A.v -q
 coqc -nois -R Baz Qux Baz/A.v -q
+# account for a super-make called with -B
+export MAKEFLAGS="" # B -- VERBOSE=1 V=1
+export MFLAGS="" # -B
 echo "y" | python ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $ARGS 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
