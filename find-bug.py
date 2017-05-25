@@ -1146,6 +1146,7 @@ if __name__ == '__main__':
         if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
 
     coqc_help = get_coqc_help(env['coqc'], **env)
+    coqc_version = get_coqc_version(env['coqc'], **env)
 
     if has_dir_binding(env['coqc_args'], coqc_help=coqc_help, file_name=bug_file_name):
         update_env_with_libnames(env, args, default=tuple([]))
@@ -1158,6 +1159,8 @@ if __name__ == '__main__':
             print('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
             env['log']('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
             sys.exit(1)
+
+        if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
 
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
