@@ -3,7 +3,7 @@ from __future__ import with_statement
 import argparse, os, sys, shutil, re
 from split_file import split_coq_file_contents_with_comments
 from strip_comments import strip_comments
-from custom_arguemnts import add_logging_arguments, process_logging_arguments
+from custom_arguments import add_logging_arguments, process_logging_arguments
 from file_util import write_to_file
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
