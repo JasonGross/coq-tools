@@ -12,9 +12,29 @@ def get_definitions_diff(previous_definition_string, new_definition_string):
     definitions_shared, definitions_added)"""
     old_definitions = [i for i in previous_definition_string.split('|') if i]
     new_definitions = [i for i in new_definition_string.split('|') if i]
-    return (tuple(i for i in old_definitions if i not in new_definitions),
-            tuple(i for i in old_definitions if i in new_definitions),
-            tuple(i for i in new_definitions if i not in old_definitions))
+    if all(i == 'branch' for i in old_definitions + new_definitions): # work
+        # around bug #5577 when all theorem names are "branch", we
+        # don't assume that names are unique, and instead go by
+        # ordering
+        removed = []
+        shared = []
+        added = []
+        for i in range(max((len(old_definitions), len(new_definitions)))):
+            if i < len(old_definitions) and i < len(new_definitions):
+                if old_definitions[i] == new_definitions[i]:
+                    shared.append(old_definitions[i])
+                else:
+                    removed.append(old_definitions[i])
+                    added.append(new_definitions[i])
+            elif i < len(old_definitions):
+                removed.append(old_definitions[i])
+            elif i < len(new_definitions):
+                added.append(new_definitions[i])
+        return (tuple(removed), tuple(shared), tuple(added))
+    else:
+        return (tuple(i for i in old_definitions if i not in new_definitions),
+                tuple(i for i in old_definitions if i in new_definitions),
+                tuple(i for i in new_definitions if i not in old_definitions))
 
 def strip_newlines(string):
     if not string: return string
@@ -70,7 +90,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
             cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-        if verbose >= 2: log((statement, (char_start, char_end), terms_defined, last_definitions, cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text))
+        if verbose >= 2: log((statement, (char_start, char_end), definitions_removed, terms_defined, 'last_definitions:', last_definitions, 'cur_definition_names:', cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text))
 
 
         # first, we handle the case where we have just finished
