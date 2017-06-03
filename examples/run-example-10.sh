@@ -18,13 +18,16 @@ then
 fi
 
 python ../../find-bug.py example_10.v bug_10.v -Q . "" || exit $?
-EXPECTED='^(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)$'
+EXPECTED='(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)'
 LINES="$(grep -c "$EXPECTED" bug_10.v)"
+ACTUAL="$(cat bug_10.v | grep -v '^$' | tr '\n' '\1')"
 if [ "$LINES" -ne 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
-    cat bug_10.v
+    echo "Got:"
+    cat "$EXAMPLE_OUTPUT" | grep -v '^$'
+    python "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED"
     exit 1
 fi
 exit 0
