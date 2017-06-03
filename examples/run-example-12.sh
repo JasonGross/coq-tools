@@ -39,12 +39,12 @@ The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 
-Does this output display the correct error? \[(y)es/(n)o\]\s
+.\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error: Illegal application (Non-functional construction):\s
 The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
-'\.
+.\?'\.
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ Illegal\\\\ application\\\\ \\\\(Non\\\\-functional\\\\ construction\\\\)\\\\:\\\\ \\\\nThe\\\\ expression\\\\ \\\\"Set\\\\"\\\\ of\\\\ type\\\\ \\\\"Type\\\\"\\\\ncannot\\\\ be\\\\ applied\\\\ to\\\\ the\\\\ term\\\\n\\\\ \\\\"Set\\\\"\\\\ \\\\:\\\\ \\\\"Type\\\\")'\.
 Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in <module>
