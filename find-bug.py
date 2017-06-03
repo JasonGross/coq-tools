@@ -900,7 +900,7 @@ Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
 """
-    return '%s%s%s' % (pre_tac_code, tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents))
+    return '%s%s%s' % (pre_tac_code, tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents.replace('Require Coq.Init.Notations/\n', '').replace('Import Coq.Init.Notations.\n', '')))
 
 
 def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
