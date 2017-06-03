@@ -891,8 +891,8 @@ def try_strip_empty_sections(output_file_name, **kwargs):
 
 
 def add_admit_tactic(contents):
-    tac_code = r"""Require Import Coq.Init.Notations.
-Module Export AdmitTactic.
+    pre_tac_code = "Require Import Coq.Init.Notations.\n"
+    tac_code = r"""Module Export AdmitTactic.
 Module Import LocalFalse.
 Inductive False := .
 End LocalFalse.
@@ -900,7 +900,7 @@ Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
 """
-    return '%s%s' % (tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents))
+    return '%s%s%s' % (pre_tac_code, tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents))
 
 
 def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
