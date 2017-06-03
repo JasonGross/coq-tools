@@ -1045,7 +1045,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
     return True
 
 def topname_of_filename(file_name):
-    return os.path.splitext(os.path.basename(file_name))[0]
+    return os.path.splitext(os.path.basename(file_name))[0].replace('-', '_DASH_')
 
 def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
     bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
