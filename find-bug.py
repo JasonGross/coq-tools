@@ -160,6 +160,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if kwargs['verbose']: kwargs['log']('\nCoqing the file (%s)...' % output_file_name)
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
+        if kwargs['verbose'] > 2: kwargs['log']('\nContents:\n\n%s\n\n' % contents)
         output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=1, **kwargs)
         if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
