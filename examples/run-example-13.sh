@@ -46,7 +46,7 @@ The timeout has been set to: 2
 Warning: OUT_FILE (bug_13.v) already exists.  Would you like to overwrite?
 Please enter (y)es/(n)o:.
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 13, characters 6-9:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(3\|4\), characters 6-9:
 Error:
 The term "foo" has type "Type" while it is expected to have type\s\?
 "Set" (universe inconsistency)\.
