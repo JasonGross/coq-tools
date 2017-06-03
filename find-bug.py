@@ -891,7 +891,8 @@ def try_strip_empty_sections(output_file_name, **kwargs):
 
 
 def add_admit_tactic(contents):
-    tac_code = r"""Module Export AdmitTactic.
+    tac_code = r"""Require Import Coq.Init.Notations.
+Module Export AdmitTactic.
 Module Import LocalFalse.
 Inductive False := .
 End LocalFalse.
