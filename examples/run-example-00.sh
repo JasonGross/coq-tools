@@ -53,9 +53,9 @@ Set
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(0\|1\), characters 0-15:
 Error: The command has not failed\s\?!
 
-Does this output display the correct error? \[(y)es/(n)o\]\s
+.\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error: The command has not failed\s\?!
-'\.
+.\?'\.
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\ The\\\\ command\\\\ has\\\\ not\\\\ failed.*
 EOF
 )
