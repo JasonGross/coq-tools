@@ -51,11 +51,11 @@ Error:
 The term "foo" has type "Type" while it is expected to have type\s\?
 "Set" (universe inconsistency)\.
 
-Does this output display the correct error? \[(y)es/(n)o\]\s
+.\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error:
 The term "foo" has type "Type" while it is expected to have type\s\?
 "Set" (universe inconsistency)\.
-'\.
+.\?'\.
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\nThe\\\\ term\\\\ \\\\"foo\\\\"\\\\ has\\\\ type\\\\ \\\\"Type\\\\"\\\\ while\\\\ it\\\\ is\\\\ expected\\\\ to\\\\ have\\\\ type\\\\ \\\\n\\\\"Set\\\\"\\\\ \\\\(universe\\\\ inconsistency\\\\)\\\\.*
 EOF
 )
