@@ -1,5 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path, tempfile
+import os, subprocess, re, sys, glob, os.path, tempfile, time
 from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
@@ -269,6 +269,9 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         file_contents[filename] = get_raw_file(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
+        # delay until the .v file is old enough that a .glob file will be considered newer
+        while file_mtime[filename] == time.time():
+            time.sleep(0.1)
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
         if os.stat(globname).st_mtime >= file_mtimes[filename]:
