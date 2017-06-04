@@ -13,7 +13,7 @@ N="16"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-ARGS="--nonpassing-coqc-args=-R --nonpassing-coqc-args=Baz --nonpassing-coqc-args=Qux --passing-coqc=coqc --passing-coqc-args=-R --passing-coqc-args=Bar --passing-coqc-args=Qux"
+ARGS="--nonpassing-coqc-args=-R --nonpassing-coqc-args=Baz --nonpassing-coqc-args=Qux --passing-coqc=coqc --passing-coqc-args=-R --passing-coqc-args=Bar --passing-coqc-args=Qux --no-deps"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
