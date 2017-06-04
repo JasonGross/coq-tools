@@ -270,7 +270,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
         # delay until the .v file is old enough that a .glob file will be considered newer
-        while file_mtime[filename] == time.time():
+        while file_mtimes[filename] == time.time():
             time.sleep(0.1)
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
