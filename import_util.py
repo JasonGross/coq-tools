@@ -256,6 +256,9 @@ def make_globs(logical_names, **kwargs):
     if all(os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
            for glob_name, v_name in zip(filenames_glob, filenames_v)):
         return
+    for glob_name, v_name in zip(filenames_glob, filenames_v):
+        if os.path.isfile(glob_name) and not os.path.getmtime(glob_name) > os.path.getmtime(v_name):
+            os.remove(glob_name)
     extra_filenames_v = (get_all_v_files('.', filenames_v) if kwargs['walk_tree'] else [])
     (stdout_make, stderr_make) = run_coq_makefile_and_make(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), filenames_glob, **kwargs)
 
@@ -274,7 +277,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
             time.sleep(0.1)
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
-        if os.stat(globname).st_mtime >= file_mtimes[filename]:
+        if os.stat(globname).st_mtime > file_mtimes[filename]:
             return get_raw_file(globname, **kwargs)
         elif kwargs['verbose']:
             kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
