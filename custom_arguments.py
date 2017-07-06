@@ -99,6 +99,7 @@ def append_coq_arg(env, arg):
         env[key] = tuple(list(env.get(key, [])) + list(argstring_to_iterable(arg)))
 
 def process_CoqProject(env, contents):
+    if contents is None: return
     tokens = tuple(tokenize_CoqProject(contents))
     i = 0
     while i < len(tokens):
@@ -125,10 +126,10 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     env['_CoqProject'] = None
     env['_CoqProject_v_files'] = []
     env['_CoqProject_unknown'] = []
-    if args.CoqProjectFile:
-        env['_CoqProject'] = args.CoqProjectFile.read()
-        args.CoqProjectFile.close()
-        process_CoqProject(env, env['_CoqProject'])
+    for f in args.CoqProjectFile:
+        env['_CoqProject'] = f.read()
+        f.close()
+    process_CoqProject(env, env['_CoqProject'])
 
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
