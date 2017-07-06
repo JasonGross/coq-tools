@@ -74,8 +74,9 @@ def fix_identifiers(idents, libname):
             if libname[-(idx+1):] == '.' + overlap:
                 yield libname + rest
             else:
-                raw_input((ident, libname))
-                yield ident
+                #raw_input((ident, libname))
+                #yield ident
+                continue
 
 if __name__ == '__main__':
     try:
