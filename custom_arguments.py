@@ -81,6 +81,9 @@ def tokenize_CoqProject(contents):
                 yield cur
                 cur = ''
                 is_in_string = False
+        elif ch == '"':
+            cur += ch
+            is_in_string = True
         else:
             if ch in '\n\r\t ':
                 if cur: yield cur
