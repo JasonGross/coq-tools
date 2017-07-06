@@ -141,8 +141,6 @@ parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_co
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
-parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
-                    help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 

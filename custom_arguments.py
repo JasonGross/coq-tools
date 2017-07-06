@@ -46,6 +46,11 @@ def add_libname_arguments(parser):
                         help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
     parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
+    parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
+                        help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+    parser.add_argument('-f', metavar='FILE', dest='CoqProjectFile', nargs=1, type=argparse.FileType('r'),
+                        default=None,
+                        help=("A _CoqProject file"))
 
 def add_logging_arguments(parser):
     parser.add_argument('--verbose', '-v', dest='verbose',
@@ -66,9 +71,65 @@ def process_logging_arguments(args):
     del args.quiet
     return args
 
+def tokenize_CoqProject(contents):
+    is_in_string = False
+    cur = ''
+    for ch in contents:
+        if is_in_string:
+            cur += ch
+            if ch == '"':
+                yield cur
+                cur = ''
+                is_in_string = False
+        else:
+            if ch in '\n\r\t ':
+                if cur: yield cur
+                cur = ''
+            else:
+                cur += ch
+    if cur:
+        yield cur
+
+def argstring_to_iterable(arg):
+    if arg[:1] == '"' and arg[-1:] = '"': arg = arg[1:-1]
+    return arg.split(' ')
+
+def append_coq_arg(env, arg):
+    for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args', 'passing_coqc'):
+        env[key] = tuple(list(env.get(key, [])) + list(argstring_to_iterable(arg)))
+
+def process_CoqProject(env, contents):
+    tokens = tuple(tokenize_CoqProject(contents))
+    i = 0
+    while i < len(tokens):
+        if tokens[i] == '-R' and i+2 < len(tokens):
+            env['libnames'].append((tokens[i+1], tokens[i+2]))
+            i += 3
+        elif tokens[i] == '-Q' and i+2 < len(tokens):
+            env['non_recursive_libnames'].append((tokens[i+1], tokens[i+2]))
+            i += 3
+        elif tokens[i] == '-arg' and i+1 < len(tokens):
+            append_coq_arg(env, tokens[i+1])
+            i += 2
+        elif tokens[i][-2:] == '.v':
+            env['_CoqProject_v_files'].append(tokens[i])
+            i += 1
+        else:
+            if 'log' in env.keys(): env['log']('Unknown _CoqProject entry: %s' % repr(tokens[i]))
+            env['_CoqProject_unknown'].append(tokens[i])
+            i += 1
+
 def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     env['libnames'] = (args.libnames if len(args.libnames + args.non_recursive_libnames) > 0 else list(default))
     env['non_recursive_libnames'] = args.non_recursive_libnames
+    env['_CoqProject'] = None
+    env['_CoqProject_v_files'] = []
+    env['_CoqProject_unknown'] = []
+    if args.CoqProjectFile:
+        env['_CoqProject'] = args.CoqProjectFile.read()
+        args.CoqProjectFile.close()
+        process_CoqProject(env, env['_CoqProject'])
+
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
 class ArgumentParser(argparse.ArgumentParser):
