@@ -132,7 +132,6 @@ if __name__ == '__main__':
         ignore_header = ('Welcome to Coq', '[Loading ML file')
         error_header = ('Toplevel input, characters',)
         for filename in sorted(env['_CoqProject_v_files']):
-            if 'Definition.v' not in filename: continue
             if env['verbose'] >= 2: env['log']('Qualifying identifiers in %s...' % filename)
             if env['verbose'] == 1: env['log']('Printing assumptions in %s...' % filename)
             libname = lib_of_filename(filename, **env)
