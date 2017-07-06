@@ -91,7 +91,7 @@ def tokenize_CoqProject(contents):
         yield cur
 
 def argstring_to_iterable(arg):
-    if arg[:1] == '"' and arg[-1:] = '"': arg = arg[1:-1]
+    if arg[:1] == '"' and arg[-1:] == '"': arg = arg[1:-1]
     return arg.split(' ')
 
 def append_coq_arg(env, arg):
