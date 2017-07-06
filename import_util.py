@@ -66,6 +66,14 @@ def clear_libimport_cache(libname):
         del lib_imports_slow[libname]
 
 @memoize
+def os_walk(top, topdown=True, onerror=None, followlinks=False):
+    return tuple(os.walk(top, topdown=topdown, onerror=onerror, followlinks=followlinks))
+
+@memoize
+def os_path_isfile(filename):
+    return os.path.isfile(filename)
+
+@memoize
 def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     for physical_name, logical_name in list(libnames) + list(non_recursive_libnames):
         if lib.startswith(libname_with_dot(logical_name)):
@@ -74,9 +82,9 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
             return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
     # is this the right thing to do?
     lib = lib.replace('.', os.sep)
-    for dirpath, dirname, filenames in os.walk('.', followlinks=True):
+    for dirpath, dirname, filenames in os_walk('.', followlinks=True):
         filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
-        if os.path.isfile(filename):
+        if os_path_isfile(filename):
             return fix_path(filename)
     return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
 
