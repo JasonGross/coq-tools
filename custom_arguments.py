@@ -129,9 +129,10 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     env['_CoqProject'] = None
     env['_CoqProject_v_files'] = []
     env['_CoqProject_unknown'] = []
-    for f in args.CoqProjectFile:
-        env['_CoqProject'] = f.read()
-        f.close()
+    if args.CoqProjectFile:
+        for f in args.CoqProjectFile:
+            env['_CoqProject'] = f.read()
+            f.close()
     process_CoqProject(env, env['_CoqProject'])
     env['libnames'].extend(args.libnames if len(args.libnames + args.non_recursive_libnames + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
     env['non_recursive_libnames'].extend(args.non_recursive_libnames)
