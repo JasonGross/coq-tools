@@ -119,7 +119,8 @@ if __name__ == '__main__':
         ignore_header = ('Welcome to Coq', '[Loading ML file')
         error_header = ('Toplevel input, characters',)
         for filename in sorted(env['_CoqProject_v_files']):
-            if env['verbose'] >= 1: env['log']('Qualifying identifiers in %s...' % filename)
+            if env['verbose'] >= 2: env['log']('Qualifying identifiers in %s...' % filename)
+            if env['verbose'] == 1: env['log']('Printing assumptions in %s...' % filename)
             libname = lib_of_filename(filename, **env)
             require_statement = 'Require Import %s.\n' % libname
             search_code = r"""%s
@@ -128,7 +129,7 @@ SearchPattern _ inside %s.""" % (require_statement, libname)
             output, cmds, retcode = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=3, **env)
             identifiers = sorted(set(i.strip() for i in output.split('\n') if i.strip()))
             print_assumptions_code = require_statement + '\n'.join('Locate %s.\nPrint Assumptions %s.' % (i, i) for i in identifiers)
-            if env['verbose'] >= 1: env['log']('Printing assumptions...')
+            if env['verbose'] >= 2: env['log']('Printing assumptions...')
             output, cmds, retcode = get_coq_output(env['coqtop'], env['coqc_args'], print_assumptions_code, 0, is_coqtop=True, pass_on_stdin=True, verbose_base=3, **env)
             i = 0
             statements = output.split('\nCoq <')
