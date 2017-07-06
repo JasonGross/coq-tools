@@ -63,7 +63,10 @@ def get_constant_name_from_locate(val):
 
 def fix_identifiers(idents, libname):
     for ident in idents:
-        if '.' not in ident:
+        if ident[:len('Warning:')] == 'Warning:':
+            raw_input(ident)
+            continue
+        elif '.' not in ident:
             yield ident
         else:
             idx = ident.index('.')
@@ -158,6 +161,8 @@ SearchPattern _ inside %s.""" % (require_statement, libname)
                     if env['verbose'] >= 1: env['log']('OPEN: %s (%s)' % (last, ctype))
                     if env['verbose'] >= 3: env['log'](statements[i+1])
                     i += 2
+                elif not statements[i].strip():
+                    i += 1
                 else:
                     found_ignore, found_error = False, False
                     for header in ignore_header:
@@ -175,7 +180,7 @@ SearchPattern _ inside %s.""" % (require_statement, libname)
                             if env['verbose'] >= 1: env['log']('UNKNOWN: %s' % statements[i])
                             unknown.append(statements[i])
                     i += 1
-
+        env['log']('Identifiers which are not closed under the global context:\n%s' % '\n'.join(ident[0] for ident in open_idents))
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
