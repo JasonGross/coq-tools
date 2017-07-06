@@ -121,8 +121,8 @@ def process_CoqProject(env, contents):
             i += 1
 
 def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
-    env['libnames'] = (args.libnames if len(args.libnames + args.non_recursive_libnames) > 0 else list(default))
-    env['non_recursive_libnames'] = args.non_recursive_libnames
+    env['libnames'] = []
+    env['non_recursive_libnames'] = []
     env['_CoqProject'] = None
     env['_CoqProject_v_files'] = []
     env['_CoqProject_unknown'] = []
@@ -130,6 +130,8 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
         env['_CoqProject'] = f.read()
         f.close()
     process_CoqProject(env, env['_CoqProject'])
+    env['libnames'].extend(args.libnames if len(args.libnames + args.non_recursive_libnames + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
+    env['non_recursive_libnames'].extend(args.non_recursive_libnames)
 
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
