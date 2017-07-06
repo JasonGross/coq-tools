@@ -12,6 +12,7 @@ from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZ
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
+from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt
 import diagnose_error
@@ -901,14 +902,6 @@ End AdmitTactic.
     return '%s%s%s' % (pre_tac_code, tac_code, re.sub(re.escape(tac_code) + r'\n*', '', contents.replace('Require Coq.Init.Notations/\n', '').replace('Import Coq.Init.Notations.\n', '')))
 
 
-def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
-    if ls is None: return tuple()
-    if isinstance(ls, str): return tuple([ls])
-    if isinstance(ls, tuple): return ls
-    if isinstance(ls, list): return tuple(ls)
-    if verbose >= 1: log("Unknown type '%s' of list '%s'" % (str(type(ls)), repr(ls)))
-    return tuple(ls)
-
 def default_on_fatal(message):
     if message is not None: print(message)
     sys.exit(1)
@@ -1041,21 +1034,6 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
         try_strip_newlines(output_file_name, **env)
 
     return True
-
-def topname_of_filename(file_name):
-    return os.path.splitext(os.path.basename(file_name))[0].replace('-', '_DASH_')
-
-def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
-    bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
-    ret = []
-    for binding in bindings:
-        if coq_accepts_top or binding[0] != '-top':
-            ret.extend(binding)
-    return tuple(ret)
-
-def has_dir_binding(args, coqc_help, file_name):
-    bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
-    return any(i[0] in ('-R', '-Q') for i in bindings)
 
 def maybe_add_coqlib_import(contents, **env):
     if env['inline_coqlib']:
