@@ -14,8 +14,10 @@ def has_dir_binding(args, coqc_help, file_name=None):
     bindings = group_coq_args(args, coqc_help, **kwargs)
     return any(i[0] in ('-R', '-Q') for i in bindings)
 
-def deduplicate_trailing_dir_bindings(args, coqc_help, file_name, coq_accepts_top):
-    bindings = group_coq_args(args, coqc_help, topname=topname_of_filename(file_name))
+def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_name=None):
+    kwargs = dict()
+    if file_name is not None: kwargs['topname'] = topname_of_filename(file_name)
+    bindings = group_coq_args(args, coqc_help, **kwargs)
     ret = []
     for binding in bindings:
         if coq_accepts_top or binding[0] != '-top':
