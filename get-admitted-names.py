@@ -112,56 +112,55 @@ if __name__ == '__main__':
 
     try:
         if env['verbose'] >= 1: env['log']('Listing identifiers...')
-        require_statement = 'Require %s.\n' % ' '.join(lib_of_filename(i, **env) for i in env['_CoqProject_v_files'])
-        search_code = r"""%s
-Set Search Output Name Only.
-SearchPattern _.
-SearchAbout -"____".""" % require_statement
-        output, cmds, retcode = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=1, **env)
-        if env['verbose'] >= 1: env['log']('Qualifying identifiers...')
-        identifiers = sorted(filter_local_identifiers(set(i.strip() for i in output.split('\n') if i.strip()), **env))
-        print_assumptions_code = require_statement + '\n'.join('Locate %s.\nPrint Assumptions %s.' % (i, i) for i in identifiers)
-        if env['verbose'] >= 1: env['log']('Printing assumptions...')
-        it = get_coq_output_iterable(env['coqtop'], env['coqc_args'], print_assumptions_code, is_coqtop=True, pass_on_stdin=True, verbose_base=1, sep='\nCoq <', **env).__iter__()
         unknown = []
         closed_idents = []
         open_idents = []
         errors = []
-        i = 0
         ignore_header = ('Welcome to Coq', '[Loading ML file')
         error_header = ('Toplevel input, characters',)
-        try:
-            cur = None
-            while True:
-                last, cur = cur, it.next()
-                if ' Closed under the global context ' in cur.replace('\n', ' '):
-                    last, ctype = get_constant_name_from_locate(last)
+        for filename in sorted(env['_CoqProject_v_files']):
+            if env['verbose'] >= 1: env['log']('Qualifying identifiers in %s...' % filename)
+            libname = lib_of_filename(filename, **env)
+            require_statement = 'Require Import %s.\n' % libname
+            search_code = r"""%s
+Set Search Output Name Only.
+SearchPattern _ inside %s.""" % (require_statement, libname)
+            output, cmds, retcode = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=3, **env)
+            identifiers = sorted(set(i.strip() for i in output.split('\n') if i.strip()))
+            print_assumptions_code = require_statement + '\n'.join('Locate %s.\nPrint Assumptions %s.' % (i, i) for i in identifiers)
+            if env['verbose'] >= 1: env['log']('Printing assumptions...')
+            output, cmds, retcode = get_coq_output(env['coqtop'], env['coqc_args'], print_assumptions_code, 0, is_coqtop=True, pass_on_stdin=True, verbose_base=3, **env)
+            i = 0
+            statements = output.split('\nCoq <')
+            while i < len(statements):
+                if i+1 < len(statements) and ' Closed under the global context ' in statements[i+1].replace('\n', ' '):
+                    last, ctype = get_constant_name_from_locate(statements[i])
                     closed_idents.append((last, ctype))
-                    if env['verbose'] >= 2: env['log']('Closed: %s' % str(closed_idents[-1]))
-                    last, cur = None, it.next()
-                elif 'Axioms:' in cur:
-                    last, ctype = get_constant_name_from_locate(last)
-                    open_idents.append((last, ctype, cur))
-                    if env['verbose'] >= 1: env['log']('OPEN: %s' % str((last, ctype)))
-                    last, cur = None, it.next()
-                elif last is not None:
+                    if env['verbose'] >= 2: env['log']('Closed: %s (%s)' % (last, ctype))
+                    i += 2
+                elif i+1 < len(statements) and 'Axioms:' in statements[i+1].replace('\n', ' '):
+                    last, ctype = get_constant_name_from_locate(statements[i])
+                    open_idents.append((last, ctype, statements[i+1]))
+                    if env['verbose'] >= 1: env['log']('OPEN: %s (%s)' % (last, ctype))
+                    if env['verbose'] >= 3: env['log'](statements[i+1])
+                    i += 2
+                else:
                     found_ignore, found_error = False, False
                     for header in ignore_header:
-                        if last.strip()[:len(header)] == header:
+                        if statements[i].strip()[:len(header)] == header:
                             found_ignore = True
-                            if env['verbose'] >= 3: env['log']('Ignoring: %s' % last)
+                            if env['verbose'] >= 3: env['log']('Ignoring: %s' % statements[i])
                     for header in ignore_header:
-                        if last.strip()[:len(header)] == header:
+                        if statements[i].strip()[:len(header)] == header:
                             found_error = True
                     if not found_ignore:
                         if found_error:
-                            errors.append(last)
-                            if env['verbose'] >= 1: env['log']('ERROR: %s' % last)
+                            errors.append(statements[i])
+                            if env['verbose'] >= 1: env['log']('ERROR: %s' % statements[i])
                         else:
-                            if env['verbose'] >= 1: env['log']('UNKNOWN: %s' % last)
-                            unknown.append(statements[i]) # fixme: unknown.append(last)
-        except StopIteration:
-            print('Done')
+                            if env['verbose'] >= 1: env['log']('UNKNOWN: %s' % statements[i])
+                            unknown.append(statements[i])
+                    i += 1
 
     finally:
         if env['remove_temp_file']:
