@@ -61,6 +61,19 @@ def get_constant_name_from_locate(val):
             if '\n' in val: val = val[:val.index('\n')].strip()
             return (val, ctype)
 
+def fix_identifiers(idents, libname):
+    for ident in idents:
+        if '.' not in ident:
+            yield ident
+        else:
+            idx = ident.index('.')
+            overlap, rest = ident[:idx], ident[idx:]
+            if libname[-(idx+1):] == '.' + overlap:
+                yield libname + rest
+            else:
+                raw_input((ident, libname))
+                yield ident
+
 if __name__ == '__main__':
     try:
         args = process_logging_arguments(parser.parse_args())
@@ -119,15 +132,16 @@ if __name__ == '__main__':
         ignore_header = ('Welcome to Coq', '[Loading ML file')
         error_header = ('Toplevel input, characters',)
         for filename in sorted(env['_CoqProject_v_files']):
+            if 'Definition.v' not in filename: continue
             if env['verbose'] >= 2: env['log']('Qualifying identifiers in %s...' % filename)
             if env['verbose'] == 1: env['log']('Printing assumptions in %s...' % filename)
             libname = lib_of_filename(filename, **env)
-            require_statement = 'Require Import %s.\n' % libname
+            require_statement = 'Require %s.\n' % libname
             search_code = r"""%s
 Set Search Output Name Only.
 SearchPattern _ inside %s.""" % (require_statement, libname)
             output, cmds, retcode = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=3, **env)
-            identifiers = sorted(set(i.strip() for i in output.split('\n') if i.strip()))
+            identifiers = sorted(fix_identifiers(set(i.strip() for i in output.split('\n') if i.strip()), libname))
             print_assumptions_code = require_statement + '\n'.join('Locate %s.\nPrint Assumptions %s.' % (i, i) for i in identifiers)
             if env['verbose'] >= 2: env['log']('Printing assumptions...')
             output, cmds, retcode = get_coq_output(env['coqtop'], env['coqc_args'], print_assumptions_code, 0, is_coqtop=True, pass_on_stdin=True, verbose_base=3, **env)
