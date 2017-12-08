@@ -4,7 +4,7 @@ cd "$DIR/example_10"
 PS4='$ '
 set -x
 EXPECTED_ERROR="A.a exists"
-ACTUAL_PRE="$(echo "y" | python ../../find-bug.py example_10.v bug_10.v -Q . "" 2>&1)"
+ACTUAL_PRE="$(echo "y" | python ../../find-bug.py example_10.v bug_10.v -Q . Top 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -17,7 +17,7 @@ then
     exit 1
 fi
 
-python ../../find-bug.py example_10.v bug_10.v -Q . "" || exit $?
+python ../../find-bug.py example_10.v bug_10.v -Q . Top || exit $?
 EXPECTED='(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)'
 LINES="$(grep -c "$EXPECTED" bug_10.v)"
 ACTUAL="$(cat bug_10.v | grep -v '^$' | tr '\n' '\1')"

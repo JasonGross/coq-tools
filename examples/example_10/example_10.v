@@ -1,4 +1,4 @@
-Require Import A.
+Require Import Top.A.
 
 Goal True.
   Fail Check A.b.
