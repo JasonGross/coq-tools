@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import argparse, tempfile, sys, os, re
 import custom_arguments
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file

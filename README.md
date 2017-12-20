@@ -22,7 +22,7 @@ Standard usage is to invoke with the buggy file name and the output
 (minimized) file name:
 
 ```
-python find-bug.py BUGGY_FILE.v OUTPUT_FILE.v
+python2 find-bug.py BUGGY_FILE.v OUTPUT_FILE.v
 ```
 
 You can add `-v` for a more verbose output.
@@ -63,7 +63,7 @@ on, to this script, or to give it a file containing said output.
 
 ```
 make quick -j -k | tee -a proof_using.log
-python /path/to/proof-using-helper.py proof_using.log
+python2 /path/to/proof-using-helper.py proof_using.log
 ```
 
 You can add `-v` for a more verbose output.

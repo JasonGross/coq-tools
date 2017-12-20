@@ -6,7 +6,7 @@ set -x
 # account for a super-make called with -B
 export MAKEFLAGS="" # B -- VERBOSE=1 V=1
 export MFLAGS="" # -B
-python ../../find-bug.py example_08.v bug_08_3.v --coqc-is-coqtop "$@" || exit $?
+python2 ../../find-bug.py example_08.v bug_08_3.v --coqc-is-coqtop "$@" || exit $?
 LINES="$(cat bug_08_3.v | grep -v '^$' | wc -l)"
 if [ "$LINES" -ne 10 ]
 then

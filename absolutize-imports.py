@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import argparse, shutil, os, os.path, sys
 from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from custom_arguments import add_libname_arguments, add_logging_arguments, process_logging_arguments

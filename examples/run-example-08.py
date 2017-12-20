@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 import os, sys, inspect
 
 DIR = os.path.dirname(os.path.realpath(__file__))

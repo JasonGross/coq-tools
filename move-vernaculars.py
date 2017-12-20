@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 from __future__ import with_statement
 import argparse, os, sys, shutil, re
 from split_file import split_coq_file_contents_with_comments
