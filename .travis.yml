@@ -37,7 +37,7 @@ matrix:
 
 before_install:
   - if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi
-  - travis_retry (sudo apt-get update -q 2>&1 | tee /tmp/apt.err && ! grep -q '^[WE]' /tmp/apt.err)
+  - travis_retry ./etc/sudo-apt-get-update.sh -q
   - travis_retry sudo apt-get install $COQ_PACKAGE -y
 
 script: make has-all-tests && make check CAT_ALL_LOGS=1
