@@ -36,7 +36,8 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-Error: The term "X" has type "Type" while it is expected to have type "Y".*
+Error: The term "X" has type "Type" while it is expected to have type[
+ ]"Y".*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
