@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import argparse, shutil, os, os.path, sys, re
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from split_file import get_coq_statement_ranges, UnsupportedCoqVersionError
@@ -39,8 +39,6 @@ parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, defau
                     help='The path to a folder containing the coqc and coqtop programs.')
 parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='coqc',
                     help='The path to the coqc program.')
-parser.add_argument('--arg', metavar='ARG', dest='coqc_args', type=str, action='append',
-                    help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 
