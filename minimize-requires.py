@@ -186,7 +186,7 @@ if __name__ == '__main__':
         'keep_exports': args.keep_exports,
         'keep_going': args.keep_going,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
-        'coqc_args': (args.coqc_args if args.coqc_args else tuple()),
+        'coqc_args': (args.coq_args if args.coq_args else tuple()),
         'timeout': args.timeout,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,

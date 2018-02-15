@@ -13,4 +13,7 @@ PS4='$ '
 set -x
 
 python2 ${MINIMIZE_REQUIRES_PY} -h || exit $?
+touch ex22.v
+python2 ${MINIMIZE_REQUIRES_PY} --arg=-nois ex22.v || exit $?
+rm -f ex22.v
 exit 0
