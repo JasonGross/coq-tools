@@ -98,7 +98,7 @@ def argstring_to_iterable(arg):
     return arg.split(' ')
 
 def append_coq_arg(env, arg):
-    for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args', 'passing_coqc'):
+    for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
         env[key] = tuple(list(env.get(key, [])) + list(argstring_to_iterable(arg)))
 
 def process_CoqProject(env, contents):
