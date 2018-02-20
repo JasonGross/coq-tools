@@ -39,6 +39,19 @@ class DeprecatedAction(argparse.Action):
         print('ERROR: option %s is deprecated.  Use %s instead.' % (option_string, self.replacement), file=sys.stderr)
         sys.exit(0)
 
+class ArgAppendWithWarningAction(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        items = getattr(namespace, self.dest) or []
+        items.append(value)
+        setattr(namespace, self.dest, items)
+        if value.startswith('-w '):
+            print(('WARNING: You seem to be trying to pass a warning list to Coq via a single %s ("%s").' +
+                   '\n  I will continue anyway, but this will most likely not work.' +
+                   '\n  Instead try using multiple invocations, as in' +
+                   '\n    %s')
+                  % (option_string, value, ' '.join(option_string + '=' + v for v in value.split(' '))),
+                  file=sys.stderr)
+
 def add_libname_arguments(parser):
     parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top', action=DeprecatedAction, replacement='-R',
                         help='The name to bind to the current directory using -R .')
@@ -46,7 +59,7 @@ def add_libname_arguments(parser):
                         help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
     parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
-    parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action='append',
+    parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action=ArgAppendWithWarningAction,
                         help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
     parser.add_argument('-f', metavar='FILE', dest='CoqProjectFile', nargs=1, type=argparse.FileType('r'),
                         default=None,
