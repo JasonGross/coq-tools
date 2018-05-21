@@ -1,10 +1,11 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path, tempfile, time
+from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for", "sort_files_by_dependency"]
 
 file_mtimes = {}
 file_contents = {}
@@ -344,6 +345,42 @@ def get_require_locations(lib, **kwargs):
     return sorted(set(loc for name, locs in get_require_dict(lib, **kwargs).items()
                       for loc in locs))
 
+def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
+    updated = True
+    while updated:
+        updated = False
+        for key in tuple(d.keys()):
+            newv = set(d[key])
+            if reflexive: newv.add(key)
+            for v in tuple(newv):
+                if v not in d.keys(): d[v] = make_new_value(v)
+                newv.update(set(d[v]))
+            if newv != set(d[key]):
+                d[key] = newv
+                updated = True
+    return d
+
+def sort_files_by_dependency(filenames, reverse=True, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    filenames = map(fix_path, filenames)
+    filenames = [(filename + '.v' if filename[-2:] != '.v' else filename) for filename in filenames]
+    libnames = [lib_of_filename(filename, **kwargs) for filename in filenames]
+    requires = dict((lib, get_require_names(lib, **kwargs)) for lib in libnames)
+    transitively_close(requires, make_new_value=(lambda lib: get_require_names(lib, **kwargs)), reflexive=True)
+
+    def fcmp(f1, f2):
+        if f1 == f2: return cmp(f1, f2)
+        l1, l2 = lib_of_filename(f1, **kwargs), lib_of_filename(f2, **kwargs)
+        if l1 == l2: return cmp(f1, f2)
+        # this only works correctly if the closure is *reflexive* as
+        # well as transitive, because we require that if A requires B,
+        # then A must have strictly more requires than B (i.e., it
+        # must include itself)
+        if len(requires[l1]) != len(requires[l2]): return cmp(len(requires[l1]), len(requires[l2]))
+        return cmp(l1, l2)
+
+    filenames = sorted(filenames, key=cmp_to_key(fcmp), reverse=reverse)
+    return filenames
 
 def get_imports(lib, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)

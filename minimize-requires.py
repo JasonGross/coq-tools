@@ -2,7 +2,7 @@
 import argparse, shutil, os, os.path, sys, re
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from split_file import get_coq_statement_ranges, UnsupportedCoqVersionError
-from import_util import get_references_for, get_file
+from import_util import get_references_for, get_file, sort_files_by_dependency
 from file_util import write_to_file
 from memoize import memoize
 from minimizer_drivers import run_binary_search
@@ -15,10 +15,13 @@ SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
 parser = argparse.ArgumentParser(description='Remove useless Requires in a file')
-parser.add_argument('input_files', metavar='INFILE', nargs='+', type=argparse.FileType('r'),
+parser.add_argument('input_files', metavar='INFILE', nargs='*', type=argparse.FileType('r'),
                     help='.v files to update')
 parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='?', type=str, default='',
                     help='update files in place (makes backup if SUFFIX supplied)')
+parser.add_argument('--all', dest='update_all',
+                    action='store_const', default=False, const=True,
+                    help=("also update all .v files listed in any _CoqProject file passed to -f (implies --in-place, requires -f)"))
 parser.add_argument('--absolutize', dest='absolutize',
                     action='store_const', default=False, const=True,
                     help=("Replace Requires with fully qualified versions."))
@@ -190,17 +193,33 @@ if __name__ == '__main__':
         'timeout': args.timeout,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
+        'input_files': tuple(f.name for f in args.input_files),
         }
     update_env_with_libnames(env, args)
+
+    for f in args.input_files: f.close()
+
+    if args.update_all:
+        if env['_CoqProject'] is None:
+            parser.error('--all given without -f')
+            sys.exit(1)
+        else:
+            env['inplace'] = True
+            if env['suffix'] == '': env['suffix'] = None
+            env['input_files'] = tuple(list(env['input_files']) + list(env['_CoqProject_v_files']))
+        if len(env['input_files']) == 0:
+            parser.error('no .v files listed in %s' % args.CoqProjectFile)
+    elif len(env['input_files']) == 0:
+        parser.error('not enough arguments (-f COQPROJECTFILE is required if no .v files are given)')
 
     for dirname, libname in env['libnames']:
         env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
 
+    env['input_files'] = sort_files_by_dependency(env['input_files'], update_globs=True, **env)
+
     try:
         failed = []
-        for input_file in args.input_files:
-            name = input_file.name
-            input_file.close()
+        for name in env['input_files']:
             try:
                 ranges = get_coq_statement_ranges(name, **env)
                 contents = get_file(name, absolutize=tuple(), update_globs=True, **env)

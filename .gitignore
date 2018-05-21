@@ -56,3 +56,4 @@ nosetests.xml
 /examples/example_04/A_abs.v
 /examples/example_04/B_abs.v
 /examples/check.log
+/examples/example_24/outputs
