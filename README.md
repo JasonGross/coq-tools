@@ -49,6 +49,29 @@ coqtop.bat file which is chosen as the default coqtop program.
 Somehow running via a .bat file makes things work.  You will probably
 have to use a similar wrapper if you use a custom coqtop executable.
 
+Additionally, quirks in module name resolution can result in inlining
+failures (see https://github.com/JasonGross/coq-tools/issues/16), and
+global side effects of `Require` can also result in failures (see
+https://github.com/JasonGross/coq-tools/issues/41).
+
+minimize-requires
+-----------------
+
+The script `minimize-requires.py` can be used to remove unneeded `Require`
+statements.  Run `minimize-requires.py -h` to see the options.
+
+### Usage
+
+Standard usage is to run
+```
+minimize-requires.py some-file1.v some-file2.v ... --in-place .bak
+```
+or, if you want to minimize an entire project,
+```
+minimize-requires.py --all -f _CoqProject
+```
+(you can add `--in-place .bak` if you want to save backup files)
+
 proof-using-helper
 ------------------
 
