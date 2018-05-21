@@ -922,7 +922,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
 
     if not check_change_and_write_to_file('', contents, output_file_name,
                                           unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
-                                          failure_description='validate all coq runs', changed_description='The',
+                                          failure_description='validate all coq runs', changed_description='File',
                                           **env):
         return die('Fatal error: Sanity check failed.')
 
