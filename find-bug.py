@@ -63,6 +63,9 @@ parser.add_argument('--no-admit-opaque', dest='admit_opaque',
 parser.add_argument('--no-admit-transparent', dest='admit_transparent',
                     action='store_const', const=False, default=True,
                     help=("Don't try to replace transparent things with [admit]s."))
+parser.add_argument('--no-admit', dest='admit_any',
+                    action='store_const', const=False, default=True,
+                    help=("Don't try to replace things with [admit]s."))
 parser.add_argument('--no-aggressive', dest='aggressive',
                     action='store_const', const=False, default=True,
                     help=("Be less aggressive; don't try to remove _all_ definitions/lines."))
@@ -987,7 +990,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
                        ('remove unused contexts', try_remove_contexts))
 
     tasks = recursive_tasks
-    if admit_opaque:
+    if env['admit_opaque']:
         tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks +
@@ -995,21 +998,21 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks)
 
-    if not aggressive:
+    if not env['aggressive']:
         tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
 
-    if admit_transparent:
+    if env['admit_transparent']:
         tasks += (('admit lemmas', try_admit_lemmas),
                   ('admit definitions', try_admit_definitions))
 
-    if not aggressive:
+    if not env['aggressive']:
         tasks += (('remove hints', try_remove_hints),)
 
     tasks += (('export modules', try_export_modules),
               ('split imports and exports', try_split_imports),
               ('split := definitions', try_split_oneline_definitions))
 
-    if aggressive:
+    if env['aggressive']:
         tasks += ((('remove all lines, one at a time', try_remove_each_and_every_line),) +
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks)
@@ -1055,9 +1058,6 @@ if __name__ == '__main__':
             return prog
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
-    admit_opaque = args.admit_opaque
-    aggressive = args.aggressive
-    admit_transparent = args.admit_transparent
     env = {
         'verbose': args.verbose,
         'fast_merge_imports': args.fast_merge_imports,
@@ -1073,6 +1073,9 @@ if __name__ == '__main__':
         'absolutize': args.absolutize,
         'minimize_before_inlining': args.minimize_before_inlining,
         'save_typeclasses': args.save_typeclasses,
+        'admit_opaque': args.admit_opaque and args.admit_any,
+        'aggressive': args.aggressive,
+        'admit_transparent': args.admit_transparent and args.admit_any,
         'coqc_args': tuple(i.strip()
                            for i in (list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
                                      + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
