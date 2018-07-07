@@ -906,7 +906,7 @@ End AdmitTactic.
     tac_code_re = r"""\s*Module Export AdmitTactic\.
 .*Tactic Notation "admit" := abstract case proof_admitted\.
 \s*End AdmitTactic\.\n*"""
-    return '%s%s' % (tac_code, re.sub(tac_code_re, '', contents.replace('Require Coq.Init.Notations.\n', ''), flags=re.DOTALL|re.MULTILINE))
+    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents.replace('Require Coq.Init.Notations.\n', ''), flags=re.DOTALL|re.MULTILINE))
 
 
 def default_on_fatal(message):

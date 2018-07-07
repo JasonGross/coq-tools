@@ -13,7 +13,7 @@ N="16"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-ARGS="--nonpassing-coqc-args=-R --nonpassing-coqc-args=Baz --nonpassing-coqc-args=Qux --passing-coqc=coqc --passing-coqc-args=-R --passing-coqc-args=Bar --passing-coqc-args=Qux --no-deps"
+ARGS="--nonpassing-coqc-args=-R --nonpassing-coqc-args=Baz --nonpassing-coqc-args=Qux --passing-coqc=coqc --passing-coqc-args=-R --passing-coqc-args=Bar --passing-coqc-args=Qux --no-deps $@"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -34,7 +34,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(2\|3\), characters 6-\(7\|13\):
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-\(7\|13\):
 Error:\(
 \| \)The term "X" has type "\(Set ->\|forall _ : Set,\) Set" while it is expected to have type
 EOF
