@@ -34,7 +34,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(5\|6\), characters 2-7:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 2-7:
 Error: Tactic failure\.
 EOF
 )
