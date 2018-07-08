@@ -92,10 +92,10 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Axiom proof_admitted : False.
+\(Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 
-Definition bar : nat.
+\)\?Definition bar : nat.
 admit.
 Defined.
 Fail Definition foo := 1 + bar.
