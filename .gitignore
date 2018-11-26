@@ -54,6 +54,7 @@ nosetests.xml
 /examples/example_*_make.log
 /examples/example_*_output.v
 /examples/example_*/bug_*.v
+/examples/example_26/example_26/bug_*.v
 /examples/example_04/A_abs.v
 /examples/example_04/B_abs.v
 /examples/check.log
