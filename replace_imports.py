@@ -20,6 +20,7 @@ def fill_kwargs(kwargs):
         'fast':False,
         'log':DEFAULT_LOG,
         'libnames':DEFAULT_LIBNAMES,
+        'non_recursive_libnames':tuple(),
         'coqc':'coqc',
         'absolutize':ALL_ABSOLUTIZE_TUPLE,
         'coq_makefile':'coq_makefile'
@@ -107,7 +108,7 @@ def normalize_requires(filename, **kwargs):
     """Return the contents of filename, with all [Require]s split out and ordered at the top."""
     if filename[-2:] != '.v': filename += '.v'
     kwargs = fill_kwargs(kwargs)
-    lib = lib_of_filename(filename, libnames=tuple(kwargs['libnames']))
+    lib = lib_of_filename(filename, **kwargs)
     all_imports = run_recursively_get_imports(lib, **kwargs)
 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
@@ -122,11 +123,11 @@ def get_required_contents(libname, **kwargs):
 def recursively_get_requires_from_file(filename, **kwargs):
     if filename[-2:] != '.v': filename += '.v'
     kwargs = fill_kwargs(kwargs)
-    lib = lib_of_filename(filename, libnames=tuple(kwargs['libnames']))
+    lib = lib_of_filename(filename, **kwargs)
     return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
 
 
-def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=False, log=DEFAULT_LOG, libnames=DEFAULT_LIBNAMES, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
+def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=False, log=DEFAULT_LOG, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -172,17 +173,17 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
     if 'make_coqc' in kwargs.keys():
         coqc = kwargs['make_coqc']
     if filename[-2:] != '.v': filename += '.v'
-    lib = lib_of_filename(filename, libnames=tuple(libnames))
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, libnames=tuple(libnames), coqc=coqc, coq_makefile=coq_makefile, **kwargs)
+    lib = lib_of_filename(filename, **kwargs)
+    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
     remaining_imports = []
     rtn = ''
     imports_done = []
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, libnames=tuple(libnames), absolutize=absolutize) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, absolutize=absolutize, **kwargs) + '\n'
             else:
-                rtn += contents_without_imports(import_name, verbose=verbose, log=log, libnames=tuple(libnames), absolutize=tuple()) + '\n'
+                rtn += contents_without_imports(import_name, verbose=verbose, log=log, absolutize=tuple(), **kwargs) + '\n'
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)

@@ -6,7 +6,10 @@ CAT_ALL_LOGS=0
 ####
 
 DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25
-CONDITIONAL_TESTS = 06 10 13 18 20
+CONDITIONAL_TESTS = 06 10 13 18 20 26
+
+ONLY_IF_Q_TESTS = 10 26
+ONLY_IF_FROM_TESTS = 13
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
@@ -14,6 +17,8 @@ IGNORE = prefix-grep.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
+ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
+ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
 # some makefile magic to make things less noisy unless you do `make V=1`
 Q_0 := @
@@ -58,11 +63,11 @@ endif
 test-suite: $(DEFAULT_LOGS)
 
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
-test-suite: example_10_result.log
+test-suite: $(ONLY_IF_Q_LOGS)
 endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
-test-suite: example_13_result.log
+test-suite: $(ONLY_IF_FROM_LOGS)
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
