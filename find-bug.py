@@ -205,8 +205,8 @@ def get_error_reg_string(output_file_name, **kwargs):
                 print('\nThe given regular expression does not match the output.')
             elif len(re.search(error_reg_string, output).groups()) != 2:
                 print('\nThe given regular expression does not have two groups.')
-                print('It must have one integer group which matches on the line number,')
-                print('and another group which matches on the error string.')
+                print('It must first have one integer group which matches on the line number,')
+                print('and second a group which matches on the error string.')
             error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
                                          % output_file_name)
 
