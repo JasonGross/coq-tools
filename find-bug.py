@@ -904,8 +904,13 @@ Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
 """
     tac_code_re = r"""\s*Module Export AdmitTactic\.
-.*Tactic Notation "admit" := abstract case proof_admitted\.
-\s*End AdmitTactic\.\n*"""
+?(?:Module Import LocalFalse\.
+?(?:Inductive False := \.)?
+?End LocalFalse\.)?
+?(?:Axiom proof_admitted : False\.)?
+?(?:Import Coq.Init.Notations\.)?
+?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
+?End AdmitTactic\.\n*"""
     return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents.replace('Require Coq.Init.Notations.\n', ''), flags=re.DOTALL|re.MULTILINE))
 
 
