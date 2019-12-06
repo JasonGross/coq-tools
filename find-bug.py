@@ -177,7 +177,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output)
-            print("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')))
+            kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
@@ -193,7 +193,7 @@ def get_error_reg_string(output_file_name, **kwargs):
                 try:
                     re.compile(error_reg_string)
                 except Exception as e:
-                    print('\nThat regular expression does not compile: %s' % e)
+                    kwargs['log']('\nThat regular expression does not compile: %s' % e, force_stdout=True)
                     success = False
                 else:
                     success = True
@@ -202,11 +202,11 @@ def get_error_reg_string(output_file_name, **kwargs):
                and (not re.search(error_reg_string, output)
                     or len(re.search(error_reg_string, output).groups()) != 2)):
             if not re.search(error_reg_string, output):
-                print('\nThe given regular expression does not match the output.')
+                kwargs['log']('\nThe given regular expression does not match the output.', force_stdout=True)
             elif len(re.search(error_reg_string, output).groups()) != 2:
-                print('\nThe given regular expression does not have two groups.')
-                print('It must first have one integer group which matches on the line number,')
-                print('and second a group which matches on the error string.')
+                kwargs['log']('\nThe given regular expression does not have two groups.', force_stdout=True)
+                kwargs['log']('It must first have one integer group which matches on the line number,', force_stdout=True)
+                kwargs['log']('and second a group which matches on the error string.', force_stdout=True)
             error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
                                          % output_file_name)
 

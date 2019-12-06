@@ -19,12 +19,14 @@ class CoqLibnameAction(argparse.Action):
 DEFAULT_VERBOSITY=1
 
 def make_logger(log_files):
-    def log(text):
+    def log(text, force_stdout=False):
         for i in log_files:
             i.write(str(text) + '\n')
             i.flush()
             if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
+        if not any(i.fileno() in (1, 2) for i in log_files) and force_stdout: # not already writing to stdout nor stderr
+            print(text)
     return log
 
 DEFAULT_LOG = make_logger([sys.stderr])
