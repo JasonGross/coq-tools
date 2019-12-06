@@ -54,12 +54,16 @@ def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string
     return errors.groups()[1]
 
 @memoize
-def make_reg_string(output):
+def make_reg_string(output, strict_whitespace=False):
     """Returns a regular expression for matching the particular error
     in output.
 
     Precondition: has_error(output)
     """
+    unstrictify_whitespace = (lambda s: s)
+    if not strict_whitespace:
+        unstrictify_whitespace = (lambda s: re.sub(r'(?:\\ )+', r'\s+', re.sub(r'(\\n|\n)(?:\\ )+', r'\s+', s.replace('\\\n', '\n'))).replace('\n', '\s').replace(r'\s+\s', r'\s+'))
+
     error_string = get_error_string(output).strip().decode('utf-8')
     if 'Universe inconsistency' in error_string or 'universe inconsistency' in error_string:
         re_string = re.sub(r'([Uu]niverse\\ inconsistency.*) because(.|\n)*',
@@ -87,7 +91,7 @@ def make_reg_string(output):
         re_string = re.sub(r'[\d]+',
                            r'[\d]+',
                            re_string)
-    return (DEFAULT_ERROR_REG_STRING_GENERIC % re_string).encode('utf-8')
+    return (DEFAULT_ERROR_REG_STRING_GENERIC % unstrictify_whitespace(re_string)).encode('utf-8')
 
 TIMEOUT = None
 

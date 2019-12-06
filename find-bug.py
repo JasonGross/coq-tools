@@ -96,6 +96,12 @@ parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
                           "trailing spaces on each line are removed."))
+parser.add_argument('--strict-whitespace', dest='strict_whitespace',
+                    action='store_const', const=True, default=False,
+                    help=("Strictly enforce whitespace matching in error " +
+                          "messages.  By default, locations where there " +
+                          "are newlines followed by spaces are interchangable " +
+                          "with any amount of spacing."))
 parser.add_argument('--no-deps', dest='walk_tree',
                     action='store_const', const=False, default=True,
                     help=("Don't do dependency analysis on all files in the current " +
@@ -176,7 +182,7 @@ def get_error_reg_string(output_file_name, **kwargs):
 
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
-            error_reg_string = diagnose_error.make_reg_string(output)
+            error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs['strict_whitespace'])
             kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
@@ -1097,6 +1103,7 @@ if __name__ == '__main__':
                                 if args.passing_coqc_args is not None
                                 else None)),
         'walk_tree': args.walk_tree,
+        'strict_whitespace': args.strict_whitespace,
         'temp_file_name': args.temp_file,
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
