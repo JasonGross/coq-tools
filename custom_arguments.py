@@ -21,11 +21,12 @@ DEFAULT_VERBOSITY=1
 def make_logger(log_files):
     def log(text, force_stdout=False):
         for i in log_files:
+            if force_stdout and i.fileno() == 2: pass # skip stderr if we write to stdout
             i.write(str(text) + '\n')
             i.flush()
             if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
-        if not any(i.fileno() in (1, 2) for i in log_files) and force_stdout: # not already writing to stdout nor stderr
+        if force_stdout and not any(i.fileno() == 1 for i in log_files): # not already writing to stdout
             print(text)
     return log
 
