@@ -61,8 +61,8 @@ The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), charac
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-rm -f *.vo *.glob
-echo "y" | python2 ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo 2>/dev/null >/dev/null
+rm -f *.vo *.glob *.d .*.d
+echo "y" | python2 ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo # 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$((echo "y"; echo "y") | python2 ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo -l - 2>&1)"
