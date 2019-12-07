@@ -5,9 +5,10 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25
-CONDITIONAL_TESTS = 06 10 13 18 20 26
+DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 09 11 12 14 15 16 17 19 21 22 23 24 25
+CONDITIONAL_TESTS = 06 08-3 10 13 18 20 26
 
+ONLY_IF_COQTOP_COMPILE_TESTS = 08-3
 ONLY_IF_Q_TESTS = 10 26
 ONLY_IF_FROM_TESTS = 13
 
@@ -17,6 +18,7 @@ IGNORE = prefix-grep.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
+ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
@@ -51,6 +53,7 @@ NORMAL=$(shell tput sgr0)
 
 COQC_VERSION=$(subst version ,,$(shell coqc --version 2>&1 | grep -o 'version [^ ]*'))
 COQC_SUPPORTS_Q=$(shell coqc --help 2>&1 | grep -c -- -Q)
+COQTOP_SUPPORTS_COMPILE=$(shell coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 
 .PHONY: check
@@ -71,31 +74,40 @@ endif
 .PHONY: test-suite
 test-suite: $(DEFAULT_LOGS)
 
+ifneq (0,$(strip $(COQTOP_SUPPORTS_COMPILE)))
+test-suite: $(ONLY_IF_COQTOP_COMPILE_LOGS)
+print-support::
+	@printf "coqtop supports -compile:\t\tYes\n"
+else
+print-support::
+	@printf "coqtop supports -compile:\t\tNo\n"
+endif
+
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
 test-suite: $(ONLY_IF_Q_LOGS)
 print-support::
-	@echo "coqc supports -Q: Yes"
+	@printf "coqc supports -Q:\t\t\tYes\n"
 else
 print-support::
-	@echo "coqc supports -Q: No"
+	@printf "coqc supports -Q:\t\t\tNo\n"
 endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
 print-support::
-	@echo "coqc supports From ... Require ...: Yes"
+	@printf "coqc supports From ... Require ...:\tYes\n"
 else
 print-support::
-	@echo "coqc supports From ... Require ...: No"
+	@printf "coqc supports From ... Require ...:\tNo\n"
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
 test-suite: example_20_result.log
 print-support::
-	@echo "coqc is 8.3 or 8.4: No"
+	@printf "coqc is 8.3 or 8.4:\t\t\tNo\n"
 else
 print-support::
-	@echo "coqc is 8.3 or 8.4: Yes"
+	@printf "coqc is 8.3 or 8.4:\t\t\tYes\n"
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile

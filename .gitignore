@@ -59,3 +59,8 @@ nosetests.xml
 /examples/example_04/B_abs.v
 /examples/check.log
 /examples/example_24/outputs
+/examples/example_02/example_02_log.log
+/examples/example_02/example_02_output.v
+/examples/example_09/bug_09.v.require-bak
+/examples/example_09/tmp*.v
+/examples/example_23/bug.v
