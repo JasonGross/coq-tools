@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-import os, sys, inspect
+import os, sys, inspect, glob
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -24,6 +24,8 @@ if __name__ == '__main__':
     from replace_imports import normalize_requires, get_required_contents
     os.chdir(DIR)
     os.chdir('example_08')
+    for i in glob.glob('*.vo') + glob.glob('*.glob'):
+        os.remove(i)
     NORM_FOUND = normalize_requires("example_08.v")
     print('if %s != %s:' % (repr(NORM_FOUND), repr(NORM_EXPECT)))
     if NORM_FOUND != NORM_EXPECT:

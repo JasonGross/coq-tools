@@ -27,6 +27,9 @@ FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 PS4='$ '
 set -x
 
+# Disable parallel make in subcalls to the bug minimizer because it screws with things
+. "$DIR/disable-parallel-make.sh"
+
 ######################################################################
 # Create the output file (to normalize the number of "yes"es needed),
 # and run the script only up to the request for the regular

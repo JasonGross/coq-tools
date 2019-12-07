@@ -20,6 +20,10 @@ CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
+# Order the builds for 8 so they don't run in parallel
+example_08-2_result.log: | example_08_result.log
+example_08-3_result.log: | example_08-2_result.log
+
 # some makefile magic to make things less noisy unless you do `make V=1`
 Q_0 := @
 Q_1 :=

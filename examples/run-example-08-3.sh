@@ -3,9 +3,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/example_08"
 PS4='$ '
 set -x
-# account for a super-make called with -B
-export MAKEFLAGS="" # B -- VERBOSE=1 V=1
-export MFLAGS="" # -B
+# Disable parallel make in subcalls to the bug minimizer because it screws with things
+. "$DIR/disable-parallel-make.sh"
+rm -f *.vo *.glob
 python2 ../../find-bug.py example_08.v bug_08_3.v --coqc-is-coqtop "$@" || exit $?
 LINES="$(cat bug_08_3.v | grep -v '^$' | wc -l)"
 if [ "$LINES" -ne 10 ]
