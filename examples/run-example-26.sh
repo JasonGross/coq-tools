@@ -47,8 +47,6 @@ Coqing the file (bug_[0-9]\+\.v)\.\.\.
 Running command: "coqc" "-Q" "\.\./foo/bar" "qux" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 2
 
-Warning: OUT_FILE (bug_[0-9]\+\.v) already exists.  Would you like to overwrite?
-Please enter (y)es/(n)o:.
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 0-23:
 Error: The command has not failed\s\?!
@@ -70,7 +68,7 @@ for i in ${EXTRA_FILES}; do
 done
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | python2 "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | python2 "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]

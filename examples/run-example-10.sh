@@ -3,6 +3,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/example_10"
 PS4='$ '
 set -x
+# Disable parallel make in subcalls to the bug minimizer because it screws with things
+. "$DIR/disable-parallel-make.sh"
+rm -f *.vo *.glob
 EXPECTED_ERROR="A.a exists"
 ACTUAL_PRE="$(echo "y" | python2 ../../find-bug.py example_10.v bug_10.v -Q . Top 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]

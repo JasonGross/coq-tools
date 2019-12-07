@@ -49,8 +49,12 @@ COQC_VERSION=$(subst version ,,$(shell coqc --version 2>&1 | grep -o 'version [^
 COQC_SUPPORTS_Q=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQC_SUPPORTS_FROM=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 
+.PHONY: check
 check::
 	$(MAKE) -B test-suite
+
+.PHONY: print-support
+print-support::
 
 ifeq (1,$(CAT_ALL_LOGS))
 check::
@@ -60,18 +64,34 @@ check::
 	$(MAKE) test-suite-report
 endif
 
+.PHONY: test-suite
 test-suite: $(DEFAULT_LOGS)
 
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
 test-suite: $(ONLY_IF_Q_LOGS)
+print-support::
+	@echo "coqc supports -Q: Yes"
+else
+print-support::
+	@echo "coqc supports -Q: No"
 endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
+print-support::
+	@echo "coqc supports From ... Require ...: Yes"
+else
+print-support::
+	@echo "coqc supports From ... Require ...: No"
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
 test-suite: example_20_result.log
+print-support::
+	@echo "coqc is 8.3 or 8.4: No"
+else
+print-support::
+	@echo "coqc is 8.3 or 8.4: Yes"
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
@@ -92,7 +112,7 @@ test-suite-verbose-report::
 	done
 
 test-suite-verbose-report test-suite-report::
-	$(Q)ALL="$(wildcard example_*_result.log)";                             \
+	$(Q)ALL="$(sort $(wildcard example_*_result.log))";                     \
 	SUCCESS=;                                                               \
 	FAILURE=;                                                               \
 	for i in $$ALL; do                                                      \

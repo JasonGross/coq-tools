@@ -23,6 +23,9 @@ cd "$DIR/$EXAMPLE_DIRECTORY"
 PS4='$ '
 set -x
 
+# Disable parallel make in subcalls to the bug minimizer because it screws with things
+. "$DIR/disable-parallel-make.sh"
+
 ######################################################################
 # Create the output file (to normalize the number of "yes"es needed),
 # and run the script only up to the request for the regular
@@ -40,6 +43,7 @@ Error:\(
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
+rm -f *.vo *.glob
 echo "y" | python2 ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" --arg=-impredicative-set 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
