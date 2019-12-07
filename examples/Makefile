@@ -14,7 +14,7 @@ ONLY_IF_FROM_TESTS = 13
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
-IGNORE = prefix-grep.py
+IGNORE = prefix-grep.py disable-parallel-make.sh
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
@@ -166,6 +166,7 @@ test-suite-verbose-report test-suite-report::
 
 
 MISSING_FILES = $(filter-out $(MAIN_RUNS) $(OTHER_RUNS) $(IGNORE), $(wildcard *.sh *.py))
+.PHONY: has-all-tests
 ifneq (,$(MISSING_FILES))
 has-all-tests::
 	@echo "$(RED)Missing files: $(MISSING_FILES)$(NC)"
