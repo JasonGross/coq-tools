@@ -220,6 +220,8 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in kwargs['non_recursive_libnames']:
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    for dirname in kwargs['ocaml_dirnames']:
+        cmds += ['-I', dirname]
     coq_makefile_help = get_coqc_help(kwargs['coq_makefile'], **kwargs)
     grouped_args, unrecognized_args = group_coq_args_split_recognized(kwargs['coqc_args'], coq_makefile_help, is_coq_makefile=True)
     for args in grouped_args:

@@ -62,6 +62,8 @@ def add_libname_arguments(parser):
                         help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
     parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
+    parser.add_argument('-I', metavar='DIR', dest='ocaml_dirnames', type=str, default=[], action='append',
+                        help='Look for ML files in DIR, as in the -I argument to coqc')
     parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action=ArgAppendWithWarningAction,
                         help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
     parser.add_argument('-f', metavar='FILE', dest='CoqProjectFile', nargs=1, type=argparse.FileType('r'),
@@ -128,6 +130,9 @@ def process_CoqProject(env, contents):
         elif tokens[i] == '-Q' and i+2 < len(tokens):
             env['non_recursive_libnames'].append((tokens[i+1], tokens[i+2]))
             i += 3
+        elif tokens[i] == '-I' and i+1 < len(tokens):
+            env['ocaml_dirnames'].append(tokens[i+1])
+            i += 2
         elif tokens[i] == '-arg' and i+1 < len(tokens):
             append_coq_arg(env, tokens[i+1])
             i += 2
@@ -142,6 +147,7 @@ def process_CoqProject(env, contents):
 def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     env['libnames'] = []
     env['non_recursive_libnames'] = []
+    env['ocaml_dirnames'] = []
     env['_CoqProject'] = None
     env['_CoqProject_v_files'] = []
     env['_CoqProject_unknown'] = []
@@ -152,6 +158,7 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     process_CoqProject(env, env['_CoqProject'])
     env['libnames'].extend(args.libnames if len(args.libnames + args.non_recursive_libnames + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
     env['non_recursive_libnames'].extend(args.non_recursive_libnames)
+    env['ocaml_dirnames'].extend(args.ocaml_dirnames)
 
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code

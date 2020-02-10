@@ -214,6 +214,10 @@ if __name__ == '__main__':
 
     for dirname, libname in env['libnames']:
         env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
+    for dirname, libname in env['non_recursive_libnames']:
+        env['coqc_args'] = tuple(list(env['coqc_args']) + ['-Q', dirname, libname])
+    for dirname in env['ocaml_dirnames']:
+        env['coqc_args'] = tuple(list(env['coqc_args']) + ['-I', dirname])
 
     env['input_files'] = sort_files_by_dependency(env['input_files'], update_globs=True, **env)
 

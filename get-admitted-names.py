@@ -125,6 +125,8 @@ if __name__ == '__main__':
         env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])
     for dirname, libname in env['non_recursive_libnames']:
         env['coqc_args'] = tuple(list(env['coqc_args']) + ['-Q', dirname, libname])
+    for dirname in env['ocaml_dirnames']:
+        env['coqc_args'] = tuple(list(env['coqc_args']) + ['-I', dirname])
     env['coqc_args'] = deduplicate_trailing_dir_bindings(env['coqc_args'], coqc_help=coqc_help, coq_accepts_top=get_coq_accepts_top(env['coqc']))
 
     try:

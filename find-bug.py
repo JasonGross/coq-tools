@@ -1196,6 +1196,8 @@ if __name__ == '__main__':
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
             for dirname, libname in env['non_recursive_libnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
+            for dirname in env['ocaml_dirnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
         if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
