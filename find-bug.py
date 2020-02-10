@@ -1159,6 +1159,17 @@ if __name__ == '__main__':
 
         if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
 
+        extra_args = get_coq_prog_args(get_file(bug_file_name, **env))
+        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
+            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
+            for dirname, libname in env['libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
+            for dirname, libname in env['non_recursive_libnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
+            for dirname in env['ocaml_dirnames']:
+                env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
+            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
+
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = normalize_requires(bug_file_name, **env)
@@ -1188,17 +1199,6 @@ if __name__ == '__main__':
             for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
                 env[key] = tuple(list(env[key]) + ['-nois', '-coqlib', env['inline_coqlib']])
             env['libnames'] = tuple(list(env['libnames']) + [(os.path.join(env['inline_coqlib'], 'theories'), 'Coq')])
-
-        extra_args = get_coq_prog_args(inlined_contents)
-        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
-            env[args_name] = tuple(list(env[args_name]) + list(extra_args))
-            for dirname, libname in env['libnames']:
-                env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            for dirname, libname in env['non_recursive_libnames']:
-                env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
-            for dirname in env['ocaml_dirnames']:
-                env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
 
         if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
         env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
