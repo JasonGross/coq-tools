@@ -1170,6 +1170,10 @@ if __name__ == '__main__':
             for dirname in env['ocaml_dirnames']:
                 env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
+        for arg in group_coq_args(extra_args, coqc_help):
+            if arg[0] == '-R': env['libnames'].append((arg[1], arg[2]))
+            if arg[0] == '-Q': env['non_recursive_libnames'].append((arg[1], arg[2]))
+            if arg[0] == '-I': env['ocaml_dirnames'].append(arg[1])
 
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
