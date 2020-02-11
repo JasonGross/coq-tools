@@ -109,9 +109,9 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), exts=exts)
-    if '.' in filename and kwargs['verbose']:
-        # TODO: Do we still need this warning?
-        kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
+#    if '.' in filename and kwargs['verbose']:
+#        # TODO: Do we still need this warning?
+#        kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return libname
 
 def is_local_import(libname, **kwargs):
