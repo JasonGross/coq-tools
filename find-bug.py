@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 import argparse, tempfile, sys, os, re
+import traceback
 import custom_arguments
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
 from import_util import get_file
@@ -1236,8 +1237,8 @@ if __name__ == '__main__':
                             continue
                         try:
                             test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
-                        except IOError:
-                            if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s' % req_module)
+                        except IOError as e:
+                            if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)' % (req_module, str(e)))
                             continue
                         write_to_file(output_file_name, test_output)
                         diagnose_error.reset_timeout()
