@@ -30,6 +30,7 @@ def fill_kwargs(kwargs):
     rtn = {
         'libnames'              : DEFAULT_LIBNAMES,
         'non_recursive_libnames': tuple(),
+        'ocaml_dirnames'        : tuple(),
         'verbose'               : DEFAULT_VERBOSITY,
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
