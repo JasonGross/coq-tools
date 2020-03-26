@@ -52,14 +52,14 @@ This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-9:
 Error:
 The term "foo" has type "Type" while it is expected to have type\s\?
-"Set" (universe inconsistency[^)]\+)\.
+"Set" (universe inconsistency[^)]*)\.
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error:
 The term "foo" has type "Type" while it is expected to have type\s\?
-"Set" (universe inconsistency[^)]\+)\.
+"Set" (universe inconsistency[^)]*)\.
 .\?'\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\sThe\\\\s+term\\\\s+\\\\"foo\\\\"\\\\s+has\\\\s+type\\\\s+\\\\"Type\\\\"\\\\s+while\\\\s+it\\\\s+is\\\\s+expected\\\\s+to\\\\s+have\\\\s+type\\\\s+\\\\"Set\\\\"\\\\s+\\\\(universe\\\\s+inconsistency[^)]\+\\\\)\\\\.*
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\sThe\\\\s+term\\\\s+\\\\"foo\\\\"\\\\s+has\\\\s+type\\\\s+\\\\"Type\\\\"\\\\s+while\\\\s+it\\\\s+is\\\\s+expected\\\\s+to\\\\s+have\\\\s+type\\\\s+\\\\"Set\\\\"\\\\s+\\\\(universe\\\\s+inconsistency[^)]*\\\\)\\\\.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
