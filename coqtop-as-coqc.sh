@@ -4,14 +4,19 @@ set -e
 
 function strip_v() {
     echo "$1" && shift
+    prev_top=""
     for i in "$@"
     do
 	j="${i%.*}"
-        if [ "$j.v" == "$i" ] || ([ "$j" == "$i" ] && [ -f "$i.v" ]); then
+        if [ -z "${prev_top}" ] && ([ "$j.v" == "$i" ] || ([ "$j" == "$i" ] && [ -f "$i.v" ])); then
             echo "-compile" # or -compile
             echo "$j"
         else
             echo "$i"
+        fi
+        prev_top=""
+        if [ "$i" == "-top" ]; then
+            prev_top="yes"
         fi
     done
 }
