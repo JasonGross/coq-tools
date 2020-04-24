@@ -167,12 +167,16 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
         cmds.extend([file_name, '-q'])
     if kwargs['verbose'] >= verbose_base:
         kwargs['log']('\nRunning command: "%s%s"' % ('" "'.join(cmds), pseudocmds))
+    if kwargs['verbose'] >= verbose_base + 1:
+        kwargs['log']('\nContents:\n%s\n' % contents)
 
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
     start = time.time()
     ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None), input=input_val)
     finish = time.time()
+    if kwargs['verbose'] >= verbose_base + 1:
+        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, stdout, stderr))
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
