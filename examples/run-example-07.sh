@@ -1,9 +1,10 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/example_07"
+. "$DIR/init-settings.sh"
 PS4='$ '
 set -x
-python2 ../../find-bug.py --no-minimize-before-inlining A-dash.v bug_A.v || exit $?
+${PYTHON} ../../find-bug.py --no-minimize-before-inlining A-dash.v bug_A.v || exit $?
 grep Section bug_A.v
 ERR=$?
 if [ $ERR -ne 0 ]

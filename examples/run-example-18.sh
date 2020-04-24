@@ -19,6 +19,9 @@ EXAMPLE_INPUT_COPY="$EXAMPLE_DIRECTORY/bug_$N.v"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
+# Initialize common settings like the version of python
+. "$DIR/init-settings.sh"
+
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
 set -x
@@ -27,7 +30,7 @@ set -x
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
 cp -f "$EXAMPLE_INPUT" "$EXAMPLE_INPUT_COPY"
-python2 "$DIR/../minimize-requires.py" "$EXAMPLE_INPUT_COPY" -i --absolutize || exit $?
+${PYTHON} "$DIR/../minimize-requires.py" "$EXAMPLE_INPUT_COPY" -i --absolutize || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
@@ -49,7 +52,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_INPUT_COPY" | grep -v '^$'
-    python2 "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
+    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0

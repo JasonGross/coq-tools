@@ -1,11 +1,12 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/example_11"
+. "$DIR/init-settings.sh"
 PS4='$ '
 set -x
 # check that the regex doesn't split the unicode characters in φ
 EXPECTED_ERROR="Error\\:\\ The\\ reference\\ \\φ\\ was\\ not\\ found\\ in\\ the\\ current\\ environment\\."
-ACTUAL_PRE="$((echo "y"; echo "y") | python2 ../../find-bug.py example_11.v bug_11.v 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py example_11.v bug_11.v 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -18,4 +19,4 @@ then
     exit 1
 fi
 
-python2 ../../find-bug.py example_11.v bug_11.v || exit $?
+${PYTHON} ../../find-bug.py example_11.v bug_11.v || exit $?

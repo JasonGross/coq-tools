@@ -8,12 +8,15 @@ cd "$DIR/"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 
+# Initialize common settings like the version of python
+. "$DIR/init-settings.sh"
+
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
 set -x
 
-python2 ${MINIMIZE_REQUIRES_PY} -h || exit $?
+${PYTHON} ${MINIMIZE_REQUIRES_PY} -h || exit $?
 touch ex22.v
-python2 ${MINIMIZE_REQUIRES_PY} --arg=-nois ex22.v || exit $?
+${PYTHON} ${MINIMIZE_REQUIRES_PY} --arg=-nois ex22.v || exit $?
 rm -f ex22.v
 exit 0

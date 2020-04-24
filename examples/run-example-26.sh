@@ -23,6 +23,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/$EXAMPLE_DIRECTORY"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 
+# Initialize common settings like the version of python
+. "$DIR/init-settings.sh"
+
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
 set -x
@@ -67,13 +70,13 @@ rm -f ${FILES_TO_REMOVE}
 for i in ${EXTRA_FILES}; do
     coqc -q ${EXTRA_ARGS} "${i}"
 done
-echo "y" | python2 "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS 2>/dev/null >/dev/null
+echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS 2>/dev/null >/dev/null
 for i in ${EXTRA_FILES}; do
     coqc -q ${EXTRA_ARGS} "${i}"
 done
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | python2 "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS -l - 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
@@ -85,7 +88,7 @@ then
     echo
     echo "Actual:"
     echo "$ACTUAL_PRE"
-    python2 "$DIR/prefix-grep.py" "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
+    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
     exit 1
 fi
 #########################################################################################################
@@ -94,7 +97,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-python2 "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit $?
+${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
@@ -121,7 +124,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
-    python2 "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
+    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0
