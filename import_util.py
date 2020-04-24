@@ -135,11 +135,14 @@ def get_constr_name(code):
     last_component = first_word.split('.')[-1]
     return last_component
 
-def move_strings_once(before, after, possibility):
+def move_strings_once(before, after, possibility, relaxed=False):
     for i in possibility:
         if before[-len(i):] == i:
             return before[:-len(i)], before[-len(i):] + after
-    return None, None
+    if relaxed: # allow no matches
+        return before, after
+    else:
+        return None, None
 
 def move_strings_pre(before, after, possibility):
     while len(before) > 0:
@@ -169,16 +172,15 @@ def remove_from_require_before(contents, location):
     """removes "From ... " from things like "From ... Require ..." """
     before, after = contents[:location], contents[location:]
     before, after = move_space(before, after)
-    before, after = move_strings_once(before, after, ('Import', 'Export'))
-    if before is None or after is None: return contents
+    before, after = move_strings_once(before, after, ('Import', 'Export'), relaxed=True)
     before, after = move_space(before, after)
-    before, after = move_strings_once(before, after, ('Require',))
+    before, after = move_strings_once(before, after, ('Require',), relaxed=False)
     if before is None or after is None: return contents
     before, _ = move_space(before, after)
     before, _ = move_function(before, after, (lambda b: 1 if b[-1] not in ' \t\r\n' else None))
     if before is None: return contents
     before, _ = move_space(before, after)
-    before, _ = move_strings_once(before, after, ('From',))
+    before, _ = move_strings_once(before, after, ('From',), relaxed=False)
     if before is None: return contents
     return before + after
 
