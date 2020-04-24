@@ -14,7 +14,7 @@ ONLY_IF_FROM_TESTS = 13 27
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
-IGNORE = prefix-grep.py disable-parallel-make.sh
+IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
