@@ -900,13 +900,12 @@ def try_strip_empty_sections(output_file_name, **kwargs):
 
 
 def add_admit_tactic(contents):
-    tac_code = r"""Require Coq.Init.Notations.
-Module Export AdmitTactic.
+    tac_code = r"""Module Export AdmitTactic.
 Module Import LocalFalse.
 Inductive False := .
 End LocalFalse.
 Axiom proof_admitted : False.
-Import Coq.Init.Notations.
+Declare ML Module "ltac_plugin".
 Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
 """
@@ -915,10 +914,10 @@ End AdmitTactic.
 ?(?:Inductive False := \.)?
 ?End LocalFalse\.)?
 ?(?:Axiom proof_admitted : False\.)?
-?(?:Import Coq.Init.Notations\.)?
+?(?:Declare ML Module "ltac_plugin"\.)?
 ?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
 ?End AdmitTactic\.\n*"""
-    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents.replace('Require Coq.Init.Notations.\n', ''), flags=re.DOTALL|re.MULTILINE))
+    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents, flags=re.DOTALL|re.MULTILINE))
 
 
 def default_on_fatal(message):
