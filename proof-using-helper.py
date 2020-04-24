@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import with_statement
-import os, sys, re, argparse
+import os, sys, re
+from argparse_compat import argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from memoize import memoize
 from file_util import read_from_file, write_to_file

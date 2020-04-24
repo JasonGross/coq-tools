@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import argparse, shutil, os, os.path, sys
+import shutil, os, os.path, sys
+from argparse_compat import argparse
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from replace_imports import include_imports

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import os, sys, inspect, glob
 
 DIR = os.path.dirname(os.path.realpath(__file__))

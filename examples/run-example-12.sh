@@ -48,7 +48,7 @@ The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 .\?'\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\s+Illegal\\\\s+application\\\\s+\\\\(Non\\\\-functional\\\\s+construction\\\\)\\\\:\\\\s+The\\\\s+expression\\\\s+\\\\"Set\\\\"\\\\s+of\\\\s+type\\\\s+\\\\"Type\\\\"\\\\scannot\\\\s+be\\\\s+applied\\\\s+to\\\\s+the\\\\s+term\\\\s+\\\\"Set\\\\"\\\\s+\\\\:\\\\s+\\\\"Type\\\\")'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+Illegal\\\\s+application\\\\s+\\\\(Non\\\\-functional\\\\s+construction\\\\):\\\\s+The\\\\s+expression\\\\s+"Set"\\\\s+of\\\\s+type\\\\s+"Type"\\\\scannot\\\\s+be\\\\s+applied\\\\s+to\\\\s+the\\\\s+term\\\\s+"Set"\\\\s+:\\\\s+"Type")'\.
 Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in <module>
     env\['error_reg_string'\] = get_error_reg_string(output_file_name, \*\*env)
@@ -62,6 +62,12 @@ echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>/dev
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
+echo "==================== ACTUAL ===================="
+echo "${ACTUAL_PRE}"
+echo "==================== ACTUAL ===================="
+echo "==================== EXPECTED_ERROR ===================="
+echo "${EXPECTED_ERROR}"
+echo "==================== EXPECTED_ERROR ===================="
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]

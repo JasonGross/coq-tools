@@ -4,6 +4,7 @@ import split_definitions_old
 from split_file import postprocess_split_proof_term
 from coq_version import get_coq_accepts_time, get_proof_term_works_with_time
 from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+import util
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 
@@ -61,7 +62,8 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     statements_string = '\n'.join(statements) + '\n\n'
     if verbose: log('Sending statements to coqtop...')
     if verbose >= 3: log(statements_string)
-    (stdout, stderr) = p.communicate(input=statements_string)
+    (stdout, stderr) = p.communicate(input=util.b(statements_string))
+    stdout = util.s(stdout)
     if 'know what to do with -time' in stdout.strip().split('\n')[0]:
         # we're using a version of coqtop that doesn't support -time
         return fallback()

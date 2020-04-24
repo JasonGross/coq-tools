@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import argparse, tempfile, sys, os, re
+import tempfile, sys, os, re
 import custom_arguments
+from argparse_compat import argparse
 from import_util import get_file, lib_of_filename
 from diagnose_error import get_coq_output, get_coq_output_iterable
 from import_util import lib_of_filename, norm_libname
@@ -9,7 +10,8 @@ from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
-from util import yes_no_prompt
+from util import yes_no_prompt, PY3
+if PY3: from util import raw_input
 import diagnose_error
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read

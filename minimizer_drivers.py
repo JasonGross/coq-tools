@@ -1,3 +1,4 @@
+from __future__ import division
 from memoize import memoize
 
 __all__ = ["run_binary_search"]
@@ -19,13 +20,13 @@ def binary_search(f, ls):
     start, end = 0, len(ls)
     # assumption: forall i, not f(ls[i]) -> all(map(not f, ls[i:]))
     # invariant: all(map(not f, ls[end:])) and all(map(f, ls[:start]))
-    mid = (start + end) / 2
+    mid = (start + end) // 2
     while mid < end:
         if f(ls[mid]):
             start = mid + 1
         else:
             end = mid
-        mid = (start + end) / 2
+        mid = (start + end) // 2
     return start - 1
 
 def run_binary_search(initial_state, check_state, step_state, save_good_state, valid_nondefault_actions):

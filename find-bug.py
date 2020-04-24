@@ -1,7 +1,8 @@
-#!/usr/bin/env python2
-import argparse, tempfile, sys, os, re
+#!/usr/bin/env python3
+import tempfile, sys, os, re
 import traceback
 import custom_arguments
+from argparse_compat import argparse
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
 from import_util import get_file
 from strip_comments import strip_comments
@@ -15,7 +16,8 @@ from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
-from util import yes_no_prompt
+from util import yes_no_prompt, PY3
+if PY3: from util import raw_input
 import diagnose_error
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -174,7 +176,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
-        print("\nThis file produces the following output when Coq'ed:\n%s" % output)
+        kwargs['log']("\nThis file produces the following output when Coq'ed:\n%s" % output, force_stdout=True)
         while result not in ('y', 'n', 'yes', 'no'):
             result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
         if result in ('n', 'no'):
@@ -239,7 +241,7 @@ def unescape_coq_prog_args(coq_prog_args):
                 in_string = True
                 cur = ''
             elif cur_char not in ' \t':
-                print("Warning: Invalid unquoted character '%s' at index %d in coq-prog-args '%s'" % (cur_char, idx - 1, coq_prog_args))
+                DEFAULT_LOG("Warning: Invalid unquoted character '%s' at index %d in coq-prog-args '%s'" % (cur_char, idx - 1, coq_prog_args))
                 return tuple(ret)
         else:
             if cur_char == '"':
@@ -252,7 +254,7 @@ def unescape_coq_prog_args(coq_prog_args):
                     cur += coq_prog_args[idx]
                     idx += 1
                 else:
-                    print("Warning: Invalid backslash at end of coq-prog-args '%s'" % coq_prog_args)
+                    DEFAULT_LOG("Warning: Invalid backslash at end of coq-prog-args '%s'" % coq_prog_args)
             else:
                 cur += cur_char
     return tuple(ret)
@@ -920,7 +922,7 @@ End AdmitTactic.
 
 
 def default_on_fatal(message):
-    if message is not None: print(message)
+    if message is not None: DEFAULT_LOG(message)
     sys.exit(1)
 
 def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env):
@@ -1115,16 +1117,13 @@ if __name__ == '__main__':
         }
 
     if bug_file_name[-2:] != '.v':
-        print('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
-        #env['log']('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name)
+        env['log']('\nError: BUGGY_FILE must end in .v (value: %s)' % bug_file_name, force_stdout=True)
         sys.exit(1)
     if output_file_name[-2:] != '.v':
-        print('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
-        #env['log']('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name)
+        env['log']('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name, force_stdout=True)
         sys.exit(1)
     if os.path.exists(output_file_name):
-        print('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
-        #env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name)
+        env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name, force_stdout=True)
         if not yes_no_prompt():
             sys.exit(1)
 
@@ -1152,8 +1151,7 @@ if __name__ == '__main__':
     try:
 
         if env['temp_file_name'][-2:] != '.v':
-            print('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
-            env['log']('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'])
+            env['log']('\nError: TEMP_FILE must end in .v (value: %s)' % env['temp_file_name'], force_stdout=True)
             sys.exit(1)
 
         if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
@@ -1182,8 +1180,7 @@ if __name__ == '__main__':
             write_to_file(output_file_name, inlined_contents)
         else:
             if env['inline_coqlib']:
-                print('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.')
-                env['log']('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.')
+                env['log']('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.', force_stdout=True)
                 sys.exit(1)
             if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = include_imports(bug_file_name, **env)

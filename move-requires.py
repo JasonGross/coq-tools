@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from __future__ import with_statement
-import argparse, os, sys, shutil, re
+import os, sys, shutil, re
+from argparse_compat import argparse
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 

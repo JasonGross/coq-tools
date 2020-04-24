@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys, os
-import argparse
+from argparse_compat import argparse
 
 __all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
 
@@ -21,7 +21,7 @@ DEFAULT_VERBOSITY=1
 def make_logger(log_files):
     def log(text, force_stdout=False):
         for i in log_files:
-            if force_stdout and i.fileno() == 2: pass # skip stderr if we write to stdout
+            if force_stdout and i.fileno() == 2: continue # skip stderr if we write to stdout
             i.write(str(text) + '\n')
             i.flush()
             if i.fileno() > 2: # stderr
