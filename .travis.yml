@@ -1,60 +1,25 @@
 language: python
 
-sudo: required
+python:
+  - 2.7
+  - 3.8
 
-matrix:
-  fast_finish: true
-  include:
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="master"   COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-master-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.11"    COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.11-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.10"    COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.10-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.9"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.9-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.8"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.8-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.7"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.7-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.6"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.6-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="v8.5"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.5-daily"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.11.1"   COQ_PACKAGE="coq-8.11.1"                     PPA="ppa:jgross-h/many-coq-versions-ocaml-4-05"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.10.2"   COQ_PACKAGE="coq-8.10.2"                     PPA="ppa:jgross-h/many-coq-versions-ocaml-4-05"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.9.1"    COQ_PACKAGE="coq-8.9.1"                      PPA="ppa:jgross-h/many-coq-versions"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.8.2"    COQ_PACKAGE="coq-8.8.2"                      PPA="ppa:jgross-h/many-coq-versions"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.7.2"    COQ_PACKAGE="coq-8.7.2"                      PPA="ppa:jgross-h/many-coq-versions"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.6.1"    COQ_PACKAGE="coq-8.6.1"                      PPA="ppa:jgross-h/many-coq-versions"
-    - dist: trusty
-      python: "2.7"
-      env: COQ_VERSION="8.5pl3"   COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml" PPA="ppa:jgross-h/many-coq-versions"
-    - dist: precise
-      python: "2.7"
-      env: COQ_VERSION="8.4pl6"   COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6" PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
-  allow_failures:
-    - env: COQ_VERSION="8.4pl6"   COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6" PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
+env:
+  - COQ_VERSION="master"   COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-master-daily"              PYTHON="python"
+  - COQ_VERSION="v8.11"    COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.11-daily"                PYTHON="python"
+  - COQ_VERSION="v8.10"    COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.10-daily"                PYTHON="python"
+  - COQ_VERSION="v8.9"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.9-daily"                 PYTHON="python"
+  - COQ_VERSION="v8.8"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.8-daily"                 PYTHON="python"
+  - COQ_VERSION="v8.7"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.7-daily"                 PYTHON="python"
+  - COQ_VERSION="v8.6"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.6-daily"                 PYTHON="python"
+  - COQ_VERSION="v8.5"     COQ_PACKAGE="coq"                            PPA="ppa:jgross-h/coq-8.5-daily"                 PYTHON="python"
+  - COQ_VERSION="8.11.1"   COQ_PACKAGE="coq-8.11.1"                     PPA="ppa:jgross-h/many-coq-versions-ocaml-4-05"  PYTHON="python"
+  - COQ_VERSION="8.10.2"   COQ_PACKAGE="coq-8.10.2"                     PPA="ppa:jgross-h/many-coq-versions-ocaml-4-05"  PYTHON="python"
+  - COQ_VERSION="8.9.1"    COQ_PACKAGE="coq-8.9.1"                      PPA="ppa:jgross-h/many-coq-versions"             PYTHON="python"
+  - COQ_VERSION="8.8.2"    COQ_PACKAGE="coq-8.8.2"                      PPA="ppa:jgross-h/many-coq-versions"             PYTHON="python"
+  - COQ_VERSION="8.7.2"    COQ_PACKAGE="coq-8.7.2"                      PPA="ppa:jgross-h/many-coq-versions"             PYTHON="python"
+  - COQ_VERSION="8.6.1"    COQ_PACKAGE="coq-8.6.1"                      PPA="ppa:jgross-h/many-coq-versions"             PYTHON="python"
+  - COQ_VERSION="8.5pl3"   COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml" PPA="ppa:jgross-h/many-coq-versions"             PYTHON="python"
 
 before_install:
   - if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi

@@ -3,6 +3,9 @@ from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 from coq_version import get_coq_accepts_time
 import subprocess
 import re
+import util
+from util import PY3
+if PY3: from util import raw_input
 
 __all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term"]
 
@@ -172,5 +175,5 @@ def get_coq_statement_ranges(file_name, coqc, **kwargs):
     p = subprocess.Popen([coqc, '-q', '-time'] + list(kwargs['coqc_args']) + [file_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
 
-    ranges = tuple((int(start), int(finish)) for start, finish in RANGE_REG.findall(stdout))
+    ranges = tuple((int(start), int(finish)) for start, finish in RANGE_REG.findall(util.s(stdout)))
     return ranges

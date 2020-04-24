@@ -3,6 +3,7 @@ import subprocess, tempfile, re
 from diagnose_error import get_coq_output
 from file_util import clean_v_file
 from memoize import memoize
+import util
 
 __all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
@@ -10,7 +11,7 @@ __all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_a
 def get_coqc_version_helper(coqc):
     p = subprocess.Popen([coqc, "-q", "-v"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return stdout.replace('The Coq Proof Assistant, version ', '').replace('\r\n', ' ').replace('\n', ' ').strip()
+    return util.s(stdout).replace('The Coq Proof Assistant, version ', '').replace('\r\n', ' ').replace('\n', ' ').strip()
 
 def get_coqc_version(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
@@ -21,7 +22,7 @@ def get_coqc_version(coqc_prog, **kwargs):
 def get_coqc_help_helper(coqc):
     p = subprocess.Popen([coqc, "-q", "--help"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return stdout.strip()
+    return util.s(stdout).strip()
 
 def get_coqc_help(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
@@ -32,7 +33,7 @@ def get_coqc_help(coqc_prog, **kwargs):
 def get_coqtop_version_helper(coqtop):
     p = subprocess.Popen([coqtop, "-q"], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return stdout.replace('Welcome to Coq ', '').replace('Skipping rcfile loading.', '').replace('\r\n', ' ').replace('\n', ' ').strip()
+    return util.s(stdout).replace('Welcome to Coq ', '').replace('Skipping rcfile loading.', '').replace('\r\n', ' ').replace('\n', ' ').strip()
 
 def get_coqtop_version(coqtop_prog, **kwargs):
     if kwargs['verbose'] >= 2:
@@ -47,7 +48,7 @@ def get_coq_accepts_top(coqc):
     (stdout, stderr) = p.communicate()
     temp_file.close()
     clean_v_file(temp_file_name)
-    return '-top: no such file or directory' not in stdout
+    return '-top: no such file or directory' not in util.s(stdout)
 
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return '-time' in get_coqc_help(coqc_prog, **kwargs)

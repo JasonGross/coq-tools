@@ -3,6 +3,8 @@ import os, sys, tempfile, subprocess, re, time, math, glob, threading
 from Popen_noblock import Popen_async, Empty
 from memoize import memoize
 from file_util import clean_v_file
+from util import re_escape
+import util
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout"]
 
@@ -62,36 +64,39 @@ def make_reg_string(output, strict_whitespace=False):
     """
     unstrictify_whitespace = (lambda s: s)
     if not strict_whitespace:
-        unstrictify_whitespace = (lambda s: re.sub(r'(?:\\ )+', r'\s+', re.sub(r'(\\n|\n)(?:\\ )+', r'\s+', s.replace('\\\n', '\n'))).replace('\n', '\s').replace(r'\s+\s', r'\s+'))
+        unstrictify_whitespace = (lambda s: re.sub(r'(?:\\ )+', r'\\s+', re.sub(r'(\\n|\n)(?:\\ )+', r'\\s+', s.replace('\\\n', '\n'))).replace('\n', '\s').replace(r'\s+\s', r'\s+'))
 
-    error_string = get_error_string(output).strip().decode('utf-8')
+    error_string = get_error_string(output).strip()
+    if not util.PY3: error_string = error_string.decode('utf-8')
     if 'Universe inconsistency' in error_string or 'universe inconsistency' in error_string:
         re_string = re.sub(r'([Uu]niverse\\ inconsistency.*) because(.|\n)*',
                            r'\1 because.*',
-                           re.escape(error_string))
+                           re_escape(error_string))
         re_string = re.sub(r'(\s)[^\s]+?\.([0-9]+)',
-                           r'\1[^\s]+?\.\2',
+                           r'\1[^\\s]+?\\.\2',
                            re_string)
     elif 'Unsatisfied constraints' in error_string:
-        re_string = re.sub(r'Error\\:\\ Unsatisfied\\ constraints\\:.*(?:\n.+)*.*\\\(maybe\\ a\\ bugged\\ tactic\\\)',
-                           r'Error\:\ Unsatisfied\ constraints\:.*(?:\\n.+)*.*\(maybe\ a\ bugged\ tactic\)',
-                           re.escape(error_string),
+        re_string = re.sub(r'Error:\\ Unsatisfied\\ constraints:.*(?:\n.+)*.*\\\(maybe\\ a\\ bugged\\ tactic\\\)',
+                           r'Error:\\ Unsatisfied\\ constraints:.*(?:\\n.+)*.*\\(maybe\\ a\\ bugged\\ tactic\\)',
+                           re_escape(error_string),
                            re.DOTALL)
     elif 'Unable to satisfy the following constraints' in error_string:
-        re_string = re.sub(r'Error\\:\\ Unable\\ to\\ satisfy\\ the\\ following\\ constraints\\:.*(?:\n.*)*',
-                           r'Error\:\ Unable\ to\ satisfy\ the\ following\ constraints\:.*(?:\\n.*)*',
-                           re.escape(error_string),
+        re_string = re.sub(r'Error:\\ Unable\\ to\\ satisfy\\ the\\ following\\ constraints:.*(?:\n.*)*',
+                           r'Error:\\ Unable\\ to\\ satisfy\\ the\\ following\\ constraints:.*(?:\\n.*)*',
+                           re_escape(error_string),
                            re.DOTALL)
     else:
-        re_string = re.escape(error_string)
+        re_string = re_escape(error_string)
     re_string = re.sub(r'tmp(?:[A-Za-z\d]|\\_)+',
-                       r'tmp[A-Za-z_\d]+',
+                       r'tmp[A-Za-z_\\d]+',
                        re_string)
     if r'Universe\ instance\ should\ have\ length\ ' not in re_string:
         re_string = re.sub(r'[\d]+',
-                           r'[\d]+',
+                           r'[\\d]+',
                            re_string)
-    return (DEFAULT_ERROR_REG_STRING_GENERIC % unstrictify_whitespace(re_string)).encode('utf-8')
+    ret = DEFAULT_ERROR_REG_STRING_GENERIC % unstrictify_whitespace(re_string)
+    if not util.PY3: ret = ret.encode('utf-8')
+    return ret
 
 TIMEOUT = None
 
@@ -147,7 +152,7 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
     else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w') as f:
             f.write(contents)
             file_name = f.name
 
@@ -176,13 +181,13 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None), input=input_val)
     finish = time.time()
     if kwargs['verbose'] >= verbose_base + 1:
-        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, stdout, stderr))
+        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, util.s(stdout), util.s(stderr)))
     if TIMEOUT is None:
         TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    COQ_OUTPUT[key] = (file_name, (clean_output(stdout), tuple(cmds), returncode))
+    COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode))
     return COQ_OUTPUT[key][1]
 
 def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, is_coqtop=False, pass_on_stdin=False, verbose_base=1, sep='\nCoq <', **kwargs):
@@ -193,7 +198,7 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, is_coqtop=False
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
     else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w') as f:
             f.write(contents)
             file_name = f.name
 

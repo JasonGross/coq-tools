@@ -62,7 +62,7 @@ I think the error is 'Error:
 The term "A.foo" has type "Type" while it is expected to have type\s\?
 "Set" (universe inconsistency[^)]*)\.
 .\?'\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\sThe\\\\s+term\\\\s+\\\\"A\\\\.foo\\\\"\\\\s+has\\\\s+type\\\\s+\\\\"Type\\\\"\\\\s+while\\\\s+it\\\\s+is\\\\s+expected\\\\s+to\\\\s+have\\\\s+type\\\\s+\\\\"Set\\\\"\\\\s+\\\\(universe\\\\s+inconsistency[^)]*\\\\)\\\\.*
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\sThe\\\\s+term\\\\s+"A\\\\.foo"\\\\s+has\\\\s+type\\\\s+"Type"\\\\s+while\\\\s+it\\\\s+is\\\\s+expected\\\\s+to\\\\s+have\\\\s+type\\\\s+"Set"\\\\s+\\\\(universe\\\\s+inconsistency[^)]*\\\\)\\\\.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing

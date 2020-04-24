@@ -14,7 +14,7 @@ ONLY_IF_FROM_TESTS = 13 27
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
-IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh
+IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh memoize.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
@@ -58,6 +58,11 @@ COQC_SUPPORTS_FROM=$(shell echo "From Coq.Init Require Import Notations." | coqt
 
 .PHONY: check
 check::
+	@echo -n "Running with PYTHON=$(GREEN)"
+	@bash -c '. init-settings.sh; echo -n "$${PYTHON}"'
+	@echo -n "$(NC) ($(GREEN)"
+	@bash -c '. init-settings.sh; echo -n "$$(which "$${PYTHON}")"'
+	@echo "$(NC)) (based on $(GREEN)$${PYTHON}$(NC))"
 	$(MAKE) -B test-suite
 
 .PHONY: print-support

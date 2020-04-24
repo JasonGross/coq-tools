@@ -49,7 +49,7 @@ Error: The command has not failed\s\?!
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error: The command has not failed\s\?!
 .\?'\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error\\\\:\\\\s+The\\\\s+command\\\\s+has\\\\s+not\\\\s+failed.*
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+The\\\\s+command\\\\s+has\\\\s+not\\\\s+failed.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing

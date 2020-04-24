@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
-import argparse, shutil, os, os.path, sys, re
+import shutil, os, os.path, sys, re
+from argparse_compat import argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from split_file import get_coq_statement_ranges, UnsupportedCoqVersionError
 from import_util import get_references_for, get_file, sort_files_by_dependency

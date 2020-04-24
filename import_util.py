@@ -4,6 +4,7 @@ from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
+from util import cmp_compat as cmp
 
 __all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for", "sort_files_by_dependency"]
 
