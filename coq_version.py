@@ -4,7 +4,7 @@ from diagnose_error import get_coq_output
 from file_util import clean_v_file
 from memoize import memoize
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -103,3 +103,18 @@ def get_proof_term_works_with_time(coqc_prog, **kwargs):
 Proof (fun x => x)."""
     output, cmds, retcode = get_coq_output(coqc_prog, ('-time', '-q'), contents, 1, verbose_base=3, **kwargs)
     return 'Error: Attempt to save an incomplete proof' not in output
+
+LTAC_SUPPORT_SNIPPET = {}
+def get_ltac_support_snippet(coqc, **kwargs):
+    if coqc in LTAC_SUPPORT_SNIPPET.keys():
+        return LTAC_SUPPORT_SNIPPET[coqc]
+    test = r'''Inductive False := .
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.'''
+    for before, after in (('', 'Declare ML Module "ltac_plugin".\n'),
+                          ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
+        output, cmds, retcode = get_coq_output(coqc, ('-q',), '%s\n%s\n%s' % (before, after, test), 1, verbose_base=3, **kwargs)
+        if retcode == 0:
+            LTAC_SUPPORT_SNIPPET[coqc] = (before, after)
+            return (before, after)
+    raise Exception('No valid ltac support snipped found')

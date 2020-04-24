@@ -11,7 +11,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, get_ltac_support_snippet
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
@@ -899,25 +899,24 @@ def try_strip_empty_sections(output_file_name, **kwargs):
                                    **kwargs)
 
 
-def add_admit_tactic(contents):
-    tac_code = r"""Module Export AdmitTactic.
+def add_admit_tactic(contents, **kwargs):
+    before, after = get_ltac_support_snippet(**kwargs)
+    tac_code = r"""%sModule Export AdmitTactic.
 Module Import LocalFalse.
 Inductive False := .
 End LocalFalse.
 Axiom proof_admitted : False.
-Declare ML Module "ltac_plugin".
-Tactic Notation "admit" := abstract case proof_admitted.
+%sTactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
-"""
+""" % (before, after)
     tac_code_re = r"""\s*Module Export AdmitTactic\.
 ?(?:Module Import LocalFalse\.
 ?(?:Inductive False := \.)?
 ?End LocalFalse\.)?
 ?(?:Axiom proof_admitted : False\.)?
-?(?:Declare ML Module "ltac_plugin"\.)?
-?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
-?End AdmitTactic\.\n*"""
-    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents, flags=re.DOTALL|re.MULTILINE))
+?(?:%s)?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
+?End AdmitTactic\.\n*""" % re.escape(after)
+    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents.replace(before, ''), flags=re.DOTALL|re.MULTILINE))
 
 
 def default_on_fatal(message):
@@ -1179,7 +1178,7 @@ if __name__ == '__main__':
             inlined_contents = normalize_requires(bug_file_name, **env)
             args.bug_file.close()
             inlined_contents = maybe_add_coqlib_import(inlined_contents, **env)
-            inlined_contents = add_admit_tactic(inlined_contents)
+            inlined_contents = add_admit_tactic(inlined_contents, **env)
             write_to_file(output_file_name, inlined_contents)
         else:
             if env['inline_coqlib']:
@@ -1190,7 +1189,7 @@ if __name__ == '__main__':
             inlined_contents = include_imports(bug_file_name, **env)
             args.bug_file.close()
             if inlined_contents:
-                inlined_contents = add_admit_tactic(inlined_contents)
+                inlined_contents = add_admit_tactic(inlined_contents, **env)
                 if env['verbose'] >= 1: env['log']('Stripping trailing ends')
                 while re.search(r'End [^ \.]*\.\s*$', inlined_contents):
                     inlined_contents = re.sub(r'End [^ \.]*\.\s*$', '', inlined_contents)
@@ -1217,7 +1216,7 @@ if __name__ == '__main__':
             last_output = ''
             clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
             old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
-            cur_output = add_admit_tactic(normalize_requires(output_file_name, **env)).strip() + '\n'
+            cur_output = add_admit_tactic(normalize_requires(output_file_name, **env), **env).strip() + '\n'
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
             while cur_output != last_output:
@@ -1260,7 +1259,7 @@ if __name__ == '__main__':
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
                 old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
-                cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env)).strip() + '\n'
+                cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env), **env).strip() + '\n'
 
             # and we make one final run, or, in case there are no requires, one run
             minimize_file(output_file_name, old_header=old_header, **env)
