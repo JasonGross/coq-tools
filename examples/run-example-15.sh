@@ -11,14 +11,15 @@
 # Various options that must be updated for each example
 N="15"
 EXAMPLE_DIRECTORY="example_$N"
-EXAMPLE_INPUT="$EXAMPLE_DIRECTORY/example_$N.v"
-EXAMPLE_OUTPUT="$EXAMPLE_DIRECTORY/bug_$N.v"
-EXTRA_ARGS="-R $EXAMPLE_DIRECTORY Top"
+SUBDIRECTORY="example_$N"
+EXAMPLE_INPUT="$SUBDIRECTORY/example_$N.v"
+EXAMPLE_OUTPUT="$SUBDIRECTORY/bug_$N.v"
+EXTRA_ARGS="-R $SUBDIRECTORY Top"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
+cd "$DIR/$EXAMPLE_DIRECTORY"
 
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 
