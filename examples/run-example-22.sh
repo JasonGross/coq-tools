@@ -4,7 +4,8 @@
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/"
+mkdir -p "$DIR/example_22"
+cd "$DIR/example_22"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 

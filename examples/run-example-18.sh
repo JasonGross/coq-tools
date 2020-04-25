@@ -11,13 +11,13 @@
 # Various options that must be updated for each example
 N="18"
 EXAMPLE_DIRECTORY="example_$N"
-EXAMPLE_INPUT="$EXAMPLE_DIRECTORY/example_$N.v"
-EXAMPLE_INPUT_COPY="$EXAMPLE_DIRECTORY/bug_$N.v"
+EXAMPLE_INPUT="example_$N.v"
+EXAMPLE_INPUT_COPY="bug_$N.v"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
+cd "$DIR/$EXAMPLE_DIRECTORY"
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
