@@ -258,7 +258,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         p_make = subprocess.Popen(['make', '-k', '-f', mkfile] + targets, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
         return p_make.communicate()
     finally:
-        for filename in (mkfile, mkfile + '.conf'):
+        for filename in (mkfile, mkfile + '.conf', mkfile + '.d', '.%s.d' % mkfile, '.coqdeps.d'):
             if os.path.exists(filename):
                 os.remove(filename)
 

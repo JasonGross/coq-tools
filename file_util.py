@@ -1,4 +1,4 @@
-import os, time, glob
+import os, time
 from memoize import memoize
 
 __all__ = ["clean_v_file", "clean_extra_coq_files", "write_to_file", "read_from_file", "restore_file"]
@@ -9,11 +9,6 @@ def clean_extra_coq_files(v_file_name, extra_exts=tuple()):
             name = ''.join((os.path.dirname(v_file_name[:-2]), os.sep, pre, os.path.basename(v_file_name[:-2]), ext))
             if os.path.exists(name):
                 os.remove(name)
-    for name in glob.glob('.Makefile*.coq.d'):
-        os.remove(name)
-    for name in ('.coqdeps.d', ):
-        if os.path.exists(name):
-            os.remove(name)
 
 def clean_v_file(file_name):
     clean_extra_coq_files(file_name, extra_exts=('.v',))
