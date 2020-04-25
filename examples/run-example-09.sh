@@ -6,7 +6,7 @@ PS4='$ '
 set -x
 # Disable parallel make in subcalls to the bug minimizer because it screws with things
 . "$DIR/disable-parallel-make.sh"
-rm -f *.vo *.glob
+rm -f *.vo bug*.v *.glob
 EXPECTED_ERROR="Error: The command has not failed"
 ACTUAL_PRE="$(echo "y" | ${PYTHON} ../../find-bug.py example_09.v bug_09.v 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
