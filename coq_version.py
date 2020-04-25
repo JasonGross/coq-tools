@@ -113,7 +113,7 @@ Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.'''
     for before, after in (('', 'Declare ML Module "ltac_plugin".\n'),
                           ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
-        output, cmds, retcode = get_coq_output(coqc, ('-q',), '%s\n%s\n%s' % (before, after, test), 1, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)
+        output, cmds, retcode = get_coq_output(coqc, ('-q', '-nois'), '%s\n%s\n%s' % (before, after, test), 1, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)
         if retcode == 0:
             LTAC_SUPPORT_SNIPPET[coqc] = (before, after)
             return (before, after)
