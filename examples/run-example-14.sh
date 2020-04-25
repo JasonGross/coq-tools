@@ -46,7 +46,7 @@ Error:\(
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-rm -f *.vo *.glob
+rm -f bug*.v *.vo *.glob
 echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" --arg=-impredicative-set 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
