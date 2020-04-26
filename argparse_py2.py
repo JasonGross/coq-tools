@@ -89,6 +89,8 @@ import re as _re
 import sys as _sys
 import textwrap as _textwrap
 
+if _sys.version >= (3,): basestring = str
+
 from gettext import gettext as _
 
 

@@ -113,7 +113,7 @@ def move_from_proof(filename, **kwargs):
     try:
         with open(filename, 'r') as f:
             contents = f.read()
-    except IOError, e:
+    except IOError as e:
         if kwargs['verbose']: kwargs['log']('Failed to process %s' % filename)
         if kwargs['verbose'] >= 2: kwargs['log'](repr(e))
         return
