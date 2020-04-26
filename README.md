@@ -1,4 +1,4 @@
-[![Build Status](https://api.travis-ci.org/JasonGross/coq-tools.png?branch=master)](https://travis-ci.org/JasonGross/coq-tools)
+[![Build Status](https://github.com/JasonGross/coq-tools/workflows/CI/badge.svg?branch=master)](https://github.com/JasonGross/coq-tools/actions?query=branch%3Amaster)
 
 coq-tools
 ==============

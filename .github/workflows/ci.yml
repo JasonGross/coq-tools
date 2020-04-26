@@ -1,0 +1,62 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        env:
+        - { COQ_VERSION: "master", COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-master-daily" }
+        - { COQ_VERSION: "v8.11" , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.11-daily" }
+        - { COQ_VERSION: "v8.10" , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.10-daily" }
+        - { COQ_VERSION: "v8.9"  , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.9-daily" }
+        - { COQ_VERSION: "v8.8"  , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.8-daily" }
+        - { COQ_VERSION: "v8.7"  , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.7-daily" }
+        - { COQ_VERSION: "v8.6"  , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.6-daily" }
+        - { COQ_VERSION: "v8.5"  , COQ_PACKAGE: "coq"       , PPA: "ppa:jgross-h/coq-8.5-daily" }
+        - { COQ_VERSION: "8.11.1", COQ_PACKAGE: "coq-8.11.1", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+        - { COQ_VERSION: "8.10.2", COQ_PACKAGE: "coq-8.10.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+        - { COQ_VERSION: "8.9.1" , COQ_PACKAGE: "coq-8.9.1" , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.8.2" , COQ_PACKAGE: "coq-8.8.2" , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.7.2" , COQ_PACKAGE: "coq-8.7.2" , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.6.1" , COQ_PACKAGE: "coq-8.6.1" , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.5pl3", COQ_PACKAGE: "coq-8.5pl3", PPA: "ppa:jgross-h/many-coq-versions" }
+
+    env: ${{ matrix.env }}
+
+    steps:
+    - name: install Coq
+      run: |
+        sudo add-apt-repository "$PPA" -y
+        sudo apt-get -o Acquire::Retries=30 update -q
+        sudo apt-get -o Acquire::Retries=30 install $COQ_PACKAGE -y --allow-unauthenticated
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test
+      run: make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
