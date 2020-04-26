@@ -36,7 +36,7 @@ def contents_without_imports(lib, **kwargs):
     v_file = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_file, **kwargs)
     if '(*' in ' '.join(IMPORT_LINE_REG.findall(contents)):
-        print('Warning: There are comments in your Require/Import/Export lines in %s.' % filename)
+        print('Warning: There are comments in your Require/Import/Export lines in %s.' % v_file)
     return IMPORT_LINE_REG.sub('', contents)
 
 def escape_lib(lib):
