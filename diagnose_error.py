@@ -141,18 +141,12 @@ def memory_robust_timeout_Popen_communicate(*args, **kwargs):
 
 COQ_OUTPUT = {}
 
-def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=False, pass_on_stdin=False, verbose_base=1, **kwargs):
-    """Returns the coqc output of running through the given
-    contents."""
-    global TIMEOUT
-    if timeout_val < 0 and TIMEOUT is not None:
-        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
-
-    key = (coqc_prog, tuple(coqc_prog_args), pass_on_stdin, contents, timeout_val)
+def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=0, **kwargs):
+    key = (coqc_prog, tuple(coqc_prog_args), kwargs['pass_on_stdin'], contents, timeout_val)
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
     else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w') as f:
+        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w', encoding='utf-8') as f:
             f.write(contents)
             file_name = f.name
 
@@ -161,8 +155,8 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     cmds = [coqc_prog] + list(coqc_prog_args)
     pseudocmds = ''
     input_val = None
-    if is_coqtop:
-        if pass_on_stdin:
+    if kwargs['is_coqtop']:
+        if kwargs['pass_on_stdin']:
             input_val = contents
             cmds.extend(['-q'])
             pseudocmds = '" < "%s' % file_name
@@ -170,10 +164,21 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
             cmds.extend(['-load-vernac-source', file_name_root, '-q'])
     else:
         cmds.extend([file_name, '-q'])
-    if kwargs['verbose'] >= verbose_base:
+    if kwargs['verbose'] >= kwargs['verbose_base']:
         kwargs['log']('\nRunning command: "%s%s"' % ('" "'.join(cmds), pseudocmds))
-    if kwargs['verbose'] >= verbose_base + 1:
+    if kwargs['verbose'] >= kwargs['verbose_base'] + 1:
         kwargs['log']('\nContents:\n%s\n' % contents)
+
+    return key, file_name, cmds, input_val
+
+def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=False, pass_on_stdin=False, verbose_base=1, **kwargs):
+    """Returns the coqc output of running through the given
+    contents."""
+    global TIMEOUT
+    if timeout_val < 0 and TIMEOUT is not None:
+        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
+
+    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
@@ -194,30 +199,7 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, is_coqtop=False
     """Returns the coqc output of running through the given
     contents."""
 
-    key = (coqc_prog, tuple(coqc_prog_args), pass_on_stdin, contents, 0)
-    if key in COQ_OUTPUT.keys():
-        file_name = COQ_OUTPUT[key][0]
-    else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w') as f:
-            f.write(contents)
-            file_name = f.name
-
-    file_name_root = os.path.splitext(file_name)[0]
-
-    cmds = [coqc_prog] + list(coqc_prog_args)
-    pseudocmds = ''
-    input_val = None
-    if is_coqtop:
-        if pass_on_stdin:
-            input_val = contents
-            cmds.extend(['-q'])
-            pseudocmds = '" < "%s' % file_name
-        else:
-            cmds.extend(['-load-vernac-source', file_name_root, '-q'])
-    else:
-        cmds.extend([file_name, '-q'])
-    if kwargs['verbose'] >= verbose_base:
-        kwargs['log']('\nRunning command: "%s%s"' % ('" "'.join(cmds), pseudocmds))
+    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=0, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
     if key in COQ_OUTPUT.keys():
         for i in COQ_OUTPUT[key][1].split(sep): yield i
