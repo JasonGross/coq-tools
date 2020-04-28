@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys, os
 from argparse_compat import argparse
+from util import PY3
 
 __all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
 
@@ -27,7 +28,11 @@ def make_logger(log_files):
             if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
         if force_stdout and not any(i.fileno() == 1 for i in log_files): # not already writing to stdout
-            print(text)
+            if PY3:
+                sys.stdout.buffer.write(text.encode('utf-8'))
+                sys.stdout.flush()
+            else:
+                print(text)
     return log
 
 DEFAULT_LOG = make_logger([sys.stderr])
