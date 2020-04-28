@@ -137,8 +137,8 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
     which may change behavior.
 
     >>> import tempfile, os
-    >>> f = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False, mode='w', encoding='utf-8')
-    >>> g = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False, mode='w', encoding='utf-8')
+    >>> f = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
+    >>> g = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
     >>> g_name = os.path.relpath(g.name, '.')[:-2]
     >>> f.write("  Require  Import %s Coq.Init.Logic Arith.\n  Require  Export \tPArith\t Coq.Init.Logic.\n  Require Bool.\n Import Bool. (* asdf *)\n Require Import QArith\n  ZArith\n  Setoid.\nRequire Import %s.\n Require\n  Import\n%s\n\n\t.\t(*foo*)\n\nInductive t := a | b.\n\n(*asdf*)" % (g_name, g_name, g_name))
     >>> g.write(r"Require Export Ascii String.\n\nInductive q := c | d.")

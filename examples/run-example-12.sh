@@ -42,14 +42,14 @@ The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 
-.\?Does this output display the correct error? \[(y)es/(n)o\]\s
+\?.\?Does this output display the correct error? \[(y)es/(n)o\]\s
 I think the error is 'Error: Illegal application (Non-functional construction):\s
 The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 .\?'\.
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+Illegal\\\\s+application\\\\s+\\\\(Non\\\\-functional\\\\s+construction\\\\):\\\\s+The\\\\s+expression\\\\s+"Set"\\\\s+of\\\\s+type\\\\s+"Type"\\\\scannot\\\\s+be\\\\s+applied\\\\s+to\\\\s+the\\\\s+term\\\\s+"Set"\\\\s+:\\\\s+"Type")'\.
-Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
+\?Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in <module>
     env\['error_reg_string'\] = get_error_reg_string(output_file_name, \*\*env)
   File "\.\./\.\./find-bug\.py", line [0-9]\+, in get_error_reg_string

@@ -146,8 +146,8 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
     else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='w', encoding='utf-8') as f:
-            f.write(contents)
+        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='wb') as f:
+            f.write(util.b(contents))
             file_name = f.name
 
     file_name_root = os.path.splitext(file_name)[0]
