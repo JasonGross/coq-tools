@@ -292,12 +292,14 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         # delay until the .v file is old enough that a .glob file will be considered newer
         while file_mtimes[filename] == time.time():
             time.sleep(0.1)
+        if file_mtimes[filename] > time.time():
+            kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (filename, file_mtimes[filename], time.time()))
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
         if os.stat(globname).st_mtime > file_mtimes[filename]:
             return get_raw_file(globname, **kwargs)
         elif kwargs['verbose']:
-            kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer" % (globname, filename, filename))
+            kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer (%d >= %d)" % (globname, filename, filename, file_mtimes[filename], os.stat(globname).st_mtime))
     return None
 
 
