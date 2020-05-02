@@ -64,7 +64,7 @@ def make_reg_string(output, strict_whitespace=False):
     """
     unstrictify_whitespace = (lambda s: s)
     if not strict_whitespace:
-        unstrictify_whitespace = (lambda s: re.sub(r'(?:\\ )+', r'\\s+', re.sub(r'(\\n|\n)(?:\\ )+', r'\\s+', s.replace('\\\n', '\n'))).replace('\n', '\s').replace(r'\s+\s', r'\s+'))
+        unstrictify_whitespace = (lambda s: re.sub(r'(?:\\s\\+)+', r'\\s+', re.sub(r'(?:\\ )+', r'\\s+', re.sub(r'(\\n|\n)(?:\\ )+', r'\\s+', s.replace('\\\n', '\n')))).replace('\n', '\s').replace(r'\s+\s', r'\s+'))
 
     error_string = get_error_string(output).strip()
     if not util.PY3: error_string = error_string.decode('utf-8')
