@@ -289,11 +289,15 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         file_contents[filename] = get_raw_file(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
-        # delay until the .v file is old enough that a .glob file will be considered newer
-        while file_mtimes[filename] == time.time():
-            time.sleep(0.1)
         if file_mtimes[filename] > time.time():
             kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (filename, file_mtimes[filename], time.time()))
+        if time.time() - file_mtimes[filename] < 2:
+            if kwargs['verbose']:
+                kwargs['log']("NOTE: The file %s is very new (%d, %d seconds old), delaying until it's a bit older" % (filename, file_mtimes[filename], time.time() - file_mtimes[filename]))
+        # delay until the .v file is old enough that a .glob file will be considered newer
+        # if we just wait until they're not equal, we apparently get issues like https://gitlab.com/Zimmi48/coq/-/jobs/535005442
+        while time.time() - file_mtimes[filename] < 2:
+            time.sleep(0.1)
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
         if os.stat(globname).st_mtime > file_mtimes[filename]:
