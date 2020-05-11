@@ -40,6 +40,8 @@ nosetests.xml
 
 # Coq files from tests
 *.vo
+*.vos
+*.vok
 *.v.d
 .coqdeps.d
 *.glob
