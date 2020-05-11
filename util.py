@@ -13,7 +13,8 @@ else:
     def b(x):
         if x is not None: return x.encode()
     def s(x):
-        if x is not None: return x.decode('utf-8', 'ignore')
+        # Sometimes we get str rather than bytes??? cf https://gitlab.com/coq/coq/-/jobs/544269051
+        if hasattr(x, 'decode'): return x.decode('utf-8', 'ignore')
     def cmp(x, y):
         if x < y: return -1
         if y < x: return 1
