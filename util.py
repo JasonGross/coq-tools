@@ -15,6 +15,7 @@ else:
     def s(x):
         # Sometimes we get str rather than bytes??? cf https://gitlab.com/coq/coq/-/jobs/544269051
         if hasattr(x, 'decode'): return x.decode('utf-8', 'ignore')
+        return x
     def cmp(x, y):
         if x < y: return -1
         if y < x: return 1
