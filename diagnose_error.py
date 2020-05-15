@@ -116,7 +116,7 @@ def timeout_Popen_communicate(*args, **kwargs):
     p = subprocess.Popen(*args, **kwargs)
 
     def target():
-        ret['value'] = p.communicate(input=input_val)
+        ret['value'] = tuple(map(util.s, p.communicate(input=input_val)))
         ret['returncode'] = p.returncode
 
     thread = threading.Thread(target=target)
