@@ -13,6 +13,9 @@ DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '\n((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_ERROR_REG_STRING + '\n(%s)'
 
 def clean_output(output):
+    if output is None:
+        print('WARNING: output is None', file=sys.stderr)
+        return ''
     return output.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
 
 @memoize
