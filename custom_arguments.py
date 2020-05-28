@@ -3,7 +3,7 @@ import sys, os
 from argparse_compat import argparse
 from util import PY3
 
-__all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
+__all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -165,6 +165,18 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
     env['non_recursive_libnames'].extend(args.non_recursive_libnames)
     env['ocaml_dirnames'].extend(args.ocaml_dirnames)
 
+def update_env_with_coqpath_folders(env, *coqpaths):
+    def do_with_path(path):
+        env['non_recursive_libnames'].extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
+    for coqpath in coqpaths:
+        if os.path.isdir(coqpath):
+            do_with_path(coqpath)
+        elif ';' in coqpath:
+            for path in coqpath.split(';'):
+                do_with_path(coqpath if coqpath != '' else '.')
+        elif ':' in coqpath:
+            for path in coqpath.split(':'):
+                do_with_path(coqpath if coqpath != '' else '.')
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
 class ArgumentParser(argparse.ArgumentParser):

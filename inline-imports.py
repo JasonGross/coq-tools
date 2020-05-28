@@ -2,7 +2,7 @@
 import shutil, os, os.path, sys
 from argparse_compat import argparse
 from import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments
 from replace_imports import include_imports
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
@@ -49,6 +49,9 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
                     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
+parser.add_argument('--inline-user-contrib', dest='inline_user_contrib',
+                    action='store_const', const=True, default=False,
+                    help=("Attempt to inline requires from the user-contrib folder"))
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 
@@ -66,6 +69,7 @@ if __name__ == '__main__':
         'walk_tree': args.walk_tree
         }
     update_env_with_libnames(env, args)
+    if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
 
     filename = args.input_file.name
     args.input_file.close()

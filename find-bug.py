@@ -12,8 +12,8 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, get_ltac_support_snippet
-from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
+from custom_arguments import add_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt, PY3
@@ -114,6 +114,9 @@ parser.add_argument('--inline-coqlib', dest='inline_coqlib',
                     metavar='COQLIB', nargs='?', type=str,
                     help=("Attempt to inline requires from Coq's standard library,\n" +
                           "passing `-coqlib COQLIB' to coqc"))
+parser.add_argument('--inline-user-contrib', dest='inline_user_contrib',
+                    action='store_const', const=True, default=False,
+                    help=("Attempt to inline requires from the user-contrib folder"))
 parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, default=-1,
                     help=("Use a timeout; make sure Coq is " +
                           "killed after running for this many seconds. " +
@@ -1114,7 +1117,7 @@ if __name__ == '__main__':
         'temp_file_name': args.temp_file,
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
-        'inline_coqlib': args.inline_coqlib
+        'inline_coqlib': args.inline_coqlib,
         }
 
     if bug_file_name[-2:] != '.v':
@@ -1148,6 +1151,8 @@ if __name__ == '__main__':
         update_env_with_libnames(env, args, default=tuple([]))
     else:
         update_env_with_libnames(env, args)
+
+    if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
 
     try:
 

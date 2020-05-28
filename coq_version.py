@@ -5,7 +5,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -17,6 +17,20 @@ def get_coqc_version(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
         kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-v"]))
     return get_coqc_version_helper(coqc_prog)
+
+@memoize
+def get_coqc_config_helper(coqc):
+    p = subprocess.Popen([coqc, "-q", "-config"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    return util.s(stdout).replace('\r\n', '\n').strip()
+
+def get_coqc_config(coqc_prog, **kwargs):
+    if kwargs['verbose'] >= 2:
+        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"]))
+    return get_coqc_config_helper(coqc_prog)
+
+def get_coqc_coqlib(coqc_prog, **kwargs):
+    return [line[len('COQLIB='):] for line in get_coqc_config(coqc_prog, **kwargs).split('\n') if line.startswith('COQLIB=')][0]
 
 @memoize
 def get_coqc_help_helper(coqc):
