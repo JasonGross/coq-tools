@@ -117,7 +117,7 @@ endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
 	$(VECHO) "TEST run-example-$*.sh..." >&2
-	$(Q)yes "y" | ./run-example-$*.sh >"example_$*_make.log" 2>&1; RV=$$?; (echo "$$RV" > "$@")
+	$(Q)yes "y" 2>/dev/null | ./run-example-$*.sh >"example_$*_make.log" 2>&1; RV=$$?; (echo "$$RV" > "$@")
 	$(Q)RV="$$(cat "$@")"; if [ "$$RV" -eq 0 ]; then RESULT="$(GREEN)success!$(NC)"; else RESULT="$(RED)failure$(NC)"; fi; \
 	echo "TEST run-example-$*.sh... $$RESULT" >&2
 
