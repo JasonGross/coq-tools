@@ -188,7 +188,7 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     if kwargs['verbose'] >= verbose_base + 1:
         kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, util.s(stdout), util.s(stderr)))
     if TIMEOUT is None:
-        TIMEOUT = 2 * max((1, int(math.ceil(finish - start))))
+        TIMEOUT = 3 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
