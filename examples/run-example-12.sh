@@ -58,7 +58,11 @@ EOFError: EOF when reading a line
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>/dev/null >/dev/null
+# ??? sometimes this doesn't create the output file, cf https://gitlab.com/coq/coq/-/jobs/591578724 ????
+# so for now, we emit the output
+echo "DEBUG: INITIAL RUN OUTPUT"
+echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" # 2>/dev/null >/dev/null
+echo "DEBUG: END INITIAL RUN OUTPUT"
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
