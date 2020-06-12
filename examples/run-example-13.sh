@@ -49,7 +49,7 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 Coqing the file (bug_13\.v)\.\.\.
 
 Running command: "coqc" "-nois" "-R" "\." "Foo" \("-top" "example_13" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: 2
+The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-9:
