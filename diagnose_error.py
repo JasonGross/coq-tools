@@ -173,9 +173,9 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val
 
 def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=False, pass_on_stdin=False, verbose_base=1, **kwargs):
     """Returns the coqc output of running through the given
-    contents."""
+    contents.  Pass timeout_val = None for no timeout."""
     global TIMEOUT
-    if timeout_val < 0 and TIMEOUT is not None:
+    if timeout_val is not None and timeout_val < 0 and TIMEOUT is not None:
         return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
     key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
@@ -183,11 +183,11 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, is_coqtop=F
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
     start = time.time()
-    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val > 0 else None), input=input_val)
+    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val)
     finish = time.time()
     if kwargs['verbose'] >= verbose_base + 1:
         kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, util.s(stdout), util.s(stderr)))
-    if TIMEOUT is None:
+    if TIMEOUT is None and timeout_val is not None:
         TIMEOUT = 3 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
     ## remove instances of the file name
@@ -199,7 +199,7 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, is_coqtop=False
     """Returns the coqc output of running through the given
     contents."""
 
-    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=0, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
+    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val=None, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
     if key in COQ_OUTPUT.keys():
         for i in COQ_OUTPUT[key][1].split(sep): yield i
