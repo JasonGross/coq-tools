@@ -3,7 +3,7 @@ import sys, os
 from argparse_compat import argparse
 from util import PY3
 
-__all__ = ["add_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
+__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "update_env_with_passing_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -60,20 +60,30 @@ class ArgAppendWithWarningAction(argparse.Action):
                   % (option_string, value, ' '.join(option_string + '=' + v for v in value.split(' '))),
                   file=sys.stderr)
 
-def add_libname_arguments(parser):
-    parser.add_argument('--topname', metavar='TOPNAME', dest='topname', type=str, default='Top', action=DeprecatedAction, replacement='-R',
+def add_libname_arguments_gen(parser, passing):
+    passing_dash = passing + '-' if passing else ''
+    twodash_passing_dash = '--' + passing_dash
+    onedash_passing_dash = '-' + ('-' + passing + '-' if passing else '')
+    passing_underscore = passing + '_' if passing else ''
+    passing_for = ', for --' + passing + 'coqc' if passing else ''
+    parser.add_argument(twodash_passing_dash + 'topname', metavar='TOPNAME', dest=passing_underscore+'topname', type=str, default='Top', action=DeprecatedAction, replacement='-R',
                         help='The name to bind to the current directory using -R .')
-    parser.add_argument('-R', metavar=('DIR', 'COQDIR'), dest='libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
-                        help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc')
-    parser.add_argument('-Q', metavar=('DIR', 'COQDIR'), dest='non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
-                        help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc')
-    parser.add_argument('-I', metavar='DIR', dest='ocaml_dirnames', type=str, default=[], action='append',
-                        help='Look for ML files in DIR, as in the -I argument to coqc')
-    parser.add_argument('--arg', metavar='ARG', dest='coq_args', type=str, action=ArgAppendWithWarningAction,
-                        help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
-    parser.add_argument('-f', metavar='FILE', dest='CoqProjectFile', nargs=1, type=argparse.FileType('r'),
+    parser.add_argument(onedash_passing_dash + 'R', metavar=('DIR', 'COQDIR'), dest=passing_underscore+'libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
+                        help='recursively map physical DIR to logical COQDIR, as in the -R argument to coqc' + passing_for)
+    parser.add_argument(onedash_passing_dash + 'Q', metavar=('DIR', 'COQDIR'), dest=passing_underscore+'non_recursive_libnames', type=str, default=[], nargs=2, action=CoqLibnameAction,
+                        help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc' + passing_for)
+    parser.add_argument(onedash_passing_dash + 'I', metavar='DIR', dest=passing_underscore+'ocaml_dirnames', type=str, default=[], action='append',
+                        help='Look for ML files in DIR, as in the -I argument to coqc' + passing_for)
+    parser.add_argument(onedash_passing_dash + '-arg', metavar='ARG', dest=passing_underscore+'coq_args', type=str, action=ArgAppendWithWarningAction,
+                        help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)' + passing_for)
+    parser.add_argument(onedash_passing_dash + 'f', metavar='FILE', dest=passing_underscore+'CoqProjectFile', nargs=1, type=argparse.FileType('r'),
                         default=None,
-                        help=("A _CoqProject file"))
+                        help=('A _CoqProject file' + passing_for))
+
+def add_libname_arguments(parser): add_libname_arguments_gen(parser, passing='')
+def add_passing_libname_arguments(parser):
+    add_libname_arguments_gen(parser, 'passing')
+    add_libname_arguments_gen(parser, 'nonpassing')
 
 def add_logging_arguments(parser):
     parser.add_argument('--verbose', '-v', dest='verbose',
@@ -120,54 +130,57 @@ def argstring_to_iterable(arg):
     if arg[:1] == '"' and arg[-1:] == '"': arg = arg[1:-1]
     return arg.split(' ')
 
-def append_coq_arg(env, arg):
-    for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
-        env[key] = tuple(list(env.get(key, [])) + list(argstring_to_iterable(arg)))
+def append_coq_arg(env, arg, passing=''):
+    for key in ('coqc_args', 'coqtop_args'):
+        env[passing + key] = tuple(list(env.get(passing + key, [])) + list(argstring_to_iterable(arg)))
 
-def process_CoqProject(env, contents):
+def process_CoqProject(env, contents, passing=''):
     if contents is None: return
     tokens = tuple(tokenize_CoqProject(contents))
     i = 0
     while i < len(tokens):
         if tokens[i] == '-R' and i+2 < len(tokens):
-            env['libnames'].append((tokens[i+1], tokens[i+2]))
+            env[passing + 'libnames'].append((tokens[i+1], tokens[i+2]))
             i += 3
         elif tokens[i] == '-Q' and i+2 < len(tokens):
-            env['non_recursive_libnames'].append((tokens[i+1], tokens[i+2]))
+            env[passing + 'non_recursive_libnames'].append((tokens[i+1], tokens[i+2]))
             i += 3
         elif tokens[i] == '-I' and i+1 < len(tokens):
-            env['ocaml_dirnames'].append(tokens[i+1])
+            env[passing + 'ocaml_dirnames'].append(tokens[i+1])
             i += 2
         elif tokens[i] == '-arg' and i+1 < len(tokens):
-            append_coq_arg(env, tokens[i+1])
+            append_coq_arg(env, tokens[i+1], passing=passing)
             i += 2
         elif tokens[i][-2:] == '.v':
-            env['_CoqProject_v_files'].append(tokens[i])
+            env[passing + '_CoqProject_v_files'].append(tokens[i])
             i += 1
         else:
             if 'log' in env.keys(): env['log']('Unknown _CoqProject entry: %s' % repr(tokens[i]))
-            env['_CoqProject_unknown'].append(tokens[i])
+            env[passing + '_CoqProject_unknown'].append(tokens[i])
             i += 1
 
-def update_env_with_libnames(env, args, default=(('.', 'Top'), )):
-    env['libnames'] = []
-    env['non_recursive_libnames'] = []
-    env['ocaml_dirnames'] = []
-    env['_CoqProject'] = None
-    env['_CoqProject_v_files'] = []
-    env['_CoqProject_unknown'] = []
-    if args.CoqProjectFile:
-        for f in args.CoqProjectFile:
+def update_env_with_libnames(env, args, default=(('.', 'Top'), ), passing=''):
+    all_keys = ('libnames', 'non_recursive_libnames', 'ocaml_dirnames', '_CoqProject', '_CoqProject_v_files', '_CoqProject_unknown')
+    for key in all_keys:
+        env[passing + key] = []
+    if getattr(args, passing + 'CoqProjectFile'):
+        for f in getattr(args, passing + 'CoqProjectFile'):
             env['_CoqProject'] = f.read()
             f.close()
-    process_CoqProject(env, env['_CoqProject'])
-    env['libnames'].extend(args.libnames if len(args.libnames + args.non_recursive_libnames + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
-    env['non_recursive_libnames'].extend(args.non_recursive_libnames)
-    env['ocaml_dirnames'].extend(args.ocaml_dirnames)
+    process_CoqProject(env, env['_CoqProject'], passing=passing)
+    env[passing + 'libnames'].extend(getattr(args, passing + 'libnames') if len(getattr(args, passing + 'libnames') + getattr(args, passing + 'non_recursive_libnames') + env[passing + 'libnames'] + env[passing + 'non_recursive_libnames']) > 0 else list(default))
+    env[passing + 'non_recursive_libnames'].extend(getattr(args, passing + 'non_recursive_libnames'))
+    env[passing + 'ocaml_dirnames'].extend(getattr(args, passing + 'ocaml_dirnames'))
+
+def update_env_with_passing_libnames(env, args, default=(('.', 'Top'), )):
+    update_env_with_libnames(env, args, default=default, passing='passing_')
+    update_env_with_libnames(env, args, default=default, passing='nonpassing_')
 
 def update_env_with_coqpath_folders(env, *coqpaths):
     def do_with_path(path):
         env['non_recursive_libnames'].extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
+        env.get('passing_non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
+        env.get('nonpassing_non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
     for coqpath in coqpaths:
         if os.path.isdir(coqpath):
             do_with_path(coqpath)

@@ -56,7 +56,7 @@ nosetests.xml
 /examples/example_*_make.log
 /examples/example_*_output.v
 /examples/example_*/bug_*.v
-/examples/example_26/example_26/bug_*.v
+/examples/example_*/*/bug_*.v
 /examples/example_04/A_abs.v
 /examples/example_04/B_abs.v
 /examples/check.log
@@ -64,5 +64,7 @@ nosetests.xml
 /examples/example_02/example_02_log.log
 /examples/example_02/example_02_output.v
 /examples/example_09/bug_09.v.require-bak
-/examples/example_09/tmp*.v
+/examples/example_*/tmp*.v
+/examples/example_*/*/tmp*.v
+/examples/example_*/*/*/tmp*.v
 /examples/example_23/bug.v

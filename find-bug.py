@@ -13,7 +13,7 @@ from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
-from custom_arguments import add_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_passing_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt, PY3
@@ -152,6 +152,8 @@ parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile
                     help='The path to the coq_makefile program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
                     help='The path to the coqc program that should compile the file successfully.')
+parser.add_argument('--passing-base-dir', metavar='DIR', dest='passing_base_dir', type=str, default='',
+                    help='The path to the base directory from which the passing coqc should be run')
 parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_coqc_args', type=str, action='append',
@@ -159,6 +161,7 @@ parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_co
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
 add_libname_arguments(parser)
+add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
 
 @memoize
@@ -327,7 +330,7 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
     output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
-            passing_output, cmds, passing_retcode = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
+            passing_output, cmds, passing_retcode = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
             if not diagnose_error.has_error(passing_output):
                 return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
             else:
@@ -1112,6 +1115,9 @@ if __name__ == '__main__':
                           else (prepend_coqbin(args.coqc)
                                 if args.passing_coqc_args is not None
                                 else None)),
+        'passing_base_dir': (os.path.abspath(args.passing_base_dir)
+                             if args.passing_base_dir != ''
+                             else None),
         'walk_tree': args.walk_tree,
         'strict_whitespace': args.strict_whitespace,
         'temp_file_name': args.temp_file,
@@ -1151,6 +1157,13 @@ if __name__ == '__main__':
         update_env_with_libnames(env, args, default=tuple([]))
     else:
         update_env_with_libnames(env, args)
+
+    if env['passing_coqc']:
+        if has_dir_binding(env['passing_coqc_args'], coqc_help=coqc_help, file_name=bug_file_name):
+            update_env_with_passing_libnames(env, args, default=tuple([]))
+        else:
+            update_env_with_passing_libnames(env, args)
+
 
     if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
 

@@ -5,7 +5,7 @@ __all__ = ["clean_v_file", "clean_extra_coq_files", "write_to_file", "read_from_
 
 def clean_extra_coq_files(v_file_name, extra_exts=tuple()):
     for pre in ('', '.'):
-        for ext in tuple(list(extra_exts) + ['.glob', '.vo', '.d', '.v.d', '.aux', '*.vos', '*.vok']):
+        for ext in tuple(list(extra_exts) + ['.glob', '.vo', '.d', '.v.d', '.aux', '.vos', '.vok']):
             name = ''.join((os.path.dirname(v_file_name[:-2]), os.sep, pre, os.path.basename(v_file_name[:-2]), ext))
             if os.path.exists(name):
                 os.remove(name)
