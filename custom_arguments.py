@@ -74,7 +74,7 @@ def add_libname_arguments_gen(parser, passing):
                         help='(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc' + passing_for)
     parser.add_argument(onedash_passing_dash + 'I', metavar='DIR', dest=passing_underscore+'ocaml_dirnames', type=str, default=[], action='append',
                         help='Look for ML files in DIR, as in the -I argument to coqc' + passing_for)
-    parser.add_argument(onedash_passing_dash + '-arg', metavar='ARG', dest=passing_underscore+'coq_args', type=str, action=ArgAppendWithWarningAction,
+    parser.add_argument(onedash_passing_dash + 'arg', metavar='ARG', dest=passing_underscore+'coq_args', type=str, action=ArgAppendWithWarningAction,
                         help='Arguments to pass to coqc and coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)' + passing_for)
     parser.add_argument(onedash_passing_dash + 'f', metavar='FILE', dest=passing_underscore+'CoqProjectFile', nargs=1, type=argparse.FileType('r'),
                         default=None,
