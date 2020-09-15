@@ -152,6 +152,8 @@ parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile
                     help='The path to the coq_makefile program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
                     help='The path to the coqc program that should compile the file successfully.')
+parser.add_argument('--base-dir', metavar='DIR', dest='base_dir', type=str, default='',
+                    help='The path to the base directory from which coqc should be run')
 parser.add_argument('--passing-base-dir', metavar='DIR', dest='passing_base_dir', type=str, default='',
                     help='The path to the base directory from which the passing coqc should be run')
 parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_args', type=str, action='append',
@@ -327,7 +329,7 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
 
-    output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
+    output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
             passing_output, cmds, passing_retcode = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
@@ -1118,6 +1120,9 @@ if __name__ == '__main__':
         'passing_base_dir': (os.path.abspath(args.passing_base_dir)
                              if args.passing_base_dir != ''
                              else None),
+        'base_dir': (os.path.abspath(args.base_dir)
+                     if args.base_dir != ''
+                     else None),
         'walk_tree': args.walk_tree,
         'strict_whitespace': args.strict_whitespace,
         'temp_file_name': args.temp_file,
