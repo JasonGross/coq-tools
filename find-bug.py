@@ -1149,7 +1149,7 @@ if __name__ == '__main__':
         sys.exit(1)
     if os.path.exists(output_file_name):
         env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name, force_stdout=True)
-        if not yes_no_prompt():
+        if not yes_no_prompt(yes=env['yes']):
             sys.exit(1)
 
     env['remove_temp_file'] = False

@@ -10,7 +10,7 @@ from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
-from util import yes_no_prompt, PY3
+from util import PY3
 if PY3: from util import raw_input
 import diagnose_error
 
