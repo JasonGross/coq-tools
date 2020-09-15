@@ -162,6 +162,8 @@ parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_co
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
+parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
+                    help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
@@ -173,6 +175,13 @@ def re_compile(pattern, *args):
 # memoize the compilation
 def re_search(pattern, string, flags=0):
     return re_compile(pattern, flags).search(string)
+
+def ask(query, **kwargs):
+    if kwargs['yes']:
+        print(query)
+        return 'y'
+    else:
+        return raw_input(query)
 
 def get_error_reg_string(output_file_name, **kwargs):
     error_reg_string = ''
@@ -187,7 +196,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         result = ''
         kwargs['log']("\nThis file produces the following output when Coq'ed:\n%s" % output, force_stdout=True)
         while result not in ('y', 'n', 'yes', 'no'):
-            result = raw_input('Does this output display the correct error? [(y)es/(n)o] ').lower().strip()
+            result = ask('Does this output display the correct error? [(y)es/(n)o] ', **kwargs).lower().strip()
         if result in ('n', 'no'):
             raw_input('Please modify the file (%s) so that it errors correctly, and then press ENTER to continue, or ^C to break.' % output_file_name)
             continue
@@ -198,7 +207,7 @@ def get_error_reg_string(output_file_name, **kwargs):
             kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
-                result = raw_input('Is this correct? [(y)es/(n)o] ').lower().strip()
+                result = ask('Is this correct? [(y)es/(n)o] ', **kwargs).lower().strip()
             if result in ('no', 'n'):
                 error_reg_string = ''
         else:
@@ -1129,6 +1138,7 @@ if __name__ == '__main__':
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
         'inline_coqlib': args.inline_coqlib,
+        'yes': args.yes,
         }
 
     if bug_file_name[-2:] != '.v':
