@@ -1191,19 +1191,20 @@ if __name__ == '__main__':
         if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
 
         extra_args = get_coq_prog_args(get_file(bug_file_name, **env))
-        for args_name, coq_prog in (('coqc_args', env['coqc']), ('coqtop_args', env['coqtop']), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'])):
+        for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], 'nonpassing'), ('coqtop_args', env['coqtop'], 'nonpassing'), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing')):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
-            for dirname, libname in env['libnames']:
+            for dirname, libname in env['libnames'] + env.get(passing_prefix + '_libnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            for dirname, libname in env['non_recursive_libnames']:
+            for dirname, libname in env['non_recursive_libnames'] + env.get(passing_prefix + '_non_recursive_libnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
-            for dirname in env['ocaml_dirnames']:
+            for dirname in env['ocaml_dirnames'] + env.get(passing_prefix + '_ocaml_dirnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
         for arg in group_coq_args(extra_args, coqc_help):
-            if arg[0] == '-R': env['libnames'].append((arg[1], arg[2]))
-            if arg[0] == '-Q': env['non_recursive_libnames'].append((arg[1], arg[2]))
-            if arg[0] == '-I': env['ocaml_dirnames'].append(arg[1])
+            for passing_prefix in ('passing_', 'nonpassing_', ''):
+                if arg[0] == '-R': env.get(passing_prefix + 'libnames', []).append((arg[1], arg[2]))
+                if arg[0] == '-Q': env.get(passing_prefix + 'non_recursive_libnames', []).append((arg[1], arg[2]))
+                if arg[0] == '-I': env.get(passing_prefix + 'ocaml_dirnames', []).append(arg[1])
 
         if env['minimize_before_inlining']:
             if env['verbose'] >= 1: env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
