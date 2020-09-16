@@ -168,7 +168,7 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), ), passing=''):
             env['_CoqProject'] = f.read()
             f.close()
     process_CoqProject(env, env['_CoqProject'], passing=passing)
-    env[passing + 'libnames'].extend(getattr(args, passing + 'libnames') if len(getattr(args, passing + 'libnames') + getattr(args, passing + 'non_recursive_libnames') + env[passing + 'libnames'] + env[passing + 'non_recursive_libnames']) > 0 else list(default))
+    env[passing + 'libnames'].extend(getattr(args, passing + 'libnames') if len(getattr(args, passing + 'libnames') + getattr(args, passing + 'non_recursive_libnames') + env[passing + 'libnames'] + env[passing + 'non_recursive_libnames'] + getattr(args, 'libnames') + getattr(args, 'non_recursive_libnames') + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
     env[passing + 'non_recursive_libnames'].extend(getattr(args, passing + 'non_recursive_libnames'))
     env[passing + 'ocaml_dirnames'].extend(getattr(args, passing + 'ocaml_dirnames'))
 

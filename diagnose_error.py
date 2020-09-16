@@ -8,8 +8,8 @@ import util
 
 __all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout"]
 
-DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(?!Warning)'
-DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '((?:.|\n)+)'
+DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
+DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '(?!Warning)((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_ERROR_REG_STRING + '(%s)'
 
 def clean_output(output):
