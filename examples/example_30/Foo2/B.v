@@ -1,0 +1,1 @@
+Require Export Foo.A.
