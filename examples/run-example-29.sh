@@ -54,7 +54,7 @@ Running command: "coqc" "-Q" "\." "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp
 The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 14, characters 6-7:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[45], characters 6-7:
 Error: The term "x" has type "Set" while it is expected to have type "nat"\.
 EOF
 )
