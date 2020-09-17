@@ -1117,7 +1117,7 @@ if __name__ == '__main__':
                              for i in (list(process_maybe_list(args.coqtop_args, log=args.log, verbose=args.verbose))
                                        + list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
                                        + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
-        'coq_makefile': args.coq_makefile,
+        'coq_makefile': prepend_coqbin(args.coq_makefile),
         'passing_coqc_args': tuple(i.strip()
                                    for i in (list(process_maybe_list(args.passing_coqc_args, log=args.log, verbose=args.verbose))
                                              + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
