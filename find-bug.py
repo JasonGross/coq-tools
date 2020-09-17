@@ -13,7 +13,7 @@ from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
-from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_passing_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt, PY3
@@ -1168,17 +1168,15 @@ if __name__ == '__main__':
     coqc_help = get_coqc_help(env['coqc'], **env)
     coqc_version = get_coqc_version(env['coqc'], **env)
 
-    if has_dir_binding(env['coqc_args'], coqc_help=coqc_help, file_name=bug_file_name):
-        update_env_with_libnames(env, args, default=tuple([]))
-    else:
-        update_env_with_libnames(env, args)
+    update_env_with_libnames(env, args, include_passing=env['passing_coqc'],
+                             use_default        =not has_dir_binding(env[        'coqc_args'], coqc_help=coqc_help, file_name=bug_file_name),
+                             use_passing_default=not has_dir_binding(env['passing_coqc_args'], coqc_help=coqc_help, file_name=bug_file_name))
 
-    if env['passing_coqc']:
-        if has_dir_binding(env['passing_coqc_args'], coqc_help=coqc_help, file_name=bug_file_name):
-            update_env_with_passing_libnames(env, args, default=tuple([]))
-        else:
-            update_env_with_passing_libnames(env, args)
-
+    if env['verbose'] >= 2:
+        env['log']('{')
+        for k, v in env.items():
+            env['log']('  %s: %s' % (repr(k), repr(v)))
+        env['log']('}')
 
     if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
 
@@ -1191,17 +1189,17 @@ if __name__ == '__main__':
         if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
 
         extra_args = get_coq_prog_args(get_file(bug_file_name, **env))
-        for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], 'nonpassing'), ('coqtop_args', env['coqtop'], 'nonpassing'), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing')):
+        for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], ''), ('coqtop_args', env['coqtop'], ''), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_')):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
-            for dirname, libname in env['libnames'] + env.get(passing_prefix + '_libnames', []):
+            for dirname, libname in env.get(passing_prefix + 'libnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
-            for dirname, libname in env['non_recursive_libnames'] + env.get(passing_prefix + '_non_recursive_libnames', []):
+            for dirname, libname in env.get(passing_prefix + 'non_recursive_libnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
-            for dirname in env['ocaml_dirnames'] + env.get(passing_prefix + '_ocaml_dirnames', []):
+            for dirname in env.get(passing_prefix + 'ocaml_dirnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
             env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
         for arg in group_coq_args(extra_args, coqc_help):
-            for passing_prefix in ('passing_', 'nonpassing_', ''):
+            for passing_prefix in ('passing_', ''):
                 if arg[0] == '-R': env.get(passing_prefix + 'libnames', []).append((arg[1], arg[2]))
                 if arg[0] == '-Q': env.get(passing_prefix + 'non_recursive_libnames', []).append((arg[1], arg[2]))
                 if arg[0] == '-I': env.get(passing_prefix + 'ocaml_dirnames', []).append(arg[1])

@@ -13,7 +13,7 @@ N="00"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=""
+EXTRA_ARGS="$@"
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

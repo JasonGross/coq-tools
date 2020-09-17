@@ -3,7 +3,7 @@ import sys, os
 from argparse_compat import argparse
 from util import PY3
 
-__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "update_env_with_passing_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
+__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -159,28 +159,42 @@ def process_CoqProject(env, contents, passing=''):
             env[passing + '_CoqProject_unknown'].append(tokens[i])
             i += 1
 
-def update_env_with_libnames(env, args, default=(('.', 'Top'), ), passing=''):
-    all_keys = ('libnames', 'non_recursive_libnames', 'ocaml_dirnames', '_CoqProject', '_CoqProject_v_files', '_CoqProject_unknown')
-    for key in all_keys:
-        env[passing + key] = []
-    if getattr(args, passing + 'CoqProjectFile'):
-        for f in getattr(args, passing + 'CoqProjectFile'):
-            env['_CoqProject'] = f.read()
-            f.close()
-    process_CoqProject(env, env['_CoqProject'], passing=passing)
-    env[passing + 'libnames'].extend(getattr(args, passing + 'libnames') if len(getattr(args, passing + 'libnames') + getattr(args, passing + 'non_recursive_libnames') + env[passing + 'libnames'] + env[passing + 'non_recursive_libnames'] + getattr(args, 'libnames') + getattr(args, 'non_recursive_libnames') + env['libnames'] + env['non_recursive_libnames']) > 0 else list(default))
-    env[passing + 'non_recursive_libnames'].extend(getattr(args, passing + 'non_recursive_libnames'))
-    env[passing + 'ocaml_dirnames'].extend(getattr(args, passing + 'ocaml_dirnames'))
+def update_env_with_libname_default(env, args, default=(('.', 'Top'), ), passing=''):
+    if len(getattr(args, passing + 'libnames') + getattr(args, passing + 'non_recursive_libnames') + env[passing + 'libnames'] + env[passing + 'non_recursive_libnames']) == 0:
+        env[passing + 'libnames'].extend(list(default))
 
-def update_env_with_passing_libnames(env, args, default=(('.', 'Top'), )):
-    update_env_with_libnames(env, args, default=default, passing='passing_')
-    update_env_with_libnames(env, args, default=default, passing='nonpassing_')
+def update_env_with_libnames(env, args, default=(('.', 'Top'), ), include_passing=False, use_default=True, use_passing_default=True):
+    all_keys = ('libnames', 'non_recursive_libnames', 'ocaml_dirnames', '_CoqProject', '_CoqProject_v_files', '_CoqProject_unknown')
+    passing_opts = ('', ) if not include_passing else ('', 'passing_', 'nonpassing_')
+    for passing in passing_opts:
+        for key in all_keys:
+            env[passing + key] = []
+        if getattr(args, passing + 'CoqProjectFile'):
+            for f in getattr(args, passing + 'CoqProjectFile'):
+                env[passing + '_CoqProject'] = f.read()
+                f.close()
+        process_CoqProject(env, env[passing + '_CoqProject'], passing=passing)
+        env[passing + 'libnames'].extend(getattr(args, passing + 'libnames'))
+        env[passing + 'non_recursive_libnames'].extend(getattr(args, passing + 'non_recursive_libnames'))
+        env[passing + 'ocaml_dirnames'].extend(getattr(args, passing + 'ocaml_dirnames'))
+    if include_passing:
+        # The nonpassing_ prefix is actually temporary; the semantics
+        # are that, e.g., libnames = libnames + nonpassing_libnames,
+        # while passing_libnames = libnames + passing_libnames
+        for key in all_keys:
+            env['passing_' + key] = env[key] + env['passing_' + key]
+            env[key] = env[key] + env['nonpassing_' + key]
+            del env['nonpassing_' + key]
+    if use_default:
+        update_env_with_libname_default(env, args, default=default)
+    if use_passing_default and include_passing:
+        update_env_with_libname_default(env, args, default=default, passing='passing_')
 
 def update_env_with_coqpath_folders(env, *coqpaths):
     def do_with_path(path):
         env['non_recursive_libnames'].extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
         env.get('passing_non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
-        env.get('nonpassing_non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
+        # env.get('nonpassing_non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
     for coqpath in coqpaths:
         if os.path.isdir(coqpath):
             do_with_path(coqpath)

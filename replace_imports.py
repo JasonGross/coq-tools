@@ -165,7 +165,7 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
     Inductive t := a | b.
 
     (*asdf*)
-    >>> exts = ('.v', '.v.d', '.glob', '.vo', '.o', '.cmi', '.cmxs', '.native', '.cmx')
+    >>> exts = ('.v', '.v.d', '.glob', '.vo', '.o', '.cmi', '.cmxs', '.native', '.cmx', '.vok', '.vos')
     >>> names = [f.name[:-2] + ext for ext in exts] + [g.name[:-2] + ext for ext in exts]
     >>> names = [i for i in names if os.path.exists(i)]
     >>> for name in names: os.remove(name)
