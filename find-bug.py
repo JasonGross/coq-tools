@@ -168,6 +168,8 @@ add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
 
+SENSITIVE_TIMEOUT_RETRY_COUNT=3
+
 @memoize
 def re_compile(pattern, *args):
     return re.compile(pattern, *args)
@@ -332,12 +334,13 @@ CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
 TC_HINT_REG = re.compile("(?<![\w'])Hint\s")
 
 CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
-def classify_contents_change(old_contents, new_contents, **kwargs):
+def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=False, **kwargs):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE)
     new_padded_contents = prepend_header(new_contents, **kwargs)
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
 
+    if ignore_coq_output_cache: diagnose_error.reset_coq_output_cache(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
@@ -357,11 +360,12 @@ def classify_contents_change(old_contents, new_contents, **kwargs):
 def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    unchanged_message='No change.', success_message='Change successful.',
                                    failure_description='make a change', changed_description='Changed file',
+                                   timeout_retry_count=1, ignore_coq_output_cache=False,
                                    verbose_base=1,
                                    **kwargs):
     if kwargs['verbose'] >= 2 + verbose_base:
         kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents)
-    change_result, contents, outputs, output_i, error_desc = classify_contents_change(old_contents, new_contents, **kwargs)
+    change_result, contents, outputs, output_i, error_desc = classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs)
     if change_result == CONTENTS_UNCHANGED:
         if kwargs['verbose'] >= verbose_base: kwargs['log']('\n%s' % unchanged_message)
         return False
@@ -379,6 +383,14 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
             if kwargs['remove_temp_file']: kwargs['log']('%s not saved.' % changed_description)
         if not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
+        if timeout_retry_count > 1 and outputs[output_i].strip().startswith('Timeout!'):
+            if kwargs['verbose'] >= verbose_base: kwargs['log']('\nRetrying another %d time%s...' % (timeout_retry_count - 1, 's' if timeout_retry_count > 2 else ''))
+            return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
+                                                  unchanged_message=unchanged_message, success_message=success_message,
+                                                  failure_description=failure_description, changed_description=changed_description,
+                                                  timeout_retry_count=timeout_retry_count-1, ignore_coq_output_cache=True,
+                                                  verbose_base=verbose_base,
+                                                  **kwargs)
         return False
     else:
         kwargs['log']('ERROR: Unrecognized change result %s on\nclassify_contents_change(\n  %s\n ,%s\n)\n%s'
@@ -960,6 +972,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
     if not check_change_and_write_to_file('', contents, output_file_name,
                                           unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
                                           failure_description='validate all coq runs', changed_description='File',
+                                          timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
                                           **env):
         return die('Fatal error: Sanity check failed.')
 
@@ -990,6 +1003,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
                                           success_message='Splitting successful.',
                                           failure_description='split file to statements',
                                           changed_description='Split',
+                                          timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
                                           **env):
         if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
         if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
@@ -1011,6 +1025,7 @@ def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env
                                           success_message='Splitting to definitions successful.',
                                           failure_description='split file to definitions',
                                           changed_description='Split',
+                                          timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
                                           **env):
         if env['verbose'] >= 1: env['log']('I will not be able to proceed.')
         if env['verbose'] >= 2: env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)')
