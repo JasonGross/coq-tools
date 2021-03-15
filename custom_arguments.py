@@ -92,7 +92,7 @@ def add_logging_arguments(parser):
     parser.add_argument('--quiet', '-q', dest='quiet',
                         action='count',
                         help='the inverse of --verbose')
-    parser.add_argument('--log-file', '-l', dest='log_files', nargs='*', type=argparse.FileType('w'),
+    parser.add_argument('--log-file', '-l', dest='log_files', nargs='+', type=argparse.FileType('w'),
                         default=[sys.stderr],
                         help='The files to log output to.  Use - for stdout.')
 
