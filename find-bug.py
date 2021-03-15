@@ -1309,6 +1309,9 @@ if __name__ == '__main__':
             # and we make one final run, or, in case there are no requires, one run
             minimize_file(output_file_name, old_header=old_header, **env)
 
+    except Exception:
+        env['log'](traceback.format_exc())
+        raise
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
