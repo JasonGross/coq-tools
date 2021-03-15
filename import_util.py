@@ -106,6 +106,8 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
         filename_rel = os.path.relpath(filename, physical_name)
         if not filename_rel.startswith('..' + os.sep) and not os.path.isabs(filename_rel):
             return (filename, logical_name + filename_rel.replace(os.sep, '.'))
+    if filename.startswith('..' + os.sep) and not os.path.isabs(filename):
+        filename = os.path.abspath(filename)
     return (filename, filename.replace(os.sep, '.'))
 
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
