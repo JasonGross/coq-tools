@@ -1189,7 +1189,7 @@ if __name__ == '__main__':
 
     if env['verbose'] >= 2:
         env['log']('{')
-        for k, v in env.items():
+        for k, v in sorted(list(env.items())):
             env['log']('  %s: %s' % (repr(k), repr(v)))
         env['log']('}')
 
