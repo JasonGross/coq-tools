@@ -46,13 +46,13 @@ def strip_newlines(string):
 # Unfortunately, coqtop -emacs -time reports character locations in bytes
 # So we need to handle unicode...
 def slice_statements_string(statements_string, start=None, end=None):
-    statements_string = statements_string.encode('utf-8')
+    statements_string = util.b(statements_string)
     if start is None: start = 0
     if end is None: end = len(statements_string)
-    return statements_string[start:end].decode('utf-8', 'ignore')
+    return util.s(statements_string[start:end])
 
 def len_statements_string(statements_string):
-    return len(statements_string.encode('utf-8'))
+    return len(util.b(statements_string))
 
 def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), **kwargs):
     """Splits a list of statements into chunks which make up
