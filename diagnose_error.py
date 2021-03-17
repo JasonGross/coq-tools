@@ -109,7 +109,7 @@ def reset_timeout():
     global TIMEOUT
     TIMEOUT = None
 
-def timeout_Popen_communicate(*args, log=DEFAULT_LOG, **kwargs):
+def timeout_Popen_communicate(log=DEFAULT_LOG, *args, **kwargs):
     ret = { 'value' : ('', ''), 'returncode': None }
     timeout = kwargs.get('timeout')
     del kwargs['timeout']
@@ -133,7 +133,7 @@ def timeout_Popen_communicate(*args, log=DEFAULT_LOG, **kwargs):
     return (tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value'])), ret['returncode'])
 
 
-def memory_robust_timeout_Popen_communicate(*args, log=DEFAULT_LOG, **kwargs):
+def memory_robust_timeout_Popen_communicate(log=DEFAULT_LOG, *args, **kwargs):
     while True:
         try:
             return timeout_Popen_communicate(*args, log=log, **kwargs)
