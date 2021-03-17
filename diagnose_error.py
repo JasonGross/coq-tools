@@ -109,7 +109,7 @@ def reset_timeout():
     global TIMEOUT
     TIMEOUT = None
 
-def timeout_Popen_communicate(log=DEFAULT_LOG, *args, **kwargs):
+def timeout_Popen_communicate(log, *args, **kwargs):
     ret = { 'value' : ('', ''), 'returncode': None }
     timeout = kwargs.get('timeout')
     del kwargs['timeout']
@@ -133,10 +133,10 @@ def timeout_Popen_communicate(log=DEFAULT_LOG, *args, **kwargs):
     return (tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value'])), ret['returncode'])
 
 
-def memory_robust_timeout_Popen_communicate(log=DEFAULT_LOG, *args, **kwargs):
+def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
     while True:
         try:
-            return timeout_Popen_communicate(*args, log=log, **kwargs)
+            return timeout_Popen_communicate(log, *args, **kwargs)
         except OSError as e:
             log('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)), force_stdout=True)
             time.sleep(10)
@@ -190,7 +190,7 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
 
     start = time.time()
-    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(cmds, log=kwargs['log'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val, cwd=cwd)
+    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(kwargs['log'], cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val, cwd=cwd)
     finish = time.time()
     if kwargs['verbose'] >= verbose_base + 1:
         kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, util.s(stdout), util.s(stderr)))
