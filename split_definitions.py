@@ -43,6 +43,17 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
+# Unfortunately, coqtop -emacs -time reports character locations in bytes
+# So we need to handle unicode...
+def slice_statements_string(statements_string, start=None, end=None):
+    statements_string = statements_string.encode('utf-8')
+    if start is None: start = 0
+    if end is None: end = len(statements_string)
+    return statements_string[start:end].decode('utf-8', 'ignore')
+
+def len_statements_string(statements_string):
+    return len(statements_string.encode('utf-8'))
+
 def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), **kwargs):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
@@ -79,7 +90,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     responses = split_reg.findall(stdout)
     for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
         char_start, char_end = int(char_start), int(char_end)
-        statement = strip_newlines(statements_string[last_char_end:char_end])
+        statement = strip_newlines(slice_statements_string(statements_string,last_char_end,char_end))
         last_char_end = char_end
 
         terms_defined = defined_reg.findall(response_text)
@@ -164,9 +175,9 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
                     'terms_defined':tuple(cur_definition[cur_definition_names]['terms_defined'])})
         del cur_definition[last_definitions]
 
-    if last_char_end + 1 < len(statements_string):
-        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, len(statements_string), statements_string[last_char_end:]))
-        last_statement = strip_newlines(statements_string[last_char_end:])
+    if last_char_end + 1 < len_statements_string(statements_string):
+        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, len_statements_string(statements_string), slice_statements_string(statements_string,last_char_end,None)))
+        last_statement = strip_newlines(slice_statements_string(statements_string, last_char_end, None))
         rtn.append({'statements':tuple(last_statement,),
                     'statement':last_statement,
                     'terms_defined':tuple()})
