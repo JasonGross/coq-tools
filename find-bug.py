@@ -1168,7 +1168,7 @@ if __name__ == '__main__':
             sys.exit(1)
     for k, arg in (('base_dir', '--base-dir'), ('passing_base_dir', '--passing-base-dir')):
         if env[k] is not None and not os.path.isdir(env[k]):
-            env['log']('\Error: Argument to %s (%s) must exist and be a directory.' % (arg, env[k]), force_stdout=True)
+            env['log']('\nError: Argument to %s (%s) must exist and be a directory.' % (arg, env[k]), force_stdout=True)
             sys.exit(1)
 
     env['remove_temp_file'] = False
