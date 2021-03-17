@@ -47,7 +47,7 @@ Running command: "coqc" "-R" "\." "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp
 The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 13, characters 6-13:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(3\|4\), characters 6-13:
 Error:
 EOF
 )
