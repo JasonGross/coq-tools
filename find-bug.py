@@ -1191,13 +1191,13 @@ if __name__ == '__main__':
                              use_default        =not has_dir_binding(env[        'coqc_args'], coqc_help=coqc_help, file_name=bug_file_name),
                              use_passing_default=not has_dir_binding(env['passing_coqc_args'], coqc_help=coqc_help, file_name=bug_file_name))
 
+    if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
+
     if env['verbose'] >= 2:
         env['log']('{')
         for k, v in sorted(list(env.items())):
             env['log']('  %s: %s' % (repr(k), repr(v)))
         env['log']('}')
-
-    if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
 
     try:
 
@@ -1271,40 +1271,35 @@ if __name__ == '__main__':
             while cur_output != last_output:
                 last_output = cur_output
                 requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **env)
-                if os.path.exists(output_file_name + '.require-bak'):
-                    os.remove(output_file_name + '.require-bak')
-                write_to_file(output_file_name, cur_output, do_backup=True, backup_ext='.require-bak')
 
-                try:
-                    for req_module in reversed(requires):
-                        if req_module in libname_blacklist:
-                            continue
-                        else:
-                            libname_blacklist.append(req_module)
-                        rep = '\nRequire %s.\n' % req_module
-                        if rep not in '\n' + cur_output:
-                            if env['verbose'] >= 1: env['log']('\nWarning: I cannot find Require %s.' % req_module)
-                            if env['verbose'] >= 3: env['log']('in contents:\n' + cur_output)
-                            continue
-                        try:
-                            test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
-                        except IOError as e:
-                            if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)' % (req_module, str(e)))
-                            continue
-                        write_to_file(output_file_name, test_output)
-                        diagnose_error.reset_timeout()
-                        if minimize_file(output_file_name, die=(lambda x: False), old_header=old_header, **env):
-                            if os.path.exists(output_file_name + '.require-bak'):
-                                os.remove(output_file_name + '.require-bak')
-                            break
-                        else: # just in case this is the last iteration
-                            write_to_file(output_file_name, cur_output)
-                            if os.path.exists(output_file_name + '.require-bak'):
-                                os.remove(output_file_name + '.require-bak')
+                for req_module in reversed(requires):
+                    if req_module in libname_blacklist:
+                        continue
+                    else:
+                        libname_blacklist.append(req_module)
+                    rep = '\nRequire %s.\n' % req_module
+                    if rep not in '\n' + cur_output:
+                        if env['verbose'] >= 1: env['log']('\nWarning: I cannot find Require %s.' % req_module)
+                        if env['verbose'] >= 3: env['log']('in contents:\n' + cur_output)
+                        continue
+                    try:
+                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
+                    except IOError as e:
+                        if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)' % (req_module, str(e)))
+                        continue
 
-                except BaseException:
-                    restore_file(output_file_name, backup_ext='.require-bak', backup_backup_ext=None)
-                    raise
+                    diagnose_error.reset_timeout()
+
+                    if not check_change_and_write_to_file(
+                            '', test_output, output_file_name,
+                            unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
+                            failure_description=('inline %s' % req_module), changed_description='File',
+                            timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                            **env):
+                        continue
+
+                    if minimize_file(output_file_name, die=(lambda x: False), old_header=old_header, **env):
+                        break
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
                 old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
@@ -1319,5 +1314,3 @@ if __name__ == '__main__':
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
-        if os.path.exists(output_file_name + '.require-bak'):
-            os.remove(output_file_name + '.require-bak')
