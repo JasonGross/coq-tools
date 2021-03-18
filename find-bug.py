@@ -206,7 +206,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         if diagnose_error.has_error(output):
             error_string = diagnose_error.get_error_string(output)
             error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs['strict_whitespace'])
-            kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
+            kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'.\n" % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
             result = ''
             while result not in ('y', 'n', 'yes', 'no'):
                 result = ask('Is this correct? [(y)es/(n)o] ', **kwargs).lower().strip()
@@ -1163,7 +1163,7 @@ if __name__ == '__main__':
         env['log']('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name, force_stdout=True)
         sys.exit(1)
     if os.path.exists(output_file_name):
-        env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name, force_stdout=True)
+        env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n' % output_file_name, force_stdout=True)
         if not yes_no_prompt(yes=env['yes']):
             sys.exit(1)
     for k, arg in (('base_dir', '--base-dir'), ('passing_base_dir', '--passing-base-dir')):
