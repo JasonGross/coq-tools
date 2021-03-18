@@ -20,7 +20,7 @@ parser.add_argument('input_files', metavar='INFILE', nargs='*', type=argparse.Fi
                     help='.v files to update')
 parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='?', type=str, default='',
                     help='update files in place (makes backup if SUFFIX supplied)')
-parser.add_argument('--all', dest='update_all',
+parser.add_argument('--update-all', '--all', dest='update_all',
                     action='store_const', default=False, const=True,
                     help=("also update all .v files listed in any _CoqProject file passed to -f (implies --in-place, requires -f)"))
 parser.add_argument('--absolutize', dest='absolutize',
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
     if args.update_all:
         if env['_CoqProject'] is None:
-            parser.error('--all given without -f')
+            parser.error('--update-all given without -f')
             sys.exit(1)
         else:
             env['inplace'] = True
@@ -208,7 +208,7 @@ if __name__ == '__main__':
         if len(env['input_files']) == 0:
             parser.error('no .v files listed in %s' % args.CoqProjectFile)
     elif len(env['input_files']) == 0:
-        parser.error('not enough arguments (-f COQPROJECTFILE is required if no .v files are given)')
+        parser.error('not enough arguments (-f COQPROJECTFILE with .v files is required if no .v files are given)')
 
     for dirname, libname in env['libnames']:
         env['coqc_args'] = tuple(list(env['coqc_args']) + ['-R', dirname, libname])

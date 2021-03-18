@@ -1,17 +1,20 @@
 #!/usr/bin/env python2
 import shutil, os, os.path, sys
 from argparse_compat import argparse
-from import_util import get_file, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from custom_arguments import add_libname_arguments, add_logging_arguments, process_logging_arguments
+from import_util import get_file, sort_files_by_dependency, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
 from file_util import write_to_file
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 parser = argparse.ArgumentParser(description='Absolutize the imports of Coq files')
-parser.add_argument('input_files', metavar='INFILE', nargs='+', type=argparse.FileType('r'),
+parser.add_argument('input_files', metavar='INFILE', nargs='*', type=argparse.FileType('r'),
                     help='.v files to update')
 parser.add_argument('--in-place', '-i', metavar='SUFFIX', dest='suffix', nargs='?', type=str, default='',
                     help='update files in place (makes backup if SUFFIX supplied)')
+parser.add_argument('--update-all', dest='update_all',
+                    action='store_const', default=False, const=True,
+                    help=("also update all .v files listed in any _CoqProject file passed to -f (implies --in-place, requires -f)"))
 parser.add_argument('--all', '-a', dest='absolutize', action='store_const',
                     const=ALL_ABSOLUTIZE_TUPLE, default=IMPORT_ABSOLUTIZE_TUPLE,
                     help='Absolutize all constants, and not just imports.')
@@ -25,11 +28,9 @@ add_libname_arguments(parser)
 add_logging_arguments(parser)
 
 
-def absolutize_imports(infile, **kwargs):
-    filename = infile.name
+def absolutize_imports(filename, **kwargs):
     if kwargs['verbose']: kwargs['log']('Processing %s...' % filename)
     absolutized_contents = get_file(filename, update_globs=True, **kwargs)
-    infile.close()
     if kwargs['inplace']:
         do_backup = kwargs['suffix'] is not None and len(kwargs['suffix']) > 0
         write_to_file(filename, absolutized_contents, do_backup=do_backup, backup_ext=kwargs['suffix'])
@@ -44,15 +45,33 @@ if __name__ == '__main__':
         else:
             return prog
     env = {
-        'libnames': args.libnames,
         'verbose': args.verbose,
         'log': args.log,
         'coqc': prepend_coqbin(args.coqc),
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
         'absolutize': args.absolutize,
-        'coq_makefile': prepend_coqbin(args.coq_makefile)
+        'coq_makefile': prepend_coqbin(args.coq_makefile),
+        'input_files': tuple(f.name for f in args.input_files),
         }
+    update_env_with_libnames(env, args)
 
-    for f in args.input_files:
+    for f in args.input_files: f.close()
+
+    if args.update_all:
+        if env['_CoqProject'] is None:
+            parser.error('--update-all given without -f')
+            sys.exit(1)
+        else:
+            env['inplace'] = True
+            if env['suffix'] == '': env['suffix'] = None
+            env['input_files'] = tuple(list(env['input_files']) + list(env['_CoqProject_v_files']))
+        if len(env['input_files']) == 0:
+            parser.error('no .v files listed in %s' % args.CoqProjectFile)
+    elif len(env['input_files']) == 0:
+        parser.error('not enough arguments (-f COQPROJECTFILE with .v files is required if no .v files are given)')
+
+    env['input_files'] = sort_files_by_dependency(env['input_files'], update_globs=True, **env)
+
+    for f in env['input_files']:
         absolutize_imports(f, **env)
