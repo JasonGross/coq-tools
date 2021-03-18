@@ -91,7 +91,10 @@ def run_binary_search(initial_state, check_state, step_state, save_good_state, v
             save_good_state(cur)
         else:
             for action in valid_actions:
-                next_st = step_state(cur, action)
+                try:
+                    next_st = step_state(cur, action)
+                except ValueError:
+                    continue
                 if next_st and is_good(next_st):
                     cur = next_st
                     save_good_state(cur)

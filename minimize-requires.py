@@ -89,7 +89,6 @@ def mark_exports(state, keep_exports):
                  for text, ranges in state)
 
 SKIP='SKIP'
-ABSOLUTIZE='ABSOLUTIZE'
 REMOVE='REMOVE'
 
 def trailing_whitespace(text):
@@ -125,8 +124,6 @@ def step_state(state, action):
             (start, end, loc), new_references = references[0], tuple(references[1:])
             if action == SKIP or action is None:
                 ret.append((text, new_references, force_keep))
-            elif action == ABSOLUTIZE:
-                ret.append((text[:start] + loc + text[end:], new_references, force_keep))
             elif action == REMOVE and not force_keep:
                 if new_references: # still other imports, safe to just remove
                     pre_text, post_text = gobble_whitespace(text[:start], text[end:])
@@ -227,7 +224,7 @@ if __name__ == '__main__':
         for name in env['input_files']:
             try:
                 ranges = get_coq_statement_ranges(name, **env)
-                contents = get_file(name, absolutize=tuple(), update_globs=True, **env)
+                contents = get_file(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
                 refs = get_references_for(name, types=('lib',), update_globs=True, **env)
                 if refs is None:
                     env['log']('ERROR: Failed to get references for %s' % name)
@@ -249,8 +246,6 @@ if __name__ == '__main__':
                     else:
                         break
                 valid_actions = (REMOVE,)
-                if args.absolutize:
-                    valid_actions = (REMOVE, ABSOLUTIZE)
                 final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
                 if final_state is not None:
                     if not check_state(final_state):
