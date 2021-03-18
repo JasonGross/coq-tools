@@ -1285,7 +1285,7 @@ if __name__ == '__main__':
                     try:
                         test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
                     except IOError as e:
-                        if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)' % (req_module, str(e)))
+                        if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s' % (req_module, str(e), str(tuple(env['libnames'])), str(tuple(env['non_recursive_libnames']))))
                         continue
 
                     diagnose_error.reset_timeout()
