@@ -76,6 +76,10 @@ def strip_requires(contents):
     contents = reg1.sub(r'\1', contents)
     reg2 = re.compile(r'^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
     contents = reg2.sub(r'', contents)
+    reg3 = re.compile(r'^\s*(From\s+[^\s]+\s+)Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
+    contents = reg3.sub(r'\1\2', contents)
+    reg4 = re.compile(r'^\s*(From\s+[^\s]+\s+)Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))', flags=re.MULTILINE)
+    contents = reg4.sub(r'', contents)
     return contents
 
 
