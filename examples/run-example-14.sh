@@ -79,7 +79,7 @@ ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-impredicative-set" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
 (\* coqc version [^\*]*\*)
 
 Inductive eq {A} (x : A) : \(A ->\|forall _ : A,\) Set := eq_refl : eq x x\.

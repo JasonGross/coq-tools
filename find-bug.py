@@ -7,7 +7,7 @@ from replace_imports import include_imports, normalize_requires, get_required_co
 from import_util import get_file
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
-from split_file import split_coq_file_contents
+from split_file import split_coq_file_contents, split_leading_comments_and_whitespace
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
@@ -333,9 +333,19 @@ INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
 CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
 TC_HINT_REG = re.compile("(?<![\w'])Hint\s")
 
+def get_header_dict(contents, old_header=None, original_line_count=0, **env):
+    coqc_version = get_coqc_version(env['coqc'], **env)
+    coqtop_version = get_coqtop_version(env['coqtop'], **env)
+    if old_header is None: old_header = get_old_header(contents, env['dynamic_header'])
+    return {'original_line_count':original_line_count,
+            'old_header':old_header,
+            'coqc_version':coqc_version,
+            'coqtop_version':coqtop_version}
+
 CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
 def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=False, **kwargs):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE)
+    kwargs['header_dict'] = kwargs.get('header_dict', get_header_dict(new_contents, original_line_count=len(old_contents.split('\n')), **env))
     new_padded_contents = prepend_header(new_contents, **kwargs)
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
@@ -948,25 +958,20 @@ End AdmitTactic.
 ?(?:Axiom proof_admitted : False\.)?
 ?(?:%s)?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
 ?End AdmitTactic\.\n*""" % re.escape(after)
-    return '%s%s' % (tac_code, re.sub(tac_code_re, '\n', contents.replace(before, ''), flags=re.DOTALL|re.MULTILINE))
+    header, contents = split_leading_comments_and_whitespace(contents)
+    return '%s%s%s' % (header, tac_code, re.sub(tac_code_re, '\n', contents.replace(before, ''), flags=re.DOTALL|re.MULTILINE))
 
 
 def default_on_fatal(message):
     if message is not None: DEFAULT_LOG(message)
     sys.exit(1)
 
-def minimize_file(output_file_name, die=default_on_fatal, old_header=None, **env):
+def minimize_file(output_file_name, die=default_on_fatal, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
-    coqc_version = get_coqc_version(env['coqc'], **env)
-    coqtop_version = get_coqtop_version(env['coqtop'], **env)
     coqc_help = get_coqc_help(env['coqc'], **env)
-    if old_header is None: old_header = get_old_header(contents, env['dynamic_header'])
-    env['header_dict'] = {'original_line_count':0,
-                          'old_header':old_header,
-                          'coqc_version':coqc_version,
-                          'coqtop_version':coqtop_version}
+    env['header_dict'] = get_header_dict(contents, **env)
 
 
     if not check_change_and_write_to_file('', contents, output_file_name,
@@ -1262,13 +1267,14 @@ if __name__ == '__main__':
             # so long as we keep changing, we will pull all the
             # requires to the top, then try to replace them in reverse
             # order.  As soon as we succeed, we reset the list
-            last_output = ''
+            last_output = get_file(output_file_name, **env)
             clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
-            old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
             cur_output = add_admit_tactic(normalize_requires(output_file_name, **env), **env).strip() + '\n'
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
-            while cur_output != last_output:
+            first_run = True
+            while cur_output != last_output or first_run:
+                first_run = False
                 last_output = cur_output
                 requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **env)
 
@@ -1291,22 +1297,21 @@ if __name__ == '__main__':
                     diagnose_error.reset_timeout()
 
                     if not check_change_and_write_to_file(
-                            '', test_output, output_file_name,
+                            cur_output, test_output, output_file_name,
                             unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
                             failure_description=('inline %s' % req_module), changed_description='File',
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             **env):
                         continue
 
-                    if minimize_file(output_file_name, die=(lambda x: False), old_header=old_header, **env):
+                    if minimize_file(output_file_name, die=(lambda x: False), **env):
                         break
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
-                old_header = get_old_header(get_file(output_file_name, **env), env['dynamic_header'])
                 cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env), **env).strip() + '\n'
 
             # and we make one final run, or, in case there are no requires, one run
-            minimize_file(output_file_name, old_header=old_header, **env)
+            minimize_file(output_file_name, **env)
 
     except Exception:
         env['log'](traceback.format_exc())

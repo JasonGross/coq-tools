@@ -7,7 +7,7 @@ import util
 from util import PY3
 if PY3: from util import raw_input
 
-__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term"]
+__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term", "split_leading_comments_and_whitespace"]
 
 def fill_kwargs(kwargs):
     ret = {
@@ -51,6 +51,28 @@ def split_leading_braces(statement):
         statement = rest
     if statement:
         yield statement
+
+def split_leading_comments_and_whitespace(text):
+    comment_level = 0
+    in_str = False
+    skip = False
+    for i, (ch, next_ch) in enumerate(zip(text, text[1:] + '\0')):
+        if skip:
+            skip = False
+        elif in_str:
+            if ch in '"': in_str = False
+        elif ch == '(' and next_ch == '*':
+            comment_level += 1
+            skip = True
+        elif ch == '*' and next_ch == ')':
+            comment_level -= 1
+            skip = True
+        elif comment_level > 0:
+            if ch in '"': in_str = True
+        elif ch.isspace():
+            pass
+        else:
+            return text[:i], text[i:]
 
 def split_merge_comments(statements):
     """Find open and close comments."""

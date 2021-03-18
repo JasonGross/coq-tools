@@ -1,6 +1,7 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
+from split_file import split_leading_comments_and_whitespace
 from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
 from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 
@@ -109,7 +110,10 @@ def contents_as_module_without_require(lib, other_imports, export=False, **kwarg
     return contents
 
 def normalize_requires(filename, **kwargs):
-    """Return the contents of filename, with all [Require]s split out and ordered at the top."""
+    """Return the contents of filename, with all [Require]s split out and ordered at the top.
+
+Preserve any leading whitespace/comments.
+"""
     if filename[-2:] != '.v': filename += '.v'
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
@@ -117,9 +121,10 @@ def normalize_requires(filename, **kwargs):
 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, **kwargs)
+    header, contents = split_leading_comments_and_whitespace(contents)
     contents = strip_requires(contents)
     contents = ''.join('Require %s.\n' % i for i in all_imports[:-1]) + '\n' + contents.strip() + '\n'
-    return contents
+    return header + contents
 
 def get_required_contents(libname, **kwargs):
     return contents_as_module_without_require(libname, other_imports=[], export=True, **fill_kwargs(kwargs))

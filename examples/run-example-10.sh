@@ -22,7 +22,7 @@ then
 fi
 
 ${PYTHON} ../../find-bug.py example_10.v bug_10.v -Q . Top || exit $?
-EXPECTED='(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)'
+EXPECTED='(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)'
 LINES="$(grep -c "$EXPECTED" bug_10.v)"
 ACTUAL="$(cat bug_10.v | grep -v '^$' | tr '\n' '\1')"
 if [ "$LINES" -ne 1 ]
