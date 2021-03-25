@@ -3,11 +3,11 @@ import os, sys, inspect, glob
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
-NORM_EXPECT='Require Coq.omega.Omega.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n'
+NORM_EXPECT='Require Coq.micromega.Lia.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n'
 
 GET_EXPECT = {
-    'Coq.omega.Omega': None,
-    'Top.A': 'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.omega.Omega.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n',
+    'Coq.micromega.Lia': None,
+    'Top.A': 'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.micromega.Lia.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n',
     'Top.B': 'Module Export Top_DOT_B.\nModule Export Top.\nModule B.\nImport Top.A.\n\nEnd B.\n\nEnd Top.\n\nEnd Top_DOT_B.\n',
     'Top.C': 'Module Export Top_DOT_C.\nModule Export Top.\nModule C.\nImport Top.A.\n\nEnd C.\n\nEnd Top.\n\nEnd Top_DOT_C.\n',
     'Top.D': 'Module Export Top_DOT_D.\nModule Export Top.\nModule D.\nImport Top.C Top.B.\nExport Top.A.\n\nEnd D.\n\nEnd Top.\n\nEnd Top_DOT_D.\n'

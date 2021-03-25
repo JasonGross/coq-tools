@@ -1,4 +1,4 @@
-Require Import Omega.
+Require Import Lia.
 Module mA.
   Section secA.
     Axiom axA : Set.
