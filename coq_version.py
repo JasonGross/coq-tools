@@ -127,7 +127,7 @@ def get_ltac_support_snippet(coqc, **kwargs):
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.'''
     errinfo = {}
-    for before, after in (('', 'Declare ML Module "ltac_plugin".\n'),
+    for before, after in (('Declare ML Module "ltac_plugin".\n', ''),
                           ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
         contents = '%s\n%s\n%s' % (before, after, test)
         output, cmds, retcode = get_coq_output(coqc, ('-q', '-nois'), contents, timeout_val=None, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)
