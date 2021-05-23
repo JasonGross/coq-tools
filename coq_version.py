@@ -5,7 +5,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_native_compiler_ondemand", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -66,6 +66,10 @@ def get_coq_accepts_top(coqc):
 
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return '-time' in get_coqc_help(coqc_prog, **kwargs)
+
+def get_coq_accepts_native_compiler_ondemand(coqc_prog, **kwargs):
+    help_lines = get_coqc_help(coqc_prog, **kwargs).split('\n')
+    return any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler'))
 
 HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
 HELP_MAKEFILE_REG = re.compile(r'^\[(-[^\n\]]*)\]', re.MULTILINE)
