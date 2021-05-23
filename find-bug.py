@@ -1196,7 +1196,9 @@ if __name__ == '__main__':
                              use_default        =not has_dir_binding(env[        'coqc_args'], coqc_help=coqc_help, file_name=bug_file_name),
                              use_passing_default=not has_dir_binding(env['passing_coqc_args'], coqc_help=coqc_help, file_name=bug_file_name))
 
-    if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], **env), 'user-contrib'))
+    if args.inline_user_contrib:
+        for passing_prefix in ('', 'passing_'):
+            update_env_with_coqpath_folders(env, passing_prefix=passing_prefix, os.path.join(get_coqc_coqlib(env[passing_preifx + 'coqc'], **env), 'user-contrib'))
 
     if env['verbose'] >= 2:
         env['log']('{')
