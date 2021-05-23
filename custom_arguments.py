@@ -190,7 +190,7 @@ def update_env_with_libnames(env, args, default=(('.', 'Top'), ), include_passin
     if use_passing_default and include_passing:
         update_env_with_libname_default(env, args, default=default, passing='passing_')
 
-def update_env_with_coqpath_folders(env, passing_prefix='', *coqpaths):
+def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths):
     def do_with_path(path):
         env.get(passing_prefix + 'non_recursive_libnames', []).extend((os.path.join(path, d), d) for d in sorted(os.listdir(path)))
     for coqpath in coqpaths:

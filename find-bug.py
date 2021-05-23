@@ -1198,7 +1198,7 @@ if __name__ == '__main__':
 
     if args.inline_user_contrib:
         for passing_prefix in ('', 'passing_'):
-            update_env_with_coqpath_folders(env, passing_prefix=passing_prefix, os.path.join(get_coqc_coqlib(env[passing_preifx + 'coqc'], **env), 'user-contrib'))
+            update_env_with_coqpath_folders(passing_prefix, env, os.path.join(get_coqc_coqlib(env[passing_preifx + 'coqc'], **env), 'user-contrib'))
 
     if env['verbose'] >= 2:
         env['log']('{')
