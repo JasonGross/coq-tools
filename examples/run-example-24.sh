@@ -11,7 +11,7 @@ cd outputs
 rm -f ok
 ${COQBIN}coq_makefile -f _CoqProject -o Makefile || exit $?
 make
-(${PYTHON} ../../../minimize-requires.py --all -f _CoqProject 2>&1 && touch ok) | tee run.log
+(${PYTHON} ../../../minimize-requires.py --all -f _CoqProject 2>&1 && touch ok) | grep -v '^$' | grep -v '^Running command:' | tee run.log
 rm ok || exit $?
 for f in run.log _CoqProject $(ls *.v); do
     cmp ../expected/$f $f || exit $?
