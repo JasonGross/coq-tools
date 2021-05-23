@@ -1204,10 +1204,10 @@ if __name__ == '__main__':
             env['log']('  %s: %s' % (repr(k), repr(v)))
         env['log']('}')
 
-    if get_coq_accepts_native_compiler_ondemand(env['coqc'], **env):
-        for args_key in ('coqc_args', 'passing_coqc_args'):
-            if '-native-compiler' not in env[args_key]:
-                env[args_key] = tuple(list(env[args_key]) + ['-native-compiler', 'ondemand'])
+    #if get_coq_accepts_native_compiler_ondemand(env['coqc'], **env):
+    #    for args_key in ('coqc_args', 'passing_coqc_args'):
+    #        if '-native-compiler' not in env[args_key]:
+    #            env[args_key] = tuple(list(env[args_key]) + ['-native-compiler', 'ondemand'])
 
     try:
 
