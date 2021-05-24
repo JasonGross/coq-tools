@@ -54,7 +54,7 @@ Running command: "coqc" "-R" "NonPassing" "Foo" "-Q" "input" "Top" \("-top" "exa
 The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 13, characters 6-9:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(3\|4\), characters 6-9:
 Error: The reference foo was not found in the current environment\.
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s
