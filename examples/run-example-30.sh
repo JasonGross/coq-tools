@@ -2,7 +2,7 @@
 
 ##########################################################
 # Various options that must be updated for each example
-N="31"
+N="30"
 EXAMPLE_DIRECTORY="example_$N/cwd"
 EXAMPLE_INPUT="../input/example_$N.v"
 EXAMPLE_OUTPUT="../output/bug_$N.v"
