@@ -223,7 +223,7 @@ def get_all_v_files(directory, exclude=tuple()):
 # https://github.com/JasonGross/coq-tools/issues/57.  Hence we return
 # the passing version iff passing_coqc is passed
 def get_maybe_passing_arg(kwargs, key):
-    if 'passing_coqc' in kwargs.keys(): return kwargs['passing_' + key]
+    if kwargs.get('passing_coqc'): return kwargs['passing_' + key]
     return kwargs[key]
 
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
