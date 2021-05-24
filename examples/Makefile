@@ -46,10 +46,10 @@ VIECHO_0 := echo
 VIECHO_1 := true
 VIECHO = $(VIECHO_$(V))
 
-RED=\032[0;30m
+RED=\033[0;31m
 # No Color
-NC=\032[0m
-GREEN=\032[0;31m
+NC=\033[0m
+GREEN=\033[0;32m
 BOLD=$(shell tput bold)
 NORMAL=$(shell tput sgr0)
 
