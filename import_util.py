@@ -218,20 +218,28 @@ def get_all_v_files(directory, exclude=tuple()):
                       if os.path.normpath(name) not in exclude]
     return tuple(map(fix_path, all_files))
 
+# we want to run on passing arguments if we're running in
+# passing/non-passing mode, cf
+# https://github.com/JasonGross/coq-tools/issues/57.  Hence we return
+# the passing version iff passing_coqc is passed
+def get_maybe_passing_arg(kwargs, key):
+    if 'passing_coqc' in kwargs.keys(): return kwargs['passing_' + key]
+    return kwargs[key]
+
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
     f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
     mkfile = os.path.basename(f.name)
     f.close()
-    cmds = [kwargs['coq_makefile'], 'COQC', '=', kwargs['coqc'], '-o', mkfile]
-    for physical_name, logical_name in kwargs['libnames']:
+    cmds = [kwargs['coq_makefile'], 'COQC', '=', get_maybe_passing_arg(kwargs, 'coqc'), '-o', mkfile]
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'libnames'):
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    for physical_name, logical_name in kwargs['non_recursive_libnames']:
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'non_recursive_libnames'):
         cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
-    for dirname in kwargs['ocaml_dirnames']:
+    for dirname in get_maybe_passing_arg(kwargs, 'ocaml_dirnames'):
         cmds += ['-I', dirname]
     coq_makefile_help = get_coqc_help(kwargs['coq_makefile'], **kwargs)
-    grouped_args, unrecognized_args = group_coq_args_split_recognized(kwargs['coqc_args'], coq_makefile_help, is_coq_makefile=True)
+    grouped_args, unrecognized_args = group_coq_args_split_recognized(get_maybe_passing_arg(kwargs, 'coqc_args'), coq_makefile_help, is_coq_makefile=True)
     for args in grouped_args:
         cmds.extend(args)
     if unrecognized_args:

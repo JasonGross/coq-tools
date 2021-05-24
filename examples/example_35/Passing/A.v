@@ -1,0 +1,1 @@
+Definition foo : True := I.
