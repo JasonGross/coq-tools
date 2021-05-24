@@ -40,6 +40,9 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
+#
+# Note also that the line numbers tend to be one larger in old
+# versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 getting example_[0-9]\+\.v
 getting example_[0-9]\+\.glob
