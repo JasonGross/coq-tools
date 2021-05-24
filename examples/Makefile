@@ -22,6 +22,8 @@ ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
+.DEFAULT_GOAL := test-suite
+
 # Order the builds for 8 so they don't run in parallel
 example_08-2_result.log: | example_08_result.log
 example_08-3_result.log: | example_08-2_result.log
