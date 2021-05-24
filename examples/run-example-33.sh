@@ -9,7 +9,7 @@
 
 ##########################################################
 # Various options that must be updated for each example
-N="34"
+N="33"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_INPUT_COPY="bug_$N.v"
