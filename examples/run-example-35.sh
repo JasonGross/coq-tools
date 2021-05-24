@@ -50,7 +50,7 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 
 Coqing the file (output/bug_[0-9]\+\.v)\.\.\.
 
-Running command: "coqc" "-R" "NonPassing" "Foo" "-Q" "input" "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
+Running command: "[^"]*coqc" "-R" "NonPassing" "Foo" "-Q" "input" "Top" \("-top" "example_[0-9]\+" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
