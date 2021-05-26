@@ -13,9 +13,27 @@ DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9
 DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(?!Warning)'
 DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + '(%s)'
+ERROR_TERMINATORS = tuple(
+    re.compile(s) for s in
+    [r'Command exited with non-zero status 1',
+     r'Makefile:',
+     r'.* .real: [^,]*, user: [^,]*, sys: [^,]*, mem: [0-9]* ko.',
+     r'make\[[0-9]*\]:',
+     r'make:',
+     r'COQC|OCAMLC|OCAMLOPT|COQDEP'])
+
 
 def clean_output(output):
     return output.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
+
+@memoize
+def truncate_error(error):
+    lines = clean_output(error).split('\n')
+    res = []
+    for line in lines:
+        if any(r.search(line) for r in ERROR_TERMINATORS): break
+        res.append(line)
+    return '\n'.join(res)
 
 @memoize
 def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
@@ -55,7 +73,7 @@ def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string
     Precondition: has_error(output, reg_string)
     """
     errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
-    return errors.groups()[1]
+    return truncate_error(errors.groups()[1])
 
 @memoize
 def make_reg_string(output, strict_whitespace=False):
