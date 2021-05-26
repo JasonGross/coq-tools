@@ -162,6 +162,8 @@ parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_co
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
+parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=argparse.FileType('r'), default=None,
+                    help='If given, scrape the error message from this log rather than from the first run of coqc.')
 parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
                     help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
 add_libname_arguments(parser)
@@ -185,6 +187,45 @@ def ask(query, **kwargs):
     else:
         return raw_input(query)
 
+def get_error_reg_string_of_output(output, **kwargs):
+    error_reg_string = ''
+    if diagnose_error.has_error(output):
+        error_string = diagnose_error.get_error_string(output)
+        error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs['strict_whitespace'])
+        kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
+        result = ''
+        while result not in ('y', 'n', 'yes', 'no'):
+            result = ask('Is this correct? [(y)es/(n)o] ', **kwargs).lower().strip()
+        if result in ('no', 'n'):
+            error_reg_string = ''
+    else:
+        kwargs['log']('\nThe current state of the file does not have a recognizable error.')
+
+    if error_reg_string == '':
+        success = False
+        while not success:
+            error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file.\n')
+            try:
+                re.compile(error_reg_string)
+            except Exception as e:
+                kwargs['log']('\nThat regular expression does not compile: %s' % e, force_stdout=True)
+                success = False
+            else:
+                success = True
+
+    while (error_reg_string != ''
+           and (not re.search(error_reg_string, output)
+                or len(re.search(error_reg_string, output).groups()) != 2)):
+        if not re.search(error_reg_string, output):
+            kwargs['log']('\nThe given regular expression does not match the output.', force_stdout=True)
+        elif len(re.search(error_reg_string, output).groups()) != 2:
+            kwargs['log']('\nThe given regular expression does not have two groups.', force_stdout=True)
+            kwargs['log']('It must first have one integer group which matches on the line number,', force_stdout=True)
+            kwargs['log']('and second a group which matches on the error string.', force_stdout=True)
+        error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
+                                     % output_file_name)
+    return error_reg_string
+
 def get_error_reg_string(output_file_name, **kwargs):
     error_reg_string = ''
     while error_reg_string == '':
@@ -203,41 +244,7 @@ def get_error_reg_string(output_file_name, **kwargs):
             raw_input('Please modify the file (%s) so that it errors correctly, and then press ENTER to continue, or ^C to break.' % output_file_name)
             continue
 
-        if diagnose_error.has_error(output):
-            error_string = diagnose_error.get_error_string(output)
-            error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs['strict_whitespace'])
-            kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
-            result = ''
-            while result not in ('y', 'n', 'yes', 'no'):
-                result = ask('Is this correct? [(y)es/(n)o] ', **kwargs).lower().strip()
-            if result in ('no', 'n'):
-                error_reg_string = ''
-        else:
-            kwargs['log']('\nThe current state of the file does not have a recognizable error.')
-
-        if error_reg_string == '':
-            success = False
-            while not success:
-                error_reg_string = raw_input('\nPlease enter a regular expression which matches on the output.  Leave blank to re-coq the file.\n')
-                try:
-                    re.compile(error_reg_string)
-                except Exception as e:
-                    kwargs['log']('\nThat regular expression does not compile: %s' % e, force_stdout=True)
-                    success = False
-                else:
-                    success = True
-
-        while (error_reg_string != ''
-               and (not re.search(error_reg_string, output)
-                    or len(re.search(error_reg_string, output).groups()) != 2)):
-            if not re.search(error_reg_string, output):
-                kwargs['log']('\nThe given regular expression does not match the output.', force_stdout=True)
-            elif len(re.search(error_reg_string, output).groups()) != 2:
-                kwargs['log']('\nThe given regular expression does not have two groups.', force_stdout=True)
-                kwargs['log']('It must first have one integer group which matches on the line number,', force_stdout=True)
-                kwargs['log']('and second a group which matches on the error string.', force_stdout=True)
-            error_reg_string = raw_input('Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n'
-                                         % output_file_name)
+        error_reg_string = get_error_reg_string_of_output(output, **kwargs)
 
         if error_reg_string == '':
             continue
@@ -1264,8 +1271,14 @@ if __name__ == '__main__':
                 env[key] = tuple(list(env[key]) + ['-nois', '-coqlib', env['inline_coqlib']])
             env['libnames'] = tuple(list(env['libnames']) + [(os.path.join(env['inline_coqlib'], 'theories'), 'Coq')])
 
-        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
-        env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
+        if args.error_log:
+            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to find the error message...')
+            error_log = args.error_log.read()
+            args.error_log.close()
+            env['error_reg_string'] = get_error_reg_string_of_output(error_log, **env)
+        else:
+            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
+            env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
 
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)
