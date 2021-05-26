@@ -73,6 +73,7 @@ def split_leading_comments_and_whitespace(text):
             pass
         else:
             return text[:i], text[i:]
+    return text, ''
 
 def split_merge_comments(statements):
     """Find open and close comments."""
