@@ -20,7 +20,8 @@ ERROR_TERMINATORS = tuple(
      r'.* .real: [^,]*, user: [^,]*, sys: [^,]*, mem: [0-9]* ko.',
      r'make\[[0-9]*\]:',
      r'make:',
-     r'COQC|OCAMLC|OCAMLOPT|COQDEP'])
+     r'COQC|OCAMLC|OCAMLOPT|COQDEP',
+     r'^Failed to build'])
 
 
 def clean_output(output):
