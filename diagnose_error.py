@@ -17,6 +17,7 @@ ERROR_TERMINATORS = tuple(
     re.compile(s) for s in
     [r'Command exited with non-zero status 1',
      r'Makefile:',
+     r'Makefile.ci:',
      r'.* .real: [^,]*, user: [^,]*, sys: [^,]*, mem: [0-9]* ko.',
      r'make\[[0-9]*\]:',
      r'make:',
