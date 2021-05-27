@@ -163,7 +163,7 @@ parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_co
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
 parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=argparse.FileType('r'), default=None,
-                    help='If given, scrape the error message from this log rather than from the first run of coqc.')
+                    help='If given, ensure that the computed error message occurs in this log.')
 parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
                     help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
 add_libname_arguments(parser)
@@ -1271,14 +1271,15 @@ if __name__ == '__main__':
                 env[key] = tuple(list(env[key]) + ['-nois', '-coqlib', env['inline_coqlib']])
             env['libnames'] = tuple(list(env['libnames']) + [(os.path.join(env['inline_coqlib'], 'theories'), 'Coq')])
 
+        if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
+        env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
+
         if args.error_log:
-            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to find the error message...')
+            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to find the error message in the log...')
             error_log = args.error_log.read()
             args.error_log.close()
-            env['error_reg_string'] = get_error_reg_string_of_output(error_log, **env)
-        else:
-            if env['verbose'] >= 1: env['log']('\nNow, I will attempt to coq the file, and find the error...')
-            env['error_reg_string'] = get_error_reg_string(output_file_name, **env)
+            if not diagnose_error.has_error(error_log, kwargs['error_reg_string']):
+                default_on_fatal('The computed error message was not present in the given error log.')
 
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)
