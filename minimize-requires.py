@@ -8,6 +8,7 @@ from file_util import write_to_file
 from memoize import memoize
 from minimizer_drivers import run_binary_search
 import diagnose_error
+import util
 
 # {Windows,Python,coqtop} is terrible; we fail to write to (or read
 # from?) coqtop.  But we can wrap it in a batch scrip, and it works
@@ -57,7 +58,7 @@ def insert_references(contents, ranges, references, **kwargs):
                                                                  for start, end, loc, append, ty in bad))
     for start, finish in ranges:
         if prev < start:
-            ret.append((contents[prev:start], tuple()))
+            ret.append((util.slice_string_at_bytes(contents, prev, start), tuple()))
         if kwargs['verbose']:
             bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
                    if (start <= rstart or rend <= finish) and
@@ -71,16 +72,16 @@ def insert_references(contents, ranges, references, **kwargs):
 
         cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
                                if start <= rstart and rend <= finish)
-        ret.append((contents[start:finish], cur_references))
+        ret.append((util.slice_string_at_bytes(contents, start, finish), cur_references))
         prev = finish
-    if prev < len(contents):
-        ret.append((contents[prev:], tuple()))
+    if prev < util.len_in_bytes(contents):
+        ret.append((util.slice_string_at_bytes(contents, prev), tuple()))
     return tuple(reversed(ret))
 
 def remove_after_first_range(text, ranges):
     if ranges:
         start = min((start for start, end, loc in ranges))
-        return text[:start]
+        return util.slice_string_at_bytes(text, end=start)
     else:
         return text
 
@@ -126,7 +127,7 @@ def step_state(state, action):
                 ret.append((text, new_references, force_keep))
             elif action == REMOVE and not force_keep:
                 if new_references: # still other imports, safe to just remove
-                    pre_text, post_text = gobble_whitespace(text[:start], text[end:])
+                    pre_text, post_text = gobble_whitespace(util.slice_string_at_bytes(text, end=start), util.slice_string_at_bytes(text, start=end))
                     ret.append((pre_text + post_text, new_references, force_keep))
                 else: # no other imports; remove this line completely
                     if ret and state:

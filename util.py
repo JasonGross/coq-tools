@@ -1,6 +1,6 @@
 import sys, re
 
-__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape"]
+__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes"]
 
 if sys.version_info < (3,):
     PY3 = False
@@ -57,3 +57,16 @@ def yes_no_prompt(**kwargs):
                    {'value':False, 'display':'(n)o', 'values':('n', 'no')}),
                   yes_value=True,
                   **kwargs)
+
+# Unfortunately, coqtop -emacs -time reports character locations in
+# bytes, as does the glob file, so we need to handle unicode.  Here we
+# write a generic slicer based on unicode locations that works across
+# versions of python
+def slice_string_at_bytes(string, start=None, end=None):
+    string = b(string)
+    if start is None: start = 0
+    if end is None: end = len(string)
+    return s(string[start:end])
+
+def len_in_bytes(string):
+    return len(b(string))

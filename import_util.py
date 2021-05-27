@@ -5,6 +5,7 @@ from memoize import memoize
 from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 from util import cmp_compat as cmp
+import util
 
 __all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for", "sort_files_by_dependency"]
 
@@ -171,9 +172,10 @@ def move_strings(before, after, *possibilities):
 def move_space(before, after):
     return move_strings(before, after, '\n\t\r ')
 
+# uses byte locations
 def remove_from_require_before(contents, location):
     """removes "From ... " from things like "From ... Require ..." """
-    before, after = contents[:location], contents[location:]
+    before, after = util.slice_string_at_bytes(contents, end=location), util.slice_string_at_bytes(contents, start=location)
     before, after = move_space(before, after)
     before, after = move_strings_once(before, after, ('Import', 'Export'), relaxed=True)
     before, after = move_space(before, after)
@@ -187,6 +189,7 @@ def remove_from_require_before(contents, location):
     if before is None: return contents
     return before + after
 
+# returns locations as bytes
 def get_references_from_globs(globs):
     all_globs = set((int(start), int(end) + 1, loc, append, ty.strip())
                     for start, end, loc, append, ty
@@ -197,15 +200,15 @@ def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambd
     kwargs = fill_kwargs(kwargs)
     for start, end, loc, append, ty in get_references_from_globs(globs):
         if ty not in absolutize or loc == libname:
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, util.slice_string_at_bytes(contents, start, end), loc, append))
         # sanity check for correct replacement, to skip things like record builder notation
-        elif append != '<>' and get_constr_name(contents[start:end]) != append:
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, contents[start:end], loc, append))
+        elif append != '<>' and get_constr_name(util.slice_string_at_bytes(contents, start, end)) != append:
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, util.slice_string_at_bytes(contents, start, end), loc, append))
         else: # ty in absolutize and loc != libname
             rep = transform_base(loc) + ('.' + append if append != '<>' else '')
-            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, contents[start:end], rep))
-            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, contents[start:end], rep, start, end, loc, append, ty))
-            contents = '%s%s%s' % (contents[:start], rep, contents[end:])
+            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, util.slice_string_at_bytes(contents, start, end), rep))
+            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, util.slice_string_at_bytes(contents, start, end), rep, start, end, loc, append, ty))
+            contents = '%s%s%s' % (util.slice_string_at_bytes(contents, start=None, end=start), rep, util.slice_string_at_bytes(contents, start=end, end=None))
             contents = remove_from_require_before(contents, start)
 
     return contents
