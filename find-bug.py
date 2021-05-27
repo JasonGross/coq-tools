@@ -1279,7 +1279,7 @@ if __name__ == '__main__':
             if env['verbose'] >= 1: env['log']('\nNow, I will attempt to find the error message in the log...')
             error_log = args.error_log.read()
             args.error_log.close()
-            if not diagnose_error.has_error(error_log, kwargs['error_reg_string']):
+            if not diagnose_error.has_error(error_log, env['error_reg_string']):
                 default_on_fatal('The computed error message was not present in the given error log.')
 
         # initial run before we (potentially) do fancy things with the requires
