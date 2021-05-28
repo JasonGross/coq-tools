@@ -67,9 +67,19 @@ def get_coq_accepts_top(coqc):
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return '-time' in get_coqc_help(coqc_prog, **kwargs)
 
+@memoize
+def get_coqc_native_compiler_ondemand_errors(coqc):
+    temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=True)
+    temp_file_name = temp_file.name
+    p = subprocess.Popen([coqc, "-q", "-native-compiler", "ondemand", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    temp_file.close()
+    clean_v_file(temp_file_name)
+    return 'The native-compiler option is deprecated' in util.s(stdout) or 'deprecated-native-compiler-option' in util.s(stdout)
+
 def get_coq_accepts_native_compiler_ondemand(coqc_prog, **kwargs):
     help_lines = get_coqc_help(coqc_prog, **kwargs).split('\n')
-    return any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler'))
+    return any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler')) and not get_coqc_native_compiler_ondemand_errors(coqc_prog)
 
 HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
 HELP_MAKEFILE_REG = re.compile(r'^\[(-[^\n\]]*)\]', re.MULTILINE)
