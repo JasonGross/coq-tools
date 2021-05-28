@@ -11,7 +11,7 @@ __all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_
 def get_coqc_version_helper(coqc):
     p = subprocess.Popen([coqc, "-q", "-v"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return util.s(stdout).replace('The Coq Proof Assistant, version ', '').replace('\r\n', ' ').replace('\n', ' ').strip()
+    return util.normalize_newlines(util.s(stdout).replace('The Coq Proof Assistant, version ', '')).replace('\n', ' ').strip()
 
 def get_coqc_version(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
@@ -22,7 +22,7 @@ def get_coqc_version(coqc_prog, **kwargs):
 def get_coqc_config_helper(coqc):
     p = subprocess.Popen([coqc, "-q", "-config"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return util.s(stdout).replace('\r\n', '\n').strip()
+    return util.normalize_newlines(util.s(stdout)).strip()
 
 def get_coqc_config(coqc_prog, **kwargs):
     if kwargs['verbose'] >= 2:
@@ -47,7 +47,7 @@ def get_coqc_help(coqc_prog, **kwargs):
 def get_coqtop_version_helper(coqtop):
     p = subprocess.Popen([coqtop, "-q"], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    return util.s(stdout).replace('Welcome to Coq ', '').replace('Skipping rcfile loading.', '').replace('\r\n', ' ').replace('\n', ' ').strip()
+    return util.normalize_newlines(util.s(stdout).replace('Welcome to Coq ', '').replace('Skipping rcfile loading.', '')).replace('\n', ' ').strip()
 
 def get_coqtop_version(coqtop_prog, **kwargs):
     if kwargs['verbose'] >= 2:

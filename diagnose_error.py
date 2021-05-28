@@ -15,7 +15,7 @@ DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + '(%s)'
 
 def clean_output(output):
-    return output.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
+    return util.normalize_newlines(output)
 
 @memoize
 def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):

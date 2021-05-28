@@ -70,3 +70,6 @@ def slice_string_at_bytes(string, start=None, end=None):
 
 def len_in_bytes(string):
     return len(b(string))
+
+def normalize_newlines(string):
+    return string.replace('\r\n', '\n').replace('\r', '\n')
