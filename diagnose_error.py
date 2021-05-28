@@ -109,6 +109,7 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     timeout = kwargs.get('timeout')
     del kwargs['timeout']
     input_val = kwargs.get('input')
+    if input_val is not None: input_val = input_val.encode('utf-8')
     del kwargs['input']
     p = subprocess.Popen(*args, **kwargs)
 
@@ -145,7 +146,7 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
         file_name = COQ_OUTPUT[key][0]
     else:
         with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='wb') as f:
-            f.write(util.b(contents))
+            f.write(contents.encode('utf-8'))
             file_name = f.name
 
     file_name_root = os.path.splitext(file_name)[0]

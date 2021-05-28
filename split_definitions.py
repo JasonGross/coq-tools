@@ -60,9 +60,10 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = '\n'.join(statements) + '\n\n'
+    statements_bytes = statements_string.encode('utf-8')
     if verbose: log('Sending statements to coqtop...')
     if verbose >= 3: log(statements_string)
-    (stdout, stderr) = p.communicate(input=util.b(statements_string))
+    (stdout, stderr) = p.communicate(input=statements_bytes)
     stdout = util.s(stdout)
     if 'know what to do with -time' in stdout.strip().split('\n')[0]:
         # we're using a version of coqtop that doesn't support -time
@@ -79,7 +80,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     responses = split_reg.findall(stdout)
     for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
         char_start, char_end = int(char_start), int(char_end)
-        statement = strip_newlines(util.slice_string_at_bytes(statements_string,last_char_end,char_end))
+        statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
         last_char_end = char_end
 
         terms_defined = defined_reg.findall(response_text)
@@ -164,9 +165,10 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
                     'terms_defined':tuple(cur_definition[cur_definition_names]['terms_defined'])})
         del cur_definition[last_definitions]
 
-    if last_char_end + 1 < util.len_in_bytes(statements_string):
-        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, util.len_in_bytes(statements_string), util.slice_string_at_bytes(statements_string,last_char_end,None)))
-        last_statement = strip_newlines(util.slice_string_at_bytes(statements_string, last_char_end, None))
+    if last_char_end + 1 < len(statements_bytes):
+        last_statement = statements_bytes[last_char_end:].decode('utf-8')
+        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, len(statements_bytes), last_statement))
+        last_statement = strip_newlines(last_statement)
         rtn.append({'statements':tuple(last_statement,),
                     'statement':last_statement,
                     'terms_defined':tuple()})

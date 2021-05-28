@@ -896,7 +896,7 @@ def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailin
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
-        contents = '\n'.join(map(str.rstrip, contents.split('\n')))
+        contents = '\n'.join(line.rstrip() for line in contents.split('\n'))
     new_contents = strip_newlines(contents, max_consecutive_newlines)
 
     check_change_and_write_to_file(old_contents, new_contents, output_file_name,
