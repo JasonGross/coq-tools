@@ -209,12 +209,12 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
     return rtn
 
 if __name__ == "__main__":
-    # if we're working in python 3.3, we can test this file
+    # if we're working in Python 3.3, we can test this file
     try:
         import doctest
         success = True
     except ImportError:
-        print('This is not the main file to use.\nOnly run it if you have doctest (python 3.3+) and are testing things.')
+        print('This is not the main file to use.\nOnly run it if you have doctest (Python 3.3+) and are testing things.')
         success = False
     if success:
         doctest.testmod()
