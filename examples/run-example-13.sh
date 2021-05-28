@@ -48,7 +48,7 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 
 Coqing the file (bug_13\.v)\.\.\.
 
-Running command: "coqc" "-nois" "-R" "\." "Foo" \("-top" "example_13" \)\?"/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
+Running command: "coqc" "-nois" "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
 The timeout has been set to: 3
 
 This file produces the following output when Coq'ed:
@@ -98,7 +98,7 @@ ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo || exit 
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois" "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
