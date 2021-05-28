@@ -7,7 +7,7 @@ from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_glob_file_for", "get_references_for", "sort_files_by_dependency"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency"]
 
 file_mtimes = {}
 file_contents = {}
@@ -123,22 +123,23 @@ def is_local_import(libname, **kwargs):
     '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
     return os.path.isfile(filename_of_lib(libname, **kwargs))
 
-def get_raw_file(filename, **kwargs):
+def get_raw_file_as_bytes(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
     if kwargs['verbose']: kwargs['log']('getting %s' % filename)
-    try:
-        with open(filename, 'r', encoding='UTF-8') as f:
-            return f.read()
-    except TypeError:
-        with open(filename, 'r') as f:
-            return f.read()
+    with open(filename, 'rb') as f:
+        return f.read()
 
+def get_raw_file(*args, **kwargs):
+    return util.normalize_newlines(get_raw_file_as_bytes(*args, **kwargs).decode('utf-8'))
+
+# code is string
 @memoize
 def get_constr_name(code):
     first_word = code.split(' ')[0]
     last_component = first_word.split('.')[-1]
     return last_component
 
+# before, after are both strings
 def move_strings_once(before, after, possibility, relaxed=False):
     for i in possibility:
         if before[-len(i):] == i:
@@ -148,6 +149,7 @@ def move_strings_once(before, after, possibility, relaxed=False):
     else:
         return None, None
 
+# before, after are both strings
 def move_strings_pre(before, after, possibility):
     while len(before) > 0:
         new_before, new_after = move_strings_once(before, after, possibility)
@@ -156,6 +158,7 @@ def move_strings_pre(before, after, possibility):
         before, after = new_before, new_after
     return (before, after)
 
+# before, after are both strings
 def move_function(before, after, get_len):
     while len(before) > 0:
         n = get_len(before)
@@ -164,18 +167,21 @@ def move_function(before, after, get_len):
         before, after = before[:-n], before[n:] + after
     return before, after
 
+# before, after are both strings
 def move_strings(before, after, *possibilities):
     for possibility in possibilities:
         before, after = move_strings_pre(before, after, possibility)
     return before, after
 
+# before, after are both strings
 def move_space(before, after):
     return move_strings(before, after, '\n\t\r ')
 
 # uses byte locations
 def remove_from_require_before(contents, location):
     """removes "From ... " from things like "From ... Require ..." """
-    before, after = util.slice_string_at_bytes(contents, end=location), util.slice_string_at_bytes(contents, start=location)
+    assert(contents is bytes(contents))
+    before, after = contents[:location].decode('utf-8'), contents[location:].decode('utf-8')
     before, after = move_space(before, after)
     before, after = move_strings_once(before, after, ('Import', 'Export'), relaxed=True)
     before, after = move_space(before, after)
@@ -187,7 +193,7 @@ def remove_from_require_before(contents, location):
     before, _ = move_space(before, after)
     before, _ = move_strings_once(before, after, ('From',), relaxed=False)
     if before is None: return contents
-    return before + after
+    return (before + after).encode('utf-8')
 
 # returns locations as bytes
 def get_references_from_globs(globs):
@@ -196,19 +202,22 @@ def get_references_from_globs(globs):
                     in re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> ([^ ]+) ([^ ]+)$', globs, flags=re.MULTILINE))
     return tuple(sorted(all_globs, key=(lambda x: x[0]), reverse=True))
 
+# contents should be bytes; globs should be string
 def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
+    assert(contents is bytes(contents))
     kwargs = fill_kwargs(kwargs)
     for start, end, loc, append, ty in get_references_from_globs(globs):
+        cur_code = contents[start:end].decode('utf-8')
         if ty not in absolutize or loc == libname:
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, util.slice_string_at_bytes(contents, start, end), loc, append))
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
         # sanity check for correct replacement, to skip things like record builder notation
-        elif append != '<>' and get_constr_name(util.slice_string_at_bytes(contents, start, end)) != append:
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, util.slice_string_at_bytes(contents, start, end), loc, append))
+        elif append != '<>' and get_constr_name(cur_code) != append:
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
         else: # ty in absolutize and loc != libname
             rep = transform_base(loc) + ('.' + append if append != '<>' else '')
-            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, util.slice_string_at_bytes(contents, start, end), rep))
-            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, util.slice_string_at_bytes(contents, start, end), rep, start, end, loc, append, ty))
-            contents = '%s%s%s' % (util.slice_string_at_bytes(contents, start=None, end=start), rep, util.slice_string_at_bytes(contents, start=end, end=None))
+            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep))
+            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty))
+            contents = contents[:start] + rep.encode('utf-8') + contents[end:]
             contents = remove_from_require_before(contents, start)
 
     return contents
@@ -299,7 +308,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        file_contents[filename] = get_raw_file(filename, **kwargs)
+        file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
         if file_mtimes[filename] > time.time():
@@ -320,27 +329,31 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     return None
 
 
-def get_references_for(filename, types, **kwargs):
+def get_byte_references_for(filename, types, **kwargs):
     globs = get_glob_file_for(filename, **kwargs)
     if globs is None: return None
     references = get_references_from_globs(globs)
     return tuple((start, end, loc, append, ty) for start, end, loc, append, ty in references
                  if types is None or ty in types)
 
-def get_file(filename, absolutize=('lib',), update_globs=False, **kwargs):
+def get_file_as_bytes(filename, absolutize=('lib',), update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
     if filename[-2:] != '.v': filename += '.v'
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
     if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        file_contents[filename] = get_raw_file(filename, **kwargs)
+        file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
         file_mtimes[filename] = os.stat(filename).st_mtime
         if len(absolutize) > 0:
             globs = get_glob_file_for(filename, update_globs=update_globs, **kwargs)
             if globs is not None:
                 file_contents[filename] = update_with_glob(file_contents[filename], globs, absolutize, libname, **kwargs)
     return file_contents[filename]
+
+# returns string, newlines normalized
+def get_file(*args, **kwargs):
+    return util.normalize_newlines(get_file_as_bytes(*args, **kwargs).decode('utf-8'))
 
 def get_require_dict(lib, **kwargs):
     kwargs = fill_kwargs(kwargs)

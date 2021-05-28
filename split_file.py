@@ -7,7 +7,7 @@ import util
 from util import PY3
 if PY3: from util import raw_input
 
-__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term", "split_leading_comments_and_whitespace"]
+__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_byte_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term", "split_leading_comments_and_whitespace"]
 
 def fill_kwargs(kwargs):
     ret = {
@@ -190,7 +190,7 @@ replacing [Proof (term).] with [Proof. exact (term). Qed.], which may fail.""")
 
 RANGE_REG = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+', flags=re.DOTALL)
 
-def get_coq_statement_ranges(file_name, coqc, **kwargs):
+def get_coq_statement_byte_ranges(file_name, coqc, **kwargs):
     kwargs = fill_kwargs(kwargs)
     if not get_coq_accepts_time(coqc, **kwargs):
         raise UnsupportedCoqVersionError

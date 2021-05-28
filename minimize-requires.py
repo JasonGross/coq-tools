@@ -2,8 +2,8 @@
 import shutil, os, os.path, sys, re
 from argparse_compat import argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
-from split_file import get_coq_statement_ranges, UnsupportedCoqVersionError
-from import_util import get_references_for, get_file, sort_files_by_dependency
+from split_file import get_coq_statement_byte_ranges, UnsupportedCoqVersionError
+from import_util import get_byte_references_for, get_file_as_bytes, sort_files_by_dependency
 from file_util import write_to_file
 from memoize import memoize
 from minimizer_drivers import run_binary_search
@@ -48,6 +48,7 @@ add_libname_arguments(parser)
 add_logging_arguments(parser)
 
 def insert_references(contents, ranges, references, **kwargs):
+    assert(contents is bytes(contents))
     ret = []
     prev = 0
     if kwargs['verbose']:
@@ -58,7 +59,7 @@ def insert_references(contents, ranges, references, **kwargs):
                                                                  for start, end, loc, append, ty in bad))
     for start, finish in ranges:
         if prev < start:
-            ret.append((util.slice_string_at_bytes(contents, prev, start), tuple()))
+            ret.append((contents[prev:start], tuple()))
         if kwargs['verbose']:
             bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
                    if (start <= rstart or rend <= finish) and
@@ -72,22 +73,22 @@ def insert_references(contents, ranges, references, **kwargs):
 
         cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
                                if start <= rstart and rend <= finish)
-        ret.append((util.slice_string_at_bytes(contents, start, finish), cur_references))
+        ret.append((contents[start:finish], cur_references))
         prev = finish
-    if prev < util.len_in_bytes(contents):
-        ret.append((util.slice_string_at_bytes(contents, prev), tuple()))
+    if prev < len(contents):
+        ret.append((contents[prev:], tuple()))
     return tuple(reversed(ret))
 
-def remove_after_first_range(text, ranges):
+def remove_after_first_range(text_as_bytes, ranges):
     if ranges:
         start = min((start for start, end, loc in ranges))
-        return util.slice_string_at_bytes(text, end=start)
+        return text_as_bytes[:start]
     else:
-        return text
+        return text_as_bytes
 
 def mark_exports(state, keep_exports):
-    return tuple((text, ranges, bool(keep_exports and ranges and 'Export' in remove_after_first_range(text, ranges)))
-                 for text, ranges in state)
+    return tuple((text_as_bytes, ranges, bool(keep_exports and ranges and 'Export' in remove_after_first_range(text_as_bytes, ranges).decode('utf-8')))
+                 for text_as_bytes, ranges in state)
 
 SKIP='SKIP'
 REMOVE='REMOVE'
@@ -101,7 +102,7 @@ def leading_whitespace(text):
 def whitespace_to_key(ws):
     return (ws.count('\n'), ws.count('\t'), ws.count(' '), len(ws), ws)
 
-def gobble_whitespace(before, after):
+def gobble_whitespace_text(before, after):
     before_ws, after_ws = trailing_whitespace(before), leading_whitespace(after)
     assert(whitespace_to_key('') < whitespace_to_key(' ')) # sanity check
     if before_ws and after_ws:
@@ -116,24 +117,30 @@ def gobble_whitespace(before, after):
     else:
         return (before, after)
 
+def gobble_whitespace(before, after):
+    assert(before is bytes(before))
+    assert(after is bytes(after))
+    before, after = gobble_whitespace_text(before.decode('utf-8'), after.decode('utf-8'))
+    return (before.encode('utf-8'), after.encode('utf-8'))
+
 def step_state(state, action):
     ret = []
     state = list(state)
     while len(state) > 0:
-        (text, references, force_keep), state = state[0], state[1:]
+        (text_as_bytes, references, force_keep), state = state[0], state[1:]
         if references:
             (start, end, loc), new_references = references[0], tuple(references[1:])
             if action == SKIP or action is None:
-                ret.append((text, new_references, force_keep))
+                ret.append((text_as_bytes, new_references, force_keep))
             elif action == REMOVE and not force_keep:
                 if new_references: # still other imports, safe to just remove
-                    pre_text, post_text = gobble_whitespace(util.slice_string_at_bytes(text, end=start), util.slice_string_at_bytes(text, start=end))
-                    ret.append((pre_text + post_text, new_references, force_keep))
+                    pre_text_as_bytes, post_text_as_bytes = gobble_whitespace(text_as_bytes[:start], text_as_bytes[end:])
+                    ret.append((pre_text_as_bytes + post_text_as_bytes, new_references, force_keep))
                 else: # no other imports; remove this line completely
                     if ret and state:
-                        prev_text, post_text = gobble_whitespace(ret[-1][0], state[0][0])
-                        ret[-1] = (prev_text,) + ret[-1][1:]
-                        state[0] = (post_text,) + state[0][1:]
+                        prev_text_as_bytes, post_text_as_bytes = gobble_whitespace(ret[-1][0], state[0][0])
+                        ret[-1] = (prev_text_as_bytes,) + ret[-1][1:]
+                        state[0] = (post_text_as_bytes,) + state[0][1:]
                     elif ret:
                         ret[-1] = (ret[-1][0].rstrip(),) + ret[-1][1:]
                     elif state:
@@ -143,14 +150,15 @@ def step_state(state, action):
             ret.extend(state)
             return tuple(ret)
         else:
-            ret.append((text, references, force_keep))
+            ret.append((text_as_bytes, references, force_keep))
     return None
 
 def state_to_contents(state):
-    return ''.join(reversed([v[0] for v in state]))
+    return ''.join(reversed([v[0].decode('utf-8') for v in state]))
 
 def make_check_state(original_contents, verbose_base=0, **kwargs):
-    expected_output, orig_cmds, orig_retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents, kwargs['timeout'], verbose_base=2, **kwargs)
+    assert(original_contents is bytes(original_contents))
+    expected_output, orig_cmds, orig_retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents.decode('utf-8'), kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
     def check_contents(contents):
         output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
@@ -224,9 +232,9 @@ if __name__ == '__main__':
         failed = []
         for name in env['input_files']:
             try:
-                ranges = get_coq_statement_ranges(name, **env)
-                contents = get_file(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
-                refs = get_references_for(name, types=('lib',), update_globs=True, **env)
+                ranges = get_coq_statement_byte_ranges(name, **env)
+                contents = get_file_as_bytes(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
+                refs = get_byte_references_for(name, types=('lib',), update_globs=True, **env)
                 if refs is None:
                     env['log']('ERROR: Failed to get references for %s' % name)
                     failed.append((name, 'failed to get references'))
