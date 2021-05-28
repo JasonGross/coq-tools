@@ -38,6 +38,7 @@ getting \.\./input/example_[0-9]\+\.v
 getting \.\./input/example_[0-9]\+\.glob
 
 First, I will attempt to factor out all of the \[Require\]s \.\./input/example_[0-9]\+\.v, and store the result in \.\./output/bug_[0-9]\+\.v\.\.\.
+getting \.\./input/example_[0-9]\+\.glob
 
 Now, I will attempt to coq the file, and find the error\.\.\.
 
