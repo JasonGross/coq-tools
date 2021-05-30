@@ -41,20 +41,6 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting input/example_[0-9]\+\.v
-getting input/example_[0-9]\+\.glob
-
-First, I will attempt to factor out all of the \[Require\]s input/example_[0-9]\+\.v, and store the result in output/bug_[0-9]\+\.v\.\.\.
-getting input/example_[0-9]\+\.glob
-getting NonPassing/A.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (output/bug_[0-9]\+\.v)\.\.\.
-
-Running command: "[^"]*coqc" "-R" "NonPassing" "Foo" "-Q" "input" "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: [0-9]\+
-
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(3\|4\), characters 6-9:
 Error: The reference foo was not found in the current environment\.
@@ -98,7 +84,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-R" "NonPassing" "Foo" "-Q" "input" "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "NonPassing" "Foo" "-Q" "input" "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 Require Foo.A.

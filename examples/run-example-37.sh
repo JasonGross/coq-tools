@@ -47,19 +47,6 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-getting generated_example_[0-9]\+\.v
-getting generated_example_[0-9]\+\.glob
-
-First, I will attempt to factor out all of the \[Require\]s generated_example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
-getting generated_example_[0-9]\+\.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_[0-9]\+\.v)\.\.\.
-
-Running command: "coqc" "-R" "\." "Top"\( "-top" "generated_example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: 3
-
 This file produces the following output when Coq'ed:
 Set
      : Type
@@ -105,7 +92,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit 
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-R" "\." "Top"\( "-top" "generated_example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Top"\( "-top" "generated_example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 

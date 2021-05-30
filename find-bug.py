@@ -12,7 +12,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_accepts_native_compiler_ondemand, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
 from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, DEFAULT_VERBOSITY
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
@@ -1214,12 +1214,11 @@ if __name__ == '__main__':
             env['log']('  %s: %s' % (repr(k), repr(v)))
         env['log']('}')
 
-    if get_coq_accepts_native_compiler_ondemand(env['coqc'], **env):
-        for passing_prefix in ('', 'passing_'):
-            if env[passing_prefix + 'coqc']:
-                args_key = passing_prefix + 'coqc_args'
-                if '-native-compiler' not in env[args_key]:
-                    env[args_key] = tuple(list(env[args_key]) + ['-native-compiler', 'ondemand'])
+    for passing_prefix in ('', 'passing_'):
+        if env[passing_prefix + 'coqc']:
+            args_key = passing_prefix + 'coqc_args'
+            if '-native-compiler' not in env[args_key]:
+                env[args_key] = tuple(list(env[args_key]) + list(get_coq_native_compiler_ondemand_fragment(env[passing_prefix + 'coqc'], **env)))
 
     try:
 

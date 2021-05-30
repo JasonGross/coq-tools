@@ -5,7 +5,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_native_compiler_ondemand", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_native_compiler_ondemand", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -67,6 +67,9 @@ def get_coq_accepts_top(coqc):
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return '-time' in get_coqc_help(coqc_prog, **kwargs)
 
+def get_coq_accepts_w(coqc_prog, **kwargs):
+    return '-w ' in get_coqc_help(coqc_prog, **kwargs)
+
 @memoize
 def get_coqc_native_compiler_ondemand_errors(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=True)
@@ -77,9 +80,17 @@ def get_coqc_native_compiler_ondemand_errors(coqc):
     clean_v_file(temp_file_name)
     return 'The native-compiler option is deprecated' in util.s(stdout) or 'deprecated-native-compiler-option' in util.s(stdout)
 
-def get_coq_accepts_native_compiler_ondemand(coqc_prog, **kwargs):
+def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
     help_lines = get_coqc_help(coqc_prog, **kwargs).split('\n')
-    return any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler')) and not get_coqc_native_compiler_ondemand_errors(coqc_prog)
+    if any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler')):
+        if get_coq_accepts_w(coqc_prog, **kwargs):
+            return ('-w', '-deprecated-native-compiler-option', '-native-compiler', 'ondemand')
+        elif not get_coqc_native_compiler_ondemand_errors(coqc_prog):
+            return ('-native-compiler', 'ondemand')
+    return tuple()
+
+def get_coq_accepts_time(coqc_prog, **kwargs):
+    return '-time' in get_coqc_help(coqc_prog, **kwargs)
 
 HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
 HELP_MAKEFILE_REG = re.compile(r'^\[(-[^\n\]]*)\]', re.MULTILINE)
@@ -141,7 +152,7 @@ def get_ltac_support_snippet(coqc, **kwargs):
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.'''
     errinfo = {}
-    native_ondemand_args = ['-native-compiler', 'ondemand'] if get_coq_accepts_native_compiler_ondemand(coqc, **kwargs) else []
+    native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, **kwargs))
     for before, after in (('Declare ML Module "ltac_plugin".\n', ''),
                           ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
         contents = '%s\n%s\n%s' % (before, after, test)
