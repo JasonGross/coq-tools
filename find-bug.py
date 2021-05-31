@@ -1139,14 +1139,16 @@ if __name__ == '__main__':
         'admit_transparent': args.admit_transparent and args.admit_any,
         'coqc_args': tuple(i.strip()
                            for i in (list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
+                                     + list(process_maybe_list(args.nonpassing_coq_args, log=args.log, verbose=args.verbose))
                                      + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'coqtop_args': tuple(i.strip()
                              for i in (list(process_maybe_list(args.coqtop_args, log=args.log, verbose=args.verbose))
-                                       + list(process_maybe_list(args.nonpassing_coqc_args, log=args.log, verbose=args.verbose))
+                                       + list(process_maybe_list(args.nonpassing_coq_args, log=args.log, verbose=args.verbose))
                                        + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'coq_makefile': prepend_coqbin(args.coq_makefile),
         'passing_coqc_args': tuple(i.strip()
                                    for i in (list(process_maybe_list(args.passing_coqc_args, log=args.log, verbose=args.verbose))
+                                             + list(process_maybe_list(args.passing_coq_args, log=args.log, verbose=args.verbose))
                                              + list(process_maybe_list(args.coq_args, log=args.log, verbose=args.verbose)))),
         'passing_coqc' : (prepend_coqbin(args.passing_coqc)
                           if args.passing_coqc != ''
