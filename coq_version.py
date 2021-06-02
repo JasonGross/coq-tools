@@ -5,7 +5,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_native_compiler_ondemand", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
