@@ -67,6 +67,9 @@ parser.add_argument('--no-admit-opaque', dest='admit_opaque',
 parser.add_argument('--no-admit-transparent', dest='admit_transparent',
                     action='store_const', const=False, default=True,
                     help=("Don't try to replace transparent things with [admit]s."))
+parser.add_argument('--no-admit-obligations', dest='admit_obligations',
+                    action='store_const', const=False, default=True,
+                    help=("Don't try to replace obligations with [Admit Obligations]."))
 parser.add_argument('--no-admit', dest='admit_any',
                     action='store_const', const=False, default=True,
                     help=("Don't try to replace things with [admit]s."))
@@ -812,6 +815,55 @@ def try_split_imports(definitions, output_file_name, **kwargs):
                               verb_description='split Imports/Exports',
                               **kwargs)
 
+def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwargs):
+    OBLIGATION_REG = re.compile(r"^\s*(Next\s+Obligation|Obligation\s+[0-9]+)\b", flags=re.DOTALL)
+    def transformer(cur_definition, rest_definitions):
+        if len(cur_definition['statements']) > 1 and OBLIGATION_REG.match(cur_definition['statements'][0]) and matcher(cur_definition):
+            statements = ('Admit Obligations.',)
+            return {'statements':statements,
+                    'statement':'\n'.join(statements),
+                    'terms_defined':cur_definition['terms_defined']}
+        else:
+            return cur_definition
+
+    def do_call(method, definitions):
+        return method(definitions, output_file_name,
+                      transformer,
+                      **kwargs)
+
+    old_definitions = join_definitions(definitions) # for comparison,
+    # to see if things have changed first, try to do everything at
+    # once; python cycles are assumed to be cheap in comparison to coq
+    # cycles
+    definitions = do_call(try_transform_reversed, definitions)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        # we failed to do everything at once, try the simple thing and
+        # try to admit each individually
+        if kwargs['verbose'] >= 1: kwargs['log']('Failed to do everything at once; trying one at a time.')
+        definitions = do_call(try_transform_each, definitions)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        if kwargs['verbose'] >= 1: kwargs['log']('No successful changes.')
+    else:
+        if kwargs['verbose'] >= 1: kwargs['log']('Success!')
+    return definitions
+
+def try_admit_qed_obligations(definitions, output_file_name, **kwargs):
+    QED_REG = re.compile(r"(?<![\w'])(Qed|Admitted)\s*\.\s*$", flags=re.MULTILINE)
+    return try_admit_matching_obligations(definitions, output_file_name,
+                                          (lambda definition: QED_REG.search(definition['statement'])),
+                                          noun_description='Admitting Qed Obligations',
+                                          verb_description='admit Qed Obligations',
+                                          **kwargs)
+
+def try_admit_obligations(definitions, output_file_name, **kwargs):
+    return try_admit_matching_obligations(definitions, output_file_name,
+                                          (lambda definition: True),
+                                          noun_description='Admitting Obligations',
+                                          verb_description='admit Obligations',
+                                          **kwargs)
+
 def try_split_oneline_definitions(definitions, output_file_name, **kwargs):
     def update_paren(in_string, paren_count, new_string):
         for ch in new_string:
@@ -1052,6 +1104,8 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
 
     tasks = recursive_tasks
     if env['admit_opaque']:
+        if env['admit_obligations']:
+            tasks += (('replace Qed Obligation with Admit Obligations', try_admit_qed_obligations),)
         tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks +
@@ -1063,6 +1117,8 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         tasks += (('remove unused definitions, one at a time', try_remove_each_definition),)
 
     if env['admit_transparent']:
+        if env['admit_obligations']:
+            tasks += (('replace Obligation with Admit Obligations', try_admit_obligations),)
         tasks += (('admit lemmas', try_admit_lemmas),
                   ('admit definitions', try_admit_definitions))
 
@@ -1135,6 +1191,7 @@ if __name__ == '__main__':
         'minimize_before_inlining': args.minimize_before_inlining,
         'save_typeclasses': args.save_typeclasses,
         'admit_opaque': args.admit_opaque and args.admit_any,
+        'admit_obligations': args.admit_obligations and args.admit_any,
         'aggressive': args.aggressive,
         'admit_transparent': args.admit_transparent and args.admit_any,
         'coqc_args': tuple(i.strip()
