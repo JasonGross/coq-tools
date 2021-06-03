@@ -523,6 +523,26 @@ def try_transform_reversed(definitions, output_file_name, transformer, skip_n=1,
 
     return original_definitions
 
+def try_transform_reversed_or_else_each(definitions, *args, **kwargs):
+    """Invokes try_transform_reversed.  If there are no changes, then try_transform_each is tried."""
+    old_definitions = join_definitions(definitions) # for comparison,
+    # to see if things have changed first, try to do everything at
+    # once; python cycles are assumed to be cheap in comparison to coq
+    # cycles
+    definitions = try_transform_reversed(definitions, *args, **kwargs)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        # we failed to do everything at once, try the simple thing and
+        # try to admit each individually
+        if kwargs['verbose'] >= 1: kwargs['log']('Failed to do everything at once; trying one at a time.')
+        definitions = try_transform_each(definitions, *args, **kwargs)
+    new_definitions = join_definitions(definitions)
+    if new_definitions == old_definitions:
+        if kwargs['verbose'] >= 1: kwargs['log']('No successful changes.')
+    else:
+        if kwargs['verbose'] >= 1: kwargs['log']('Success!')
+    return definitions
+
 def try_remove_if_not_matches_transformer(definition_found_in, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if any(definition_found_in(cur_definition, future_definition)
@@ -742,28 +762,7 @@ def try_admit_matching_definitions(definitions, output_file_name, matcher, **kwa
         else:
             return cur_definition
 
-    def do_call(method, definitions):
-        return method(definitions, output_file_name,
-                      transformer,
-                      **kwargs)
-
-    old_definitions = join_definitions(definitions) # for comparison,
-    # to see if things have changed first, try to do everything at
-    # once; python cycles are assumed to be cheap in comparison to coq
-    # cycles
-    definitions = do_call(try_transform_reversed, definitions)
-    new_definitions = join_definitions(definitions)
-    if new_definitions == old_definitions:
-        # we failed to do everything at once, try the simple thing and
-        # try to admit each individually
-        if kwargs['verbose'] >= 1: kwargs['log']('Failed to do everything at once; trying one at a time.')
-        definitions = do_call(try_transform_each, definitions)
-    new_definitions = join_definitions(definitions)
-    if new_definitions == old_definitions:
-        if kwargs['verbose'] >= 1: kwargs['log']('No successful changes.')
-    else:
-        if kwargs['verbose'] >= 1: kwargs['log']('Success!')
-    return definitions
+    return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs)
 
 def try_admit_qeds(definitions, output_file_name, **kwargs):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
@@ -826,28 +825,7 @@ def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwa
         else:
             return cur_definition
 
-    def do_call(method, definitions):
-        return method(definitions, output_file_name,
-                      transformer,
-                      **kwargs)
-
-    old_definitions = join_definitions(definitions) # for comparison,
-    # to see if things have changed first, try to do everything at
-    # once; python cycles are assumed to be cheap in comparison to coq
-    # cycles
-    definitions = do_call(try_transform_reversed, definitions)
-    new_definitions = join_definitions(definitions)
-    if new_definitions == old_definitions:
-        # we failed to do everything at once, try the simple thing and
-        # try to admit each individually
-        if kwargs['verbose'] >= 1: kwargs['log']('Failed to do everything at once; trying one at a time.')
-        definitions = do_call(try_transform_each, definitions)
-    new_definitions = join_definitions(definitions)
-    if new_definitions == old_definitions:
-        if kwargs['verbose'] >= 1: kwargs['log']('No successful changes.')
-    else:
-        if kwargs['verbose'] >= 1: kwargs['log']('Success!')
-    return definitions
+    return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs)
 
 def try_admit_qed_obligations(definitions, output_file_name, **kwargs):
     QED_REG = re.compile(r"(?<![\w'])(Qed|Admitted)\s*\.\s*$", flags=re.MULTILINE)
