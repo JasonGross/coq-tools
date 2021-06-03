@@ -42,7 +42,8 @@ nosetests.xml
 *.vo
 *.vos
 *.vok
-*.v.d
+*.d
+.*.d
 .coqdeps.d
 *.glob
 /tmp*.v
@@ -58,6 +59,8 @@ nosetests.xml
 /examples/example_*_output.v
 /examples/example_*/bug_*.v
 /examples/example_*/generated_*.v
+/examples/example_*/Makefile*.coq
+/examples/example_*/Makefile*.coq.conf
 /examples/example_*/*/bug_*.v
 /examples/example_02/example_02_log.log
 /examples/example_02/example_02_output.v
