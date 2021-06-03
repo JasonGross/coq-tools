@@ -139,6 +139,9 @@ def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
 
 COQ_OUTPUT = {}
 
+def sanitize_cmd(cmd):
+    return re.sub(r'("/tmp/tmp)[^ "]*?(\.v")', r'\1XXXXXXXX\2', cmd)
+
 prepare_cmds_for_coq_output_printed_cmd_already = set()
 def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, **kwargs):
     key = (coqc_prog, tuple(coqc_prog_args), kwargs['pass_on_stdin'], contents, timeout_val, cwd)
@@ -164,8 +167,8 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
     else:
         cmds.extend([file_name, '-q'])
     cmd_to_print = '"%s%s"' % ('" "'.join(cmds), pseudocmds)
-    if kwargs['verbose'] >= kwargs['verbose_base'] or (kwargs['verbose'] >= kwargs['verbose_base'] - 1 and cmd_to_print not in prepare_cmds_for_coq_output_printed_cmd_already):
-        prepare_cmds_for_coq_output_printed_cmd_already.add(cmd_to_print)
+    if kwargs['verbose'] >= kwargs['verbose_base'] or (kwargs['verbose'] >= kwargs['verbose_base'] - 1 and sanitize_cmd(cmd_to_print) not in prepare_cmds_for_coq_output_printed_cmd_already):
+        prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
         kwargs['log']('\nRunning command: %s' % cmd_to_print)
     if kwargs['verbose'] >= kwargs['verbose_base'] + 1:
         kwargs['log']('\nContents:\n%s\n' % contents)
