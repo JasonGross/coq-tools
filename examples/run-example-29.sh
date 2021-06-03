@@ -13,7 +13,7 @@ N="29"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="A/example_$N.v"
 EXAMPLE_OUTPUT="B/bug_$N.v"
-EXTRA_ARGS="--nonpassing-Q Foo1 Foo --passing-Q Foo2 Foo -Q A Top --passing-coqc=coqc --no-deps"
+EXTRA_ARGS=(--nonpassing-Q Foo1 Foo --passing-Q Foo2 Foo -Q A Top --passing-coqc=coqc --no-deps "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -43,7 +43,7 @@ for dir in Foo1 Foo2; do
 done
 
 mkdir -p "$(dirname "${EXAMPLE_OUTPUT}")"
-${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit $?
+${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count

@@ -6,7 +6,7 @@ N="30"
 EXAMPLE_DIRECTORY="example_$N/cwd"
 EXAMPLE_INPUT="../input/example_$N.v"
 EXAMPLE_OUTPUT="../output/bug_$N.v"
-EXTRA_ARGS="$@"
+EXTRA_ARGS=("$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -48,10 +48,10 @@ EOF
 )
 # pre-build the files to normalize the output for the run we're testing
 rm -f *.vo *.glob
-echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS 2>/dev/null >/dev/null
+echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS -l - 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
@@ -72,7 +72,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" $EXTRA_ARGS || exit $?
+${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
