@@ -81,6 +81,9 @@ parser.add_argument('--no-remove-typeclasses', dest='save_typeclasses',
                     help=("Don't remove Hints, Instances, or Canonical Structures; " +
                           "this should mostly preserve typeclass logs, and can be useful " +
                           "for debugging slow typeclass bugs."))
+parser.add_argument('--ignore-coq-prog-args', dest='use_coq_prog_args',
+                    action='store_const', const=False, default=True,
+                    help=("Don't add extra arguments from a coq-prog-args file header."))
 parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=str,
                     default='(* File reduced by coq-bug-finder from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
                     help=("A line to be placed at the top of the " +
@@ -1265,7 +1268,7 @@ if __name__ == '__main__':
 
         if env['verbose'] >= 1: env['log']('\nCoq version: %s\n' % coqc_version)
 
-        extra_args = get_coq_prog_args(get_file(bug_file_name, **env))
+        extra_args = get_coq_prog_args(get_file(bug_file_name, **env)) if args.use_coq_prog_args else []
         for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], ''), ('coqtop_args', env['coqtop'], ''), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_')):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + 'libnames', []):
