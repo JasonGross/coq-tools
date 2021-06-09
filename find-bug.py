@@ -1103,7 +1103,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         tasks += (('admit lemmas', try_admit_lemmas),
                   ('admit definitions', try_admit_definitions))
 
-    if not env['aggressive']:
+    if not env['aggressive'] and not env['save_typeclasses']:
         tasks += (('remove hints', try_remove_hints),)
 
     tasks += (('export modules', try_export_modules),
