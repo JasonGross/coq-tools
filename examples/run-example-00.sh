@@ -24,6 +24,8 @@ FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
 
+ABS_PATH="$(${PYTHON} -c 'import os.path; print(os.path.abspath("."))')"
+
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
 set -x
@@ -44,11 +46,11 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-getting example_[0-9]\+\.v
-getting example_[0-9]\+\.glob
+getting example_[0-9]\+\.v (${ABS_PATH}/example_[0-9]\+\.v)
+getting example_[0-9]\+\.glob (${ABS_PATH}/example_[0-9]\+\.glob)
 
 First, I will attempt to factor out all of the \[Require\]s example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
-getting example_[0-9]\+\.glob
+getting example_[0-9]\+\.glob (${ABS_PATH}/example_[0-9]\+\.glob)
 
 Now, I will attempt to coq the file, and find the error\.\.\.
 

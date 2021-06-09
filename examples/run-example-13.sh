@@ -39,20 +39,6 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-getting example_13\.v
-getting example_13\.glob
-
-First, I will attempt to factor out all of the \[Require\]s example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
-getting example_13\.glob
-getting A.glob
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_13\.v)\.\.\.
-
-Running command: "coqc"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
-The timeout has been set to: 3
-
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-9:
 Error:

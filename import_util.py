@@ -125,7 +125,9 @@ def is_local_import(libname, **kwargs):
 
 def get_raw_file_as_bytes(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    if kwargs['verbose']: kwargs['log']('getting %s' % filename)
+    if kwargs['verbose']:
+        filename_extra = '' if os.path.isabs(filename) else ' (%s)' % os.path.abspath(filename)
+        kwargs['log']('getting %s%s' % (filename, filename_extra))
     with open(filename, 'rb') as f:
         return f.read()
 
