@@ -77,20 +77,54 @@ def os_walk(top, topdown=True, onerror=None, followlinks=False):
 def os_path_isfile(filename):
     return os.path.isfile(filename)
 
-@memoize
-def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
+def filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     for physical_name, logical_name in list(libnames) + list(non_recursive_libnames):
         if lib.startswith(libname_with_dot(logical_name)):
-            lib = lib[len(libname_with_dot(logical_name)):]
-            lib = os.path.join(physical_name, lib.replace('.', os.sep))
-            return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
+            cur_lib = lib[len(libname_with_dot(logical_name)):]
+            cur_lib = os.path.join(physical_name, cur_lib.replace('.', os.sep))
+            yield fix_path(os.path.relpath(os.path.normpath(cur_lib + ext), '.'))
+
+def local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     # is this the right thing to do?
     lib = lib.replace('.', os.sep)
     for dirpath, dirname, filenames in os_walk('.', followlinks=True):
         filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), '.')
         if os_path_isfile(filename):
-            return fix_path(filename)
-    return fix_path(os.path.relpath(os.path.normpath(lib + ext), '.'))
+            yield fix_path(filename)
+
+@memoize
+def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
+    filenames = list(filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
+    local_filenames = list(local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
+    existing_filenames = [f for f in filenames if os_path_isfile(f)]
+    if len(existing_filenames) > 0:
+        retval = existing_filenames[0]
+        if len(existing_filenames) == 1:
+            return retval
+        else:
+            DEFAULT_LOG('WARNING: Multiple physical paths match logical path %s: %s.  Selecting %s.'
+                        % (lib, ', '.join(existing_filenames), retval))
+            return retval
+    if len(filenames) != 0:
+        DEFAULT_LOG('WARNING: One or more physical paths match logical path %s, but none of them exist: %s'
+                    % (lib, ', '.join(filenames)))
+    if len(local_filenames) > 0:
+        retval = local_filenames[0]
+        if len(local_filenames) == 1:
+            return retval
+        else:
+            DEFAULT_LOG('WARNING: Multiple local physical paths match logical path %s: %s.  Selecting %s.'
+                        % (lib, ', '.join(local_filenames), retval))
+            return retval
+    if len(filenames) > 0:
+        retval = filenames[0]
+        if len(filenames) == 1:
+            return retval
+        else:
+            DEFAULT_LOG('WARNING: Multiple non-existent physical paths match logical path %s: %s.  Selecting %s.'
+                        % (lib, ', '.join(filenames), retval))
+            return retval
+    return fix_path(os.path.relpath(os.path.normpath(lib.replace('.', os.sep) + ext), '.'))
 
 def filename_of_lib(lib, ext='.v', **kwargs):
     kwargs = fill_kwargs(kwargs)
