@@ -55,8 +55,10 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     if not get_proof_term_works_with_time(coqtop, is_coqtop=True, verbose=verbose, log=log, **kwargs):
         statements = postprocess_split_proof_term(statements, log=log, verbose=verbose, **kwargs)
     p = Popen([coqtop, '-q', '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-    split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
+    split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)(?=Chars [0-9]+ - [0-9]+|$)'.replace(' ', r'\s*'),
                            flags=re.DOTALL)
+    prompt_reg = re.compile(r'^(.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
+                            flags=re.DOTALL)
     defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = '\n'.join(statements) + '\n\n'
@@ -78,8 +80,17 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
 
     #if verbose >= 3: log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)')
     responses = split_reg.findall(stdout)
-    for char_start, char_end, response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown in responses:
+    for char_start, char_end, full_response_text in responses:
         char_start, char_end = int(char_start), int(char_end)
+        # if we've travelled backwards in time, as in
+        # COQBUG(https://github.com/coq/coq/issues/14475); we just
+        # ignore this statement
+        if char_end <= last_char_end: continue
+        match = prompt_reg.match(full_response_text)
+        if not match:
+            log('Warning: Could not find statements in %d:%d: %s' % (char_start, char_end, full_response_text))
+            continue
+        response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown = match.groups()
         statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
         last_char_end = char_end
 
