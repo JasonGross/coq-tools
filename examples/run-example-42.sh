@@ -51,7 +51,7 @@ File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 2\(2\|3\), characters 6-25:
 Error:
 The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*
-   Set)%type" while it is expected to have type "Set"\.
+   Set)%type" while it is expected to have type "Set"\.\?
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
