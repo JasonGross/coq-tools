@@ -384,7 +384,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    unchanged_message='No change.', success_message='Change successful.',
                                    failure_description='make a change', changed_description='Changed file',
                                    timeout_retry_count=1, ignore_coq_output_cache=False,
-                                   verbose_base=1,
+                                   verbose_base=1, display_source_to_error=False,
                                    **kwargs):
     if kwargs['verbose'] >= 2 + verbose_base:
         kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents)
@@ -414,6 +414,14 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                                   timeout_retry_count=timeout_retry_count-1, ignore_coq_output_cache=True,
                                                   verbose_base=verbose_base,
                                                   **kwargs)
+        elif kwargs['verbose'] >= verbose_base and display_source_to_error and diagnose_error.has_error(outputs[output_i]):
+            new_line = diagnose_error.get_error_line_number(outputs[output_i])
+            new_start, new_end = diagnose_error.get_error_byte_locations(outputs[output_i])
+            new_contents_lines = new_contents.split('\n')
+            new_contents_to_error, new_contents_rest = '\n'.join(new_contents_lines[:new_line-1]), '\n'.join(new_contents_lines[new_line-1:])
+            kwargs['log']('The file generating the error was:')
+            kwargs['log']('%s\n%s\n' % (new_contents_to_error,
+                                        new_contents_rest.encode('utf-8')[:new_end].decode('utf-8')))
         return False
     else:
         kwargs['log']('ERROR: Unrecognized change result %s on\nclassify_contents_change(\n  %s\n ,%s\n)\n%s'
@@ -1364,6 +1372,7 @@ if __name__ == '__main__':
                             unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
                             failure_description=('inline %s' % req_module), changed_description='File',
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                            display_source_to_error=True,
                             **env):
                         extra_blacklist = [r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist]
                         if extra_blacklist and env['verbose'] >= 1:

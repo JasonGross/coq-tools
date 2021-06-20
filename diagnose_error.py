@@ -7,11 +7,13 @@ from util import re_escape
 from custom_arguments import DEFAULT_LOG
 import util
 
-__all__ = ["has_error", "get_error_line_number", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache"]
+__all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache"]
 
 DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
 DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(?!Warning)'
+DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES = 'File "[^"]+", line ([0-9]+), characters ([0-9]+)-([0-9]+):\n(?!Warning)'
 DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + '((?:.|\n)+)'
+DEFAULT_ERROR_REG_STRING_WITH_BYTES = DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES + '((?:.|\n)+)'
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + '(%s)'
 
 def clean_output(output):
@@ -47,6 +49,16 @@ def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_s
     """
     errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
     return int(errors.groups()[0])
+
+@memoize
+def get_error_byte_locations(output, reg_string=DEFAULT_ERROR_REG_STRING_WITH_BYTES, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES):
+    """Returns the byte locations that the error matching reg_string
+    occured on.
+
+    Precondition: has_error(output, reg_string)
+    """
+    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    return (int(errors.groups()[1]), int(errors.groups()[2]))
 
 @memoize
 def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
