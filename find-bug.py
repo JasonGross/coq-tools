@@ -4,7 +4,7 @@ import traceback
 import custom_arguments
 from argparse_compat import argparse
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
-from import_util import get_file
+from import_util import get_file, get_recursive_require_names
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents, split_leading_comments_and_whitespace
@@ -1365,6 +1365,11 @@ if __name__ == '__main__':
                             failure_description=('inline %s' % req_module), changed_description='File',
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             **env):
+                        extra_blacklist = [r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist]
+                        if extra_blacklist and env['verbose'] >= 1:
+                            env['log']('\nWarning: Preemptively skipping recursive dependency module%s: %s\n'
+                                       % (('' if len(extra_blacklist) == 1 else 's'), ', '.join(extra_blacklist)))
+                        libname_blacklist.extend(extra_blacklist)
                         continue
 
                     if minimize_file(output_file_name, die=(lambda x: False), **env):

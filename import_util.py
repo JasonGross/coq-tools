@@ -7,7 +7,7 @@ from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names"]
 
 file_mtimes = {}
 file_contents = {}
@@ -435,13 +435,20 @@ def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
                 updated = True
     return d
 
+def get_recursive_requires(*libnames, **kwargs):
+    requires = dict((lib, get_require_names(lib, **kwargs)) for lib in libnames)
+    transitively_close(requires, make_new_value=(lambda lib: get_require_names(lib, **kwargs)), reflexive=True)
+    return requires
+
+def get_recursive_require_names(libname, **kwargs):
+    return tuple(i for i in get_recursive_requires(libname, **kwargs).keys() if i != libname)
+
 def sort_files_by_dependency(filenames, reverse=True, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filenames = map(fix_path, filenames)
     filenames = [(filename + '.v' if filename[-2:] != '.v' else filename) for filename in filenames]
     libnames = [lib_of_filename(filename, **kwargs) for filename in filenames]
-    requires = dict((lib, get_require_names(lib, **kwargs)) for lib in libnames)
-    transitively_close(requires, make_new_value=(lambda lib: get_require_names(lib, **kwargs)), reflexive=True)
+    requires = get_recursive_requires(*libnames, **kwargs)
 
     def fcmp(f1, f2):
         if f1 == f2: return cmp(f1, f2)
