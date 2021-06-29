@@ -94,6 +94,10 @@ def make_reg_string(output, strict_whitespace=False):
                            r'Error:\\ Unsatisfied\\ constraints:.*(?:\\n.+)*.*\\(maybe\\ a\\ bugged\\ tactic\\)',
                            re_escape(error_string),
                            re.DOTALL)
+    elif re.search(r'Universe [^ ]* is unbound', error_string):
+        re_string = re.sub(r'Universe\\ [^ ]*\\ is\\ unbound',
+                           r'Universe\\ [^ ]*\\ is\\ unbound',
+                           re_escape(error_string))
     else:
         re_string = re_escape(error_string)
     re_string = re.sub(r'tmp(?:[A-Za-z\d]|\\_)+',
