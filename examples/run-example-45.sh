@@ -89,7 +89,7 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-Q" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Module Export Foo_DOT_A_MANGLED\.
+Module Export Foo_DOT_A_WRAPPED\.
 Module Export A\.
 Axiom a : Set\.
 Definition SET := Set\.
@@ -97,10 +97,10 @@ Definition SET := Set\.
 End A\.
 Module Export Foo\.
 Module Export A\.
-Include Foo_DOT_A_MANGLED\.A\.
+Include Foo_DOT_A_WRAPPED\.A\.
 End A\.
 
-Module Export Foo_DOT_A_DOT_B_MANGLED\.
+Module Export Foo_DOT_A_DOT_B_WRAPPED\.
 Module Export B\.
 Definition SET : nat := O\.
 Definition SET2 := SET\.
@@ -111,7 +111,7 @@ End B\.
 Module Export Foo\.
 Module Export A\.
 Module Export B\.
-Include Foo_DOT_A_DOT_B_MANGLED\.B\.
+Include Foo_DOT_A_DOT_B_WRAPPED\.B\.
 
 Fail Check Foo\.A\.B\.b\.
 

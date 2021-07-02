@@ -88,14 +88,14 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Module Export Foo_DOT_A_MANGLED\.
+Module Export Foo_DOT_A_WRAPPED\.
 Module Export A\.
 Definition foo : Type := Set\.
 
 End A\.
 Module Export Foo\.
 Module A\.
-Include Foo_DOT_A_MANGLED\.A\.
+Include Foo_DOT_A_WRAPPED\.A\.
 End A\.
 
 Check Foo\.A\.foo : Set\.

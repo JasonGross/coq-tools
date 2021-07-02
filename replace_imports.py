@@ -98,7 +98,7 @@ def contents_as_module_without_require(lib, other_imports, first_wrap_then_inclu
     contents = strip_requires(contents)
     if kwargs['verbose'] > 2: kwargs['log'](contents)
     module_name = escape_lib(lib)
-    mangled_module_name = module_name + '_MANGLED'
+    mangled_module_name = module_name + '_WRAPPED'
     # import the top-level wrappers
     if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
