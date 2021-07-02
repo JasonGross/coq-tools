@@ -215,12 +215,9 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     if TIMEOUT is None and timeout_val is not None:
         TIMEOUT = 3 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
-    ## remove instances of the file name
-    #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode))
     if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
-    if kwargs['verbose'] >= verbose_base + 3: kwargs['log']('retry_with_debug_when(COQ_OUTPUT[key][1]) == retry_with_debug_when(COQ_OUTPUT[%s][1]) == retry_with_debug_when(%s) == %s' % (repr(key), repr(COQ_OUTPUT[key][1]), repr(retry_with_debug_when(COQ_OUTPUT[key][1]))))
-    if retry_with_debug_when(COQ_OUTPUT[key][1]):
+    if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
         if kwargs['verbose'] >= verbose_base - 1: kwargs['log']('Retrying with -debug...')
         return get_coq_output(coqc_prog, ['-debug'] + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
     return COQ_OUTPUT[key][1]
