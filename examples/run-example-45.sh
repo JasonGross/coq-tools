@@ -9,18 +9,22 @@
 
 ##########################################################
 # Various options that must be updated for each example
-N="27"
+N="45"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
+EXTRA_ARGS=(-Q . Foo "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/$EXAMPLE_DIRECTORY"
+FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
+
+ABS_PATH="$(${PYTHON} -c 'import os.path; print(os.path.abspath("."))')"
 
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
@@ -38,26 +42,23 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
+#
+# Note also that the line numbers tend to be one larger in old
+# versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-15:
-Error:
-The term "A.foo" has type "Type" while it is expected to have type\s\?
-"Set" (universe inconsistency[^)]*)\.
-
-.\?Does this output display the correct error? \[(y)es/(n)o\]\s
-I think the error is 'Error:
-The term "A.foo" has type "Type" while it is expected to have type\s\?
-"Set" (universe inconsistency[^)]*)\.
-.\?'\.
+b
+     : A.SET
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(3\|4\), characters 0-21:
+Error: The command has not failed.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-rm -f *.vo *.glob *.d .*.d
-echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo # 2>/dev/null >/dev/null
+rm -f *.vo *.glob
+echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo -l - 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
@@ -69,7 +70,7 @@ then
     echo
     echo "Actual:"
     echo "$ACTUAL_PRE"
-    ${PYTHON} ../prefix-grep.py "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
+    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
     exit 1
 fi
 #########################################################################################################
@@ -78,27 +79,41 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo || exit $?
+${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-Q" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 Module Export Foo_DOT_A_MANGLED\.
 Module Export A\.
-Definition foo : Type := Set\.
+Axiom a : Set\.
+Definition SET := Set\.
 
 End A\.
 Module Export Foo\.
-Module A\.
+Module Export A\.
 Include Foo_DOT_A_MANGLED\.A\.
 End A\.
 
-Check Foo\.A\.foo : Set\.
+Module Export Foo_DOT_A_DOT_B_MANGLED\.
+Module Export B\.
+Definition SET : nat := O\.
+Definition SET2 := SET\.
+Import Foo\.A\.
+Definition b : SET := let test := SET2 : nat in Foo\.A\.a\.
+
+End B\.
+Module Export Foo\.
+Module Export A\.
+Module Export B\.
+Include Foo_DOT_A_DOT_B_MANGLED\.B\.
+
+Fail Check Foo\.A\.B\.b\.
 
 EOF
 )
@@ -112,7 +127,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
-    ${PYTHON} ../prefix-grep.py "$ACTUAL" "$EXPECTED_ONE_LINE"
+    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0

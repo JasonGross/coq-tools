@@ -83,10 +83,13 @@ def strip_requires(contents):
     contents = reg4.sub(r'', contents)
     return contents
 
-
-def contents_as_module_without_require(lib, other_imports, export=False, **kwargs):
+def contents_as_module_without_require(lib, other_imports, first_wrap_then_include=False, export=False, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
     if import_all_directories and not export:
+        # N.B. This strategy does not work with the Include strategy
+        # that we use to fix
+        # https://github.com/JasonGross/coq-tools/issues/67, so we disable it
+        first_wrap_then_include = False
         transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
     else:
         transform_base = lambda x: x
@@ -95,6 +98,7 @@ def contents_as_module_without_require(lib, other_imports, export=False, **kwarg
     contents = strip_requires(contents)
     if kwargs['verbose'] > 2: kwargs['log'](contents)
     module_name = escape_lib(lib)
+    mangled_module_name = module_name + '_MANGLED'
     # import the top-level wrappers
     if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
@@ -103,11 +107,16 @@ def contents_as_module_without_require(lib, other_imports, export=False, **kwarg
     # wrap the contents in directory modules
     lib_parts = list(map(escape_lib, lib.split('.')))
     maybe_export = 'Export ' if export else ''
+    early_contents = ''
+    if first_wrap_then_include: # works around https://github.com/JasonGross/coq-tools/issues/67
+        early_contents, contents = contents, 'Include %s.%s.' % (mangled_module_name, lib_parts[-1])
+        early_contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], early_contents, lib_parts[-1])
+        early_contents = 'Module %s.\n%s\nEnd %s.\n' % (mangled_module_name, early_contents, mangled_module_name)
     contents = 'Module %s.\n%s\nEnd %s.\n' % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
-        contents = 'Module %s%s.\n%s\nEnd %s.\n' % (maybe_export, name, contents, name) # or Module Export?
+        contents = 'Module %s%s.\n%s\nEnd %s.\n' % (maybe_export, name, contents, name)
     contents = 'Module %s%s.\n%s\nEnd %s.\n' % (maybe_export, module_name, contents, module_name)
-    return contents
+    return early_contents + contents
 
 def normalize_requires(filename, **kwargs):
     """Return the contents of filename, with all [Require]s split out and ordered at the top.

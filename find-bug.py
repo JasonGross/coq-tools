@@ -1360,7 +1360,11 @@ if __name__ == '__main__':
                         if env['verbose'] >= 3: env['log']('in contents:\n' + cur_output)
                         continue
                     try:
-                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
+                        # we prefer wrapping modules via Include,
+                        # because this is a bit more robust against
+                        # future module inlining (see example test 45)
+                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, first_wrap_then_include=True, **env).strip() + '\n').strip() + '\n'
+                        test_output_alt = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
                     except IOError as e:
                         if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s' % (req_module, str(e), str(tuple(env['libnames'])), str(tuple(env['non_recursive_libnames']))))
                         continue
@@ -1369,17 +1373,36 @@ if __name__ == '__main__':
 
                     if not check_change_and_write_to_file(
                             cur_output, test_output, output_file_name,
-                            unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
-                            failure_description=('inline %s' % req_module), changed_description='File',
+                            unchanged_message='Invalid empty file!', success_message=('Inlining %s via an Include succeeded.' % req_module),
+                            failure_description=('inline %s via Include' % req_module), changed_description='File',
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
-                            display_source_to_error=True,
+                            display_source_to_error=False,
                             **env):
-                        extra_blacklist = [r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist]
-                        if extra_blacklist and env['verbose'] >= 1:
-                            env['log']('\nWarning: Preemptively skipping recursive dependency module%s: %s\n'
-                                       % (('' if len(extra_blacklist) == 1 else 's'), ', '.join(extra_blacklist)))
-                        libname_blacklist.extend(extra_blacklist)
-                        continue
+                        if not check_change_and_write_to_file(
+                                cur_output, test_output_alt, output_file_name,
+                                unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
+                                failure_description=('inline %s' % req_module), changed_description='File',
+                                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                                display_source_to_error=True,
+                                **env):
+                            # let's also display the error and source
+                            # for the original failure to inline,
+                            # without the Include, so we can see
+                            # what's going wrong in both cases
+                            check_change_and_write_to_file(
+                                cur_output, test_output, output_file_name,
+                                unchanged_message='Invalid empty file!', success_message=('Inlining %s via an Include succeeded.' % req_module),
+                                failure_description=('inline %s via Include' % req_module), changed_description='File',
+                                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                                display_source_to_error=True,
+                                **env)
+
+                            extra_blacklist = [r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist]
+                            if extra_blacklist and env['verbose'] >= 1:
+                                env['log']('\nWarning: Preemptively skipping recursive dependency module%s: %s\n'
+                                           % (('' if len(extra_blacklist) == 1 else 's'), ', '.join(extra_blacklist)))
+                            libname_blacklist.extend(extra_blacklist)
+                            continue
 
                     if minimize_file(output_file_name, die=(lambda x: False), **env):
                         break
