@@ -4,6 +4,7 @@ from Popen_noblock import Popen_async, Empty
 from memoize import memoize
 from file_util import clean_v_file
 from util import re_escape
+from coq_version import get_coq_debug_native_compiler_args
 from custom_arguments import DEFAULT_LOG
 import util
 
@@ -218,8 +219,9 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode))
     if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
     if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
-        if kwargs['verbose'] >= verbose_base - 1: kwargs['log']('Retrying with -debug...')
-        return get_coq_output(coqc_prog, ['-debug'] + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
+        debug_args = get_coq_debug_native_compiler_args(coqc_prog)
+        if kwargs['verbose'] >= verbose_base - 1: kwargs['log']('Retrying with %s...' % ' '.join(debug_args))
+        return get_coq_output(coqc_prog, list(debug_args) + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
     return COQ_OUTPUT[key][1]
 
 def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, cwd=None, is_coqtop=False, pass_on_stdin=False, verbose_base=1, sep='\nCoq <', **kwargs):
