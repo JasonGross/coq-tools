@@ -232,6 +232,12 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode))
     if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
     if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
+        for progs in (['/root/.opamcache/4.05.0/bin/ocamlfind', 'opt', '-v'],
+                      ['file', '/github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/kernel/nativevalues.cmi']):
+            p = subprocess.Popen(progs, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            (stdout, stderr) = p.communicate()
+            kwargs['log']('%s:\n%s' % (' '.join(progs), util.s(stdout)))
+
         debug_args = get_coq_debug_native_compiler_args(coqc_prog)
         if kwargs['verbose'] >= verbose_base - 1: kwargs['log']('Retrying with %s...' % ' '.join(debug_args))
         return get_coq_output(coqc_prog, list(debug_args) + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
