@@ -4,7 +4,6 @@ from Popen_noblock import Popen_async, Empty
 from memoize import memoize
 from file_util import clean_v_file
 from util import re_escape
-from coq_version import get_coq_debug_native_compiler_args
 from custom_arguments import DEFAULT_LOG
 import util
 
@@ -19,6 +18,20 @@ DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + '(%s)'
 
 def clean_output(output):
     return util.normalize_newlines(output)
+
+@memoize
+def get_coq_accepts_fine_grained_debug(coqc, debug_kind):
+    temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=True)
+    temp_file_name = temp_file.name
+    p = subprocess.Popen([coqc, "-q", "-d", debug_kind, temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    temp_file.close()
+    clean_v_file(temp_file_name)
+    return 'Unknown option -d' not in util.s(stdout) and '-d: no such file or directory' not in util.s(stdout)
+
+def get_coq_debug_native_compiler_args(coqc):
+    if get_coq_accepts_fine_grained_debug(coqc, "native-compiler"): return ["-d", "native-compiler"]
+    return ["-debug"]
 
 @memoize
 def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):

@@ -5,7 +5,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet", "get_coq_accepts_fine_grained_debug", "get_coq_debug_native_compiler_args"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -53,20 +53,6 @@ def get_coqtop_version(coqtop_prog, **kwargs):
     if kwargs['verbose'] >= 2:
         kwargs['log']('Running command: "%s"' % '" "'.join([coqtop_prog, "-q", "-v"]))
     return get_coqtop_version_helper(coqtop_prog)
-
-@memoize
-def get_coq_accepts_fine_grained_debug(coqc, debug_kind):
-    temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=True)
-    temp_file_name = temp_file.name
-    p = subprocess.Popen([coqc, "-q", "-d", debug_kind, temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
-    temp_file.close()
-    clean_v_file(temp_file_name)
-    return 'Unknown option -d' not in util.s(stdout) and '-d: no such file or directory' not in util.s(stdout)
-
-def get_coq_debug_native_compiler_args(coqc):
-    if get_coq_accepts_fine_grained_debug(coqc, "native-compiler"): return ["-d", "native-compiler"]
-    return ["-debug"]
 
 @memoize
 def get_coq_accepts_top(coqc):
