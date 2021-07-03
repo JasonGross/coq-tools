@@ -27,7 +27,7 @@ def get_coq_accepts_fine_grained_debug(coqc, debug_kind):
     (stdout, stderr) = p.communicate()
     temp_file.close()
     clean_v_file(temp_file_name)
-    return 'Unknown option -d' not in util.s(stdout) and '-d: no such file or directory' not in util.s(stdout)
+    return 'Unknown option -d' not in util.s(stdout) and '-d: no such file or directory' not in util.s(stdout) and 'There is no debug flag' not in util.s(stdout)
 
 def get_coq_debug_native_compiler_args(coqc):
     if get_coq_accepts_fine_grained_debug(coqc, "native-compiler"): return ["-d", "native-compiler"]
