@@ -2,7 +2,7 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path, tempfile, time
 from functools import cmp_to_key
 from memoize import memoize
-from coq_version import get_coqc_help, group_coq_args_split_recognized, coq_makefile_supports_arg
+from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 from util import cmp_compat as cmp
 import util
@@ -323,7 +323,8 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
 
 def make_one_glob_file(v_file, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
-    cmds = [get_maybe_passing_arg(kwargs, 'coqc'), '-q']
+    coqc_prog = get_maybe_passing_arg(kwargs, 'coqc')
+    cmds = [coqc_prog, '-q']
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'libnames'):
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'non_recursive_libnames'):
@@ -333,7 +334,11 @@ def make_one_glob_file(v_file, **kwargs):
     cmds += list(get_maybe_passing_arg(kwargs, 'coqc_args'))
     v_file_root, ext = os.path.splitext(fix_path(v_file))
     o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + '.vo')
-    cmds += ['-o', o_file, '-dump-glob', v_file_root + '.glob', v_file_root + ext]
+    if get_coq_accepts_o(coqc_prog, **kwargs):
+        cmds += ['-o', o_file]
+    else:
+        kwargs['log']("WARNING: Clobbering '%s' because coqc does not support -o" % o_file)
+    cmds += ['-dump-glob', v_file_root + '.glob', v_file_root + ext]
     if kwargs['verbose']:
         kwargs['log'](' '.join(cmds))
     try:
