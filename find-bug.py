@@ -969,11 +969,11 @@ def try_strip_extra_lines(output_file_name, line_num, **kwargs):
 
 
 
-EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^\.]+)\.' +
+EMPTY_SECTION_REG = re.compile(r'(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^ \.]+)\.' +
                                r'(?:\s' +
-                               r'|Global\s|Local\s'
+                               r'|Local\s'
                                r'|Set\s+Universe\s+Polymorphism\s*\.\s' +
-                               r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^\.]+)\.(\s+|$)', flags=re.MULTILINE)
+                               r'|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^ \.]+)\.(\s+|$)', flags=re.MULTILINE)
 def try_strip_empty_sections(output_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
