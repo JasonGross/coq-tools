@@ -96,7 +96,7 @@ def local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
 def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     filenames = list(filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
     local_filenames = list(local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
-    existing_filenames = [f for f in filenames if os_path_isfile(f)]
+    existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + '.v')]
     if len(existing_filenames) > 0:
         retval = existing_filenames[0]
         if len(existing_filenames) == 1:
@@ -309,7 +309,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         error("Failed to run coq_makefile using command line:")
         error(' '.join(cmds))
         error("Perhaps you forgot to add COQBIN to your PATH?")
-        error("Try running coqc on your files to get a .glob files, to work around this.")
+        error("Try running coqc on your files to get .glob files, to work around this.")
         sys.exit(1)
     if kwargs['verbose']:
         kwargs['log'](' '.join(['make', '-k', '-f', mkfile] + targets))
@@ -321,19 +321,54 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
             if os.path.exists(filename):
                 os.remove(filename)
 
+def make_one_glob_file(v_file, **kwargs):
+    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    cmds = [get_maybe_passing_arg(kwargs, 'coqc'), '-q']
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'libnames'):
+        cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'non_recursive_libnames'):
+        cmds += ['-Q', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
+    for dirname in get_maybe_passing_arg(kwargs, 'ocaml_dirnames'):
+        cmds += ['-I', dirname]
+    cmds += list(get_maybe_passing_arg(kwargs, 'coqc_args'))
+    v_file_root, ext = os.path.splitext(fix_path(v_file))
+    o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + '.vo')
+    cmds += ['-o', o_file, '-dump-glob', v_file_root + '.glob', v_file_root + ext]
+    if kwargs['verbose']:
+        kwargs['log'](' '.join(cmds))
+    try:
+        p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
+        return p.communicate()
+    finally:
+        if os.path.exists(o_file): os.remove(o_file)
+
 def make_globs(logical_names, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    extant_logical_names = [i for i in logical_names
-                            if os.path.isfile(filename_of_lib(i, ext='.v', **kwargs))]
-    if len(extant_logical_names) == 0: return
-    filenames_v = [filename_of_lib(i, ext='.v', **kwargs) for i in extant_logical_names]
-    filenames_glob = [filename_of_lib(i, ext='.glob', **kwargs) for i in extant_logical_names]
-    if all(os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
-           for glob_name, v_name in zip(filenames_glob, filenames_v)):
-        return
-    for glob_name, v_name in zip(filenames_glob, filenames_v):
+    existing_logical_names = [i for i in logical_names
+                              if os.path.isfile(filename_of_lib(i, ext='.v', **kwargs))]
+    if len(existing_logical_names) == 0: return
+    filenames_vo_v_glob = [(filename_of_lib(i, ext='.vo', **kwargs), filename_of_lib(i, ext='.v', **kwargs), filename_of_lib(i, ext='.glob', **kwargs)) for i in existing_logical_names]
+    filenames_vo_v_glob = [(vo_name, v_name, glob_name) for vo_name, v_name, glob_name in filenames_vo_v_glob
+                           if not (os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name))]
+    for vo_name, v_name, glob_name in filenames_vo_v_glob:
         if os.path.isfile(glob_name) and not os.path.getmtime(glob_name) > os.path.getmtime(v_name):
             os.remove(glob_name)
+        # if the .vo file already exists and is new enough, we assume
+        # that all dependent .vo files also exist, and just run coqc
+        # in a way that doesn't update the .vo file.  We use >= rather
+        # than > because we're using .vo being new enough as a proxy
+        # for the dependent .vo files existing, so we don't care as
+        # much about being perfectly accurate on .vo file timing
+        # (unlike .glob file timing, were we need it to be up to
+        # date), and it's better to not clobber the .vo file when
+        # we're unsure if it's new enough.
+        if os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name):
+            make_one_glob_file(v_name, **kwargs)
+    filenames_vo_v_glob = [(vo_name, v_name, glob_name) for vo_name, v_name, glob_name in filenames_vo_v_glob
+                           if not (os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name))]
+    filenames_v    = [v_name    for vo_name, v_name, glob_name in filenames_vo_v_glob]
+    filenames_glob = [glob_name for vo_name, v_name, glob_name in filenames_vo_v_glob]
+    if len(filenames_vo_v_glob) == 0: return
     extra_filenames_v = (get_all_v_files('.', filenames_v) if kwargs['walk_tree'] else [])
     (stdout_make, stderr_make) = run_coq_makefile_and_make(tuple(sorted(list(filenames_v) + list(extra_filenames_v))), filenames_glob, **kwargs)
 
