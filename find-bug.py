@@ -1413,6 +1413,9 @@ if __name__ == '__main__':
             # and we make one final run, or, in case there are no requires, one run
             minimize_file(output_file_name, **env)
 
+    except EOFError:
+        env['log'](traceback.format_exc())
+        raise
     except Exception:
         if hasattr(traceback, 'TracebackException'):
             etype, value, tb = sys.exc_info()
