@@ -1,4 +1,4 @@
-import sys, re, traceback
+import sys, re
 
 __all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes"]
 
@@ -73,9 +73,3 @@ def len_in_bytes(string):
 
 def normalize_newlines(string):
     return string.replace('\r\n', '\n').replace('\r', '\n')
-
-def format_exception(etype, value, tb, limit=None, chain=True):
-    if hasattr(traceback, 'TracebackException'):
-        return ''.join(traceback.TracebackException(type(value), value, tb, capture_locals=True, limit=limit).format(chain=chain))
-    else:
-        return traceback.format_exception(type(value), value, tb, limit=limit, chain=chain)
