@@ -1414,11 +1414,7 @@ if __name__ == '__main__':
             minimize_file(output_file_name, **env)
 
     except Exception:
-        if hasattr(traceback, 'TracebackException'):
-            etype, value, tb = sys.exc_info()
-            env['log'](''.join(traceback.TracebackException(type(value), value, tb, capture_locals=True).format()))
-        else:
-            env['log'](traceback.format_exc())
+        env['log'](util.format_exception(*sys.exc_info()))
         raise
     finally:
         if env['remove_temp_file']:
