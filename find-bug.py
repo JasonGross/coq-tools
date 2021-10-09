@@ -3,7 +3,7 @@ import tempfile, sys, os, re
 import traceback
 import custom_arguments
 from argparse_compat import argparse
-from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file
+from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file, absolutize_and_mangle_libname
 from import_util import get_file, get_recursive_require_names
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
@@ -198,7 +198,7 @@ def get_error_reg_string_of_output(output, **kwargs):
     if diagnose_error.has_error(output):
         error_string = diagnose_error.get_error_string(output)
         error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs['strict_whitespace'])
-        kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'." % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
+        kwargs['log']("\nI think the error is '%s'.\nThe corresponding regular expression is '%s'.\n" % (error_string, error_reg_string.replace('\\\n', '\\n').replace('\n', '\\n')), force_stdout=True)
         result = ''
         while result not in ('y', 'n', 'yes', 'no'):
             result = ask('Is this correct? [(y)es/(n)o] ', **kwargs).lower().strip()
@@ -1223,7 +1223,7 @@ if __name__ == '__main__':
         env['log']('\nError: OUT_FILE must end in .v (value: %s)' % output_file_name, force_stdout=True)
         sys.exit(1)
     if os.path.exists(output_file_name):
-        env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?' % output_file_name, force_stdout=True)
+        env['log']('\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n' % output_file_name, force_stdout=True)
         if not yes_no_prompt(yes=env['yes']):
             sys.exit(1)
     for k, arg in (('base_dir', '--base-dir'), ('passing_base_dir', '--passing-base-dir')):
@@ -1340,7 +1340,8 @@ if __name__ == '__main__':
             # order.  As soon as we succeed, we reset the list
             last_output = get_file(output_file_name, **env)
             clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
-            cur_output = add_admit_tactic(normalize_requires(output_file_name, **env), **env).strip() + '\n'
+            cur_output_gen = (lambda mod_remap: add_admit_tactic(normalize_requires(output_file_name, mod_remap=mod_remap, **env), **env).strip() + '\n')
+            cur_output = cur_output_gen(dict())
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
             first_run = True
@@ -1363,8 +1364,15 @@ if __name__ == '__main__':
                         # we prefer wrapping modules via Include,
                         # because this is a bit more robust against
                         # future module inlining (see example test 45)
-                        test_output = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, first_wrap_then_include=True, **env).strip() + '\n').strip() + '\n'
-                        test_output_alt = ('\n' + cur_output).replace(rep, '\n' + get_required_contents(req_module, **env).strip() + '\n').strip() + '\n'
+                        def get_test_output(absolutize_mods=False, first_wrap_then_include=True):
+                            test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: absolutize_and_mangle_libname(req_module, first_wrap_then_include=first_wrap_then_include)})
+                            return ('\n' + test_output).replace(rep, '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, **env).strip() + '\n').strip() + '\n'
+                        test_output = get_test_output(absolutize_mods=False, first_wrap_then_include=True)
+                        test_output_alts = [
+                            (' without Include', get_test_output(absolutize_mods=False, first_wrap_then_include=False)),
+                            (' via Include, absolutizing mod references', get_test_output(absolutize_mods=True, first_wrap_then_include=True)),
+                            (' without Include, absolutizing mod references', get_test_output(absolutize_mods=True, first_wrap_then_include=False))
+                        ]
                     except IOError as e:
                         if env['verbose'] >= 1: env['log']('\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s' % (req_module, str(e), str(tuple(env['libnames'])), str(tuple(env['non_recursive_libnames']))))
                         continue
@@ -1378,13 +1386,17 @@ if __name__ == '__main__':
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             display_source_to_error=False,
                             **env):
-                        if not check_change_and_write_to_file(
+                        # any lazily evaluates the iterator, so we'll
+                        # only run the check up to the point of the
+                        # first success
+                        if not any(check_change_and_write_to_file(
                                 cur_output, test_output_alt, output_file_name,
-                                unchanged_message='Invalid empty file!', success_message=('Inlining %s succeeded.' % req_module),
-                                failure_description=('inline %s' % req_module), changed_description='File',
+                                unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, descr)),
+                                failure_description=('inline %s%s' % (req_module, descr)), changed_description='File',
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                                 display_source_to_error=True,
-                                **env):
+                                **env)
+                                   for descr, test_output_alt in test_output_alts):
                             # let's also display the error and source
                             # for the original failure to inline,
                             # without the Include, so we can see
@@ -1408,7 +1420,8 @@ if __name__ == '__main__':
                         break
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
-                cur_output = add_admit_tactic(normalize_requires(output_file_name, update_globs=True, **env), **env).strip() + '\n'
+                cur_output_gen = (lambda mod_remap: add_admit_tactic(normalize_requires(output_file_name, update_globs=True, mod_remap=mod_remap, **env), **env).strip() + '\n')
+                cur_output = cur_output_gen(dict())
 
             # and we make one final run, or, in case there are no requires, one run
             minimize_file(output_file_name, **env)

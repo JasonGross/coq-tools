@@ -5,7 +5,7 @@ from split_file import split_leading_comments_and_whitespace
 from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
 from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
 
-__all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file"]
+__all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file", "absolutize_and_mangle_libname"]
 
 file_contents = {}
 lib_imports_fast = {}
@@ -83,6 +83,27 @@ def strip_requires(contents):
     contents = reg4.sub(r'', contents)
     return contents
 
+
+def get_module_name_and_lib_parts(lib, first_wrap_then_include=False):
+    module_name = escape_lib(lib)
+    mangled_module_name = module_name + '_WRAPPED'
+    lib_parts = list(map(escape_lib, lib.split('.')))
+    # we could actually return the same thing, that is the string
+    # ('%s.%s' % (module_name, '.'.join(lib_parts))), in both cases,
+    # but we choose to return the module prior to Include rather than
+    # the wrapped module, when we're wrapping via include, so that we
+    # have a chance of removing the Include statement later (because
+    # it may not be used)
+    if first_wrap_then_include:
+        full_module_name = '%s.%s' % (mangled_module_name, lib_parts[-1])
+    else:
+        full_module_name = '%s.%s' % (module_name, '.'.join(lib_parts))
+    return module_name, mangled_module_name, lib_parts, full_module_name
+
+def absolutize_and_mangle_libname(lib, first_wrap_then_include=False):
+    module_name, mangled_module_name, lib_parts, full_module_name = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
+    return full_module_name
+
 def contents_as_module_without_require(lib, other_imports, first_wrap_then_include=False, export=False, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
     if import_all_directories and not export:
@@ -97,15 +118,13 @@ def contents_as_module_without_require(lib, other_imports, first_wrap_then_inclu
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
     contents = strip_requires(contents)
     if kwargs['verbose'] > 2: kwargs['log'](contents)
-    module_name = escape_lib(lib)
-    mangled_module_name = module_name + '_WRAPPED'
+    module_name, mangled_module_name, lib_parts, _ = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
     # import the top-level wrappers
     if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
         for imp in reversed(construct_import_list(other_imports, import_all_directories=import_all_directories)):
             contents = 'Import %s.\n%s' % (imp, contents)
     # wrap the contents in directory modules
-    lib_parts = list(map(escape_lib, lib.split('.')))
     maybe_export = 'Export ' if export else ''
     early_contents = ''
     if first_wrap_then_include: # works around https://github.com/JasonGross/coq-tools/issues/67
