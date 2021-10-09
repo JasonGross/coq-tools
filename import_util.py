@@ -3,6 +3,7 @@ import os, subprocess, re, sys, glob, os.path, tempfile, time
 from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
+from split_file import split_coq_file_contents
 from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
 from util import cmp_compat as cmp
 import util
@@ -11,13 +12,14 @@ __all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file"
 
 file_mtimes = {}
 file_contents = {}
+raw_file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
 DEFAULT_LIBNAMES=(('.', 'Top'), )
 
-IMPORT_ABSOLUTIZE_TUPLE = ('lib', )# 'mod')
-ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef')# , 'mod', 'modtype')
+IMPORT_ABSOLUTIZE_TUPLE = ('lib', 'mod')
+ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef', 'mod')# , 'modtype')
 
 IMPORT_REG = re.compile('^R([0-9]+):([0-9]+) ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
@@ -168,12 +170,11 @@ def get_raw_file_as_bytes(filename, **kwargs):
 def get_raw_file(*args, **kwargs):
     return util.normalize_newlines(get_raw_file_as_bytes(*args, **kwargs).decode('utf-8'))
 
-# code is string
+# code, endswith is string
 @memoize
-def get_constr_name(code):
+def constr_name_endswith(code, endswith):
     first_word = code.split(' ')[0]
-    last_component = first_word.split('.')[-1]
-    return last_component
+    return first_word.endswith(endswith)
 
 # before, after are both strings
 def move_strings_once(before, after, possibility, relaxed=False):
@@ -238,17 +239,27 @@ def get_references_from_globs(globs):
                     in re.findall('^R([0-9]+):([0-9]+) ([^ ]+) <> ([^ ]+) ([^ ]+)$', globs, flags=re.MULTILINE))
     return tuple(sorted(all_globs, key=(lambda x: x[0]), reverse=True))
 
+# contents should be bytes
+def is_absolutizable_mod_reference(contents, reference):
+    start, end, loc, append, ty = reference
+    if ty != 'mod': return False
+    cur_statement = re.sub(r'\s+', ' ', ([''] + split_coq_file_contents(contents[:start].decode('utf-8')))[-1]).strip()
+    return cur_statement.split(' ')[0] in ('Import', 'Export', 'Include')
+
 # contents should be bytes; globs should be string
 def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     assert(contents is bytes(contents))
     kwargs = fill_kwargs(kwargs)
-    for start, end, loc, append, ty in get_references_from_globs(globs):
+    for ref in get_references_from_globs(globs):
+        start, end, loc, append, ty = ref
         cur_code = contents[start:end].decode('utf-8')
         if ty not in absolutize or loc == libname:
             if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
         # sanity check for correct replacement, to skip things like record builder notation
-        elif append != '<>' and get_constr_name(cur_code) != append:
+        elif append != '<>' and not constr_name_endswith(cur_code, append):
             if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
+        elif ty == 'mod' and not is_absolutizable_mod_reference(contents, ref):
+            if kwargs['verbose'] >= 2: kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
         else: # ty in absolutize and loc != libname
             rep = transform_base(loc) + ('.' + append if append != '<>' else '')
             if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep))
@@ -383,8 +394,9 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     if filename[-2:] != '.v': filename += '.v'
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
-    if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
+    if filename not in raw_file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
+        raw_file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
+        file_contents[filename] = {}
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
         if file_mtimes[filename] > time.time():
@@ -412,20 +424,24 @@ def get_byte_references_for(filename, types, **kwargs):
     return tuple((start, end, loc, append, ty) for start, end, loc, append, ty in references
                  if types is None or ty in types)
 
-def get_file_as_bytes(filename, absolutize=('lib',), update_globs=False, **kwargs):
+def get_file_as_bytes(filename, absolutize=('lib',), update_globs=False, mod_remap=dict(), transform_base=(lambda x: x), **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
     if filename[-2:] != '.v': filename += '.v'
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
-    if filename not in file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
-        file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
+    if filename not in raw_file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
+        raw_file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
+        file_contents[filename] = {}
         file_mtimes[filename] = os.stat(filename).st_mtime
-        if len(absolutize) > 0:
+    if len(mod_remap.keys()) > 0: absolutize = list(set(list(absolutize) + ['mod']))
+    key = (tuple(sorted(absolutize)), tuple(sorted(list(mod_remap.items()))))
+    if key not in file_contents[filename].keys():
+        if len(absolutize) > 0 or len(mod_remap.keys()) > 0:
             globs = get_glob_file_for(filename, update_globs=update_globs, **kwargs)
             if globs is not None:
-                file_contents[filename] = update_with_glob(file_contents[filename], globs, absolutize, libname, **kwargs)
-    return file_contents[filename]
+                file_contents[filename][key] = update_with_glob(raw_file_contents[filename], globs, absolutize, libname, transform_base=(lambda x: mod_remap.get(x, transform_base(x))), **kwargs)
+    return file_contents[filename].get(key, raw_file_contents[filename])
 
 # returns string, newlines normalized
 def get_file(*args, **kwargs):
