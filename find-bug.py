@@ -95,13 +95,13 @@ parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=s
                           "The default is " +
                           "`(* File reduced by coq-bug-finder from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
-                    default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s *)',
+                    default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s *)',
                     help=("A line to be placed at the top of the " +
                           "output file, below the dynamic header, " +
                           "followed by a newline.  The variables " +
                           "coqtop_version and coqc_version will be " +
                           "available for substitution.  The default is " +
-                          "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version) *)'"))
+                          "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version)s%%(module_inline_failure_string)s *)'"))
 parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
@@ -330,6 +330,8 @@ def prepend_header(contents, dynamic_header='', header='', header_dict={}, **kwa
     final_line_count = len(contents.split('\n'))
     header_dict = dict(header_dict) # clone the dict
     header_dict['final_line_count'] = final_line_count
+    header_dict['inline_failure_libnames'] = ', '.join(kwargs['inline_failure_libnames'])
+    header_dict['module_inline_failure_string'] = ('\n   Modules that could not be inlined: %s' % header_dict['inline_failure_libnames'] if header_dict['inline_failure_libnames'] else '')
     if 'old_header' not in header_dict.keys():
         header_dict['old_header'] = 'original input'
     use_header = (dynamic_header + '\n' + header)  % header_dict
@@ -1214,6 +1216,7 @@ if __name__ == '__main__':
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
         'inline_coqlib': args.inline_coqlib,
         'yes': args.yes,
+        'inline_failure_libnames': [],
         }
 
     if bug_file_name[-2:] != '.v':
@@ -1414,6 +1417,7 @@ if __name__ == '__main__':
                                 env['log']('\nWarning: Preemptively skipping recursive dependency module%s: %s\n'
                                            % (('' if len(extra_blacklist) == 1 else 's'), ', '.join(extra_blacklist)))
                             libname_blacklist.extend(extra_blacklist)
+                            env['inline_failure_libnames'].append(req_module)
                             continue
 
                     if minimize_file(output_file_name, die=(lambda x: False), **env):
