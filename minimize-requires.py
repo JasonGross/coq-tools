@@ -158,10 +158,10 @@ def state_to_contents(state):
 
 def make_check_state(original_contents, verbose_base=0, **kwargs):
     assert(original_contents is bytes(original_contents))
-    expected_output, orig_cmds, orig_retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents.decode('utf-8'), kwargs['timeout'], verbose_base=2, **kwargs)
+    expected_output, orig_cmds, orig_retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents.decode('utf-8'), kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
     def check_contents(contents):
-        output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
+        output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
         # TODO: Should we be checking the error message and the retcode and the output, or just the retcode?
         retval = (diagnose_error.has_error(output) or output != expected_output or retcode != orig_retcode)
         if retval:

@@ -224,12 +224,13 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     start = time.time()
     ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(kwargs['log'], cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val, cwd=cwd)
     finish = time.time()
+    runtime = finish - start
     if kwargs['verbose'] >= verbose_base + 1:
-        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\n\n' % (returncode, util.s(stdout), util.s(stderr)))
+        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\n\n' % (returncode, util.s(stdout), util.s(stderr), runtime))
     if TIMEOUT is None and timeout_val is not None:
         TIMEOUT = 3 * max((1, int(math.ceil(finish - start))))
     clean_v_file(file_name)
-    COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode))
+    COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime))
     if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
     if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
         debug_args = get_coq_debug_native_compiler_args(coqc_prog)
@@ -280,4 +281,4 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, cwd=None, is_co
     clean_v_file(file_name)
     ## remove instances of the file name
     #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    COQ_OUTPUT[key] = (file_name, (clean_output(sep.join(so_far)), tuple(cmds), None))
+    COQ_OUTPUT[key] = (file_name, (clean_output(sep.join(so_far)), tuple(cmds), None, None))

@@ -147,11 +147,11 @@ if __name__ == '__main__':
             search_code = r"""%s
 Set Search Output Name Only.
 SearchPattern _ inside %s.""" % (require_statement, libname)
-            output, cmds, retcode = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=3, **env)
+            output, cmds, retcode, runtime = get_coq_output(env['coqc'], env['coqc_args'], search_code, 0, is_coqtop=env['coqc_is_coqtop'], verbose_base=3, **env)
             identifiers = sorted(fix_identifiers(set(i.strip() for i in output.split('\n') if i.strip()), libname))
             print_assumptions_code = require_statement + '\n'.join('Locate %s.\nPrint Assumptions %s.' % (i, i) for i in identifiers)
             if env['verbose'] >= 2: env['log']('Printing assumptions...')
-            output, cmds, retcode = get_coq_output(env['coqtop'], env['coqc_args'], print_assumptions_code, 0, is_coqtop=True, pass_on_stdin=True, verbose_base=3, **env)
+            output, cmds, retcode, runtime = get_coq_output(env['coqtop'], env['coqc_args'], print_assumptions_code, 0, is_coqtop=True, pass_on_stdin=True, verbose_base=3, **env)
             i = 0
             statements = output.split('\nCoq <')
             while i < len(statements):

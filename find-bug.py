@@ -95,13 +95,13 @@ parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=s
                           "The default is " +
                           "`(* File reduced by coq-bug-finder from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
-                    default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s *)',
+                    default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s\n   Expected coqc runtime on this file: %(recent_runtime).3f sec *)',
                     help=("A line to be placed at the top of the " +
                           "output file, below the dynamic header, " +
                           "followed by a newline.  The variables " +
                           "coqtop_version and coqc_version will be " +
                           "available for substitution.  The default is " +
-                          "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version)s%%(module_inline_failure_string)s *)'"))
+                          "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version)s%%(module_inline_failure_string)s\\n   Expected coqc runtime on this file: %%(recent_runtime).3f sec *)'"))
 parser.add_argument('--no-strip-trailing-space', dest='strip_trailing_space',
                     action='store_const', const=False, default=True,
                     help=("Don't strip trailing spaces.  By default, " +
@@ -239,7 +239,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
         if kwargs['verbose'] > 2: kwargs['log']('\nContents:\n\n%s\n\n' % contents)
-        output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=1, **kwargs)
+        output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=1, **kwargs)
         if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
             kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
         result = ''
@@ -355,32 +355,39 @@ def get_header_dict(contents, old_header=None, original_line_count=0, **env):
     return {'original_line_count':original_line_count,
             'old_header':old_header,
             'coqc_version':coqc_version,
-            'coqtop_version':coqtop_version}
+            'coqtop_version':coqtop_version,
+            'recent_runtime':0}
 
 CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
 def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=False, **kwargs):
-    # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE)
+    # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE, RUNTIME)
     kwargs['header_dict'] = kwargs.get('header_dict', get_header_dict(new_contents, original_line_count=len(old_contents.split('\n')), **env))
-    new_padded_contents = prepend_header(new_contents, **kwargs)
+    # this is a function, so that once we update the header dict with the runtime, we get the right header
+    def get_padded_contents(): return prepend_header(new_contents, **kwargs)
     if new_contents == old_contents:
-        return (CONTENTS_UNCHANGED, new_padded_contents, tuple(), None, 'No change.  ')
+        return (CONTENTS_UNCHANGED, get_padded_contents(), tuple(), None, 'No change.  ', None)
 
     if ignore_coq_output_cache: diagnose_error.reset_coq_output_cache(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
-    output, cmds, retcode = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
+    output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
-            passing_output, cmds, passing_retcode = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
+            passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
             if not diagnose_error.has_error(passing_output):
-                return (CHANGE_SUCCESS, new_padded_contents, (output, passing_output), None, 'Change successful.  ')
+                # we return passing_runtime, under the presumption
+                # that in Coq's test-suite, the file should pass, and
+                # so this is a better indicator of how long it'll take
+                kwargs['header_dict']['recent_runtime'] = passing_runtime
+                return (CHANGE_SUCCESS, get_padded_contents(), (output, passing_output), None, 'Change successful.  ', passing_runtime)
             else:
-                return (CHANGE_FAILURE, new_padded_contents, (output, passing_output), 1, 'The alternate coqc (%s) was supposed to pass, but instead emitted an error.  ' % kwargs['passing_coqc'])
+                return (CHANGE_FAILURE, get_padded_contents(), (output, passing_output), 1, 'The alternate coqc (%s) was supposed to pass, but instead emitted an error.  ' % kwargs['passing_coqc'], runtime)
         else:
-            return (CHANGE_SUCCESS, new_padded_contents, (output,), None, 'Change successful.  ')
+            kwargs['header_dict']['recent_runtime'] = runtime
+            return (CHANGE_SUCCESS, get_padded_contents(), (output,), None, 'Change successful.  ', runtime)
     else:
         extra_desc = ''
         if kwargs['verbose'] >= 2:
             extra_desc = 'The error was:\n%s\n' % output
-        return (CHANGE_FAILURE, new_padded_contents, (output,), 0, extra_desc)
+        return (CHANGE_FAILURE, get_padded_contents(), (output,), 0, extra_desc, runtime)
 
 def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    unchanged_message='No change.', success_message='Change successful.',
@@ -390,7 +397,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    **kwargs):
     if kwargs['verbose'] >= 2 + verbose_base:
         kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents)
-    change_result, contents, outputs, output_i, error_desc = classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs)
+    change_result, contents, outputs, output_i, error_desc, runtime = classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs)
     if change_result == CONTENTS_UNCHANGED:
         if kwargs['verbose'] >= verbose_base: kwargs['log']('\n%s' % unchanged_message)
         return False
@@ -428,7 +435,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
     else:
         kwargs['log']('ERROR: Unrecognized change result %s on\nclassify_contents_change(\n  %s\n ,%s\n)\n%s'
                       % (change_result, repr(old_contents), repr(new_contents),
-                         repr((change_result, contents, outputs, output_i, error_desc))))
+                         repr((change_result, contents, outputs, output_i, error_desc, runtime))))
     return None
 
 
@@ -1065,7 +1072,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         return die(None)
 
     if env['verbose'] >= 1: env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
-    output, cmds, retcode = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], is_coqtop=env['coqc_is_coqtop'], verbose_base=2, **env)
+    output, cmds, retcode, runtime = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], is_coqtop=env['coqc_is_coqtop'], verbose_base=2, **env)
     line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
     try_strip_extra_lines(output_file_name, line_num, **env)
 
