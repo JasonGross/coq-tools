@@ -106,6 +106,7 @@ def process_logging_arguments(args):
 
 def tokenize_CoqProject(contents):
     is_in_string = False
+    is_in_comment = False
     cur = ''
     for ch in contents:
         if is_in_string:
@@ -114,9 +115,15 @@ def tokenize_CoqProject(contents):
                 yield cur
                 cur = ''
                 is_in_string = False
+        elif is_in_comment:
+            if ch in '\n\r': is_in_comment = False
         elif ch == '"':
             cur += ch
             is_in_string = True
+        elif ch == '#':
+            if cur: yield cur
+            cur = ''
+            is_in_comment = True
         else:
             if ch in '\n\r\t ':
                 if cur: yield cur
