@@ -9,9 +9,9 @@ set -x
 rm -f *.vo *.glob *.d .*.d
 ${PYTHON} ../../find-bug.py example_08.v bug_08_3.v --coqc-is-coqtop "$@" || exit $?
 LINES="$(cat bug_08_3.v | grep -v '^$' | wc -l)"
-if [ "$LINES" -ne 10 ]
+if [ "$LINES" -ne 11 ]
 then
-    echo "Expected 10 lines"
+    echo "Expected 11 lines"
     cat bug_08_3.v
     exit 1
 fi
