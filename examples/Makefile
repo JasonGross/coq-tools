@@ -5,8 +5,8 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 47 48
-CONDITIONAL_TESTS = 06 08-3 10 13 18 20 26 27 46
+DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 47
+CONDITIONAL_TESTS = 06 08-3 10 13 18 20 26 27 46 48
 
 ONLY_IF_COQTOP_COMPILE_TESTS = 08-3
 ONLY_IF_Q_TESTS = 10 26
@@ -124,6 +124,15 @@ print-support::
 else
 print-support::
 	@printf "coqc is < 8.15:\t\t\tYes\n"
+endif
+
+ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11%,$(COQC_VERSION))))
+test-suite: example_48_result.log
+print-support::
+	@printf "coqc is < 8.12:\t\t\tNo\n"
+else
+print-support::
+	@printf "coqc is < 8.12:\t\t\tYes\n"
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
