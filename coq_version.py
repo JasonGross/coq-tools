@@ -155,7 +155,7 @@ LTAC_SUPPORT_SNIPPET = {}
 def get_ltac_support_snippet(coqc, **kwargs):
     if coqc in LTAC_SUPPORT_SNIPPET.keys():
         return LTAC_SUPPORT_SNIPPET[coqc]
-    test = r'''Inductive False := .
+    test = r'''Inductive False : Prop := .
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.'''
     errinfo = {}

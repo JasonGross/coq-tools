@@ -1002,7 +1002,7 @@ def add_admit_tactic(contents, **kwargs):
     before, after = get_ltac_support_snippet(**kwargs)
     tac_code = r"""%sModule Export AdmitTactic.
 Module Import LocalFalse.
-Inductive False := .
+Inductive False : Prop := .
 End LocalFalse.
 Axiom proof_admitted : False.
 %sTactic Notation "admit" := abstract case proof_admitted.
@@ -1010,7 +1010,7 @@ End AdmitTactic.
 """ % (before, after)
     tac_code_re = r"""\s*Module Export AdmitTactic\.
 ?(?:Module Import LocalFalse\.
-?(?:Inductive False := \.)?
+?(?:Inductive False : Prop := \.)?
 ?End LocalFalse\.)?
 ?(?:Axiom proof_admitted : False\.)?
 ?(?:%s)?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
