@@ -3,7 +3,7 @@ import os, subprocess, re, sys, glob, os.path
 from memoize import memoize
 from split_file import split_leading_comments_and_whitespace
 from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
-from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import DEFAULT_LOG
 
 __all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file", "absolutize_and_mangle_libname"]
 
@@ -17,7 +17,6 @@ IMPORT_LINE_REG = re.compile(r'^\s*(?:From|Require\s+Import|Require\s+Export|Req
 
 def fill_kwargs(kwargs):
     defaults = {
-        'verbose':DEFAULT_VERBOSITY,
         'fast':False,
         'log':DEFAULT_LOG,
         'libnames':DEFAULT_LIBNAMES,
@@ -117,7 +116,7 @@ def contents_as_module_without_require(lib, other_imports, first_wrap_then_inclu
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
     contents = strip_requires(contents)
-    if kwargs['verbose'] > 2: kwargs['log'](contents)
+    kwargs['log'](contents, level=3)
     module_name, mangled_module_name, lib_parts, _ = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
     # import the top-level wrappers
     if len(other_imports) > 0 and not export:
@@ -164,7 +163,7 @@ def recursively_get_requires_from_file(filename, **kwargs):
     return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
 
 
-def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=False, log=DEFAULT_LOG, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
+def include_imports(filename, as_modules=True, fast=False, log=DEFAULT_LOG, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -181,7 +180,7 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
     >>> g.write(r"Require Export Ascii String.\n\nInductive q := c | d.")
     >>> f.close()
     >>> g.close()
-    >>> print(include_imports(f.name, as_modules=False, verbose=False))
+    >>> print(include_imports(f.name, as_modules=False))
     Require Import Coq.Arith.Arith Coq.Bool.Bool Coq.Init.Logic Coq.PArith.PArith Coq.QArith.QArith Coq.Setoids.Setoid Coq.ZArith.ZArith Coq.Strings.Ascii Coq.Strings.String.
 
     Inductive q := c | d.
@@ -192,7 +191,7 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
 
     (*asdf*)
 
-    >>> print(include_imports(f.name, as_modules=False, fast=True, verbose=False))
+    >>> print(include_imports(f.name, as_modules=False, fast=True))
     Require Import Arith Bool Coq.Init.Logic PArith QArith Setoid ZArith Ascii String.
 
     Inductive q := c | d.
@@ -211,23 +210,22 @@ def include_imports(filename, as_modules=True, verbose=DEFAULT_VERBOSITY, fast=F
         coqc = kwargs['make_coqc']
     if filename[-2:] != '.v': filename += '.v'
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = recursively_get_imports(lib, verbose=verbose, fast=fast, log=log, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
+    all_imports = recursively_get_imports(lib, fast=fast, log=log, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
     remaining_imports = []
     rtn = ''
     imports_done = []
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, verbose=verbose, log=log, absolutize=absolutize, **kwargs) + '\n'
+                rtn += contents_as_module_without_require(import_name, imports_done, log=log, absolutize=absolutize, **kwargs) + '\n'
             else:
-                rtn += contents_without_imports(import_name, verbose=verbose, log=log, absolutize=tuple(), **kwargs) + '\n'
+                rtn += contents_without_imports(import_name, log=log, absolutize=tuple(), **kwargs) + '\n'
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
-        if verbose:
-            log('remaining imports:')
-            log(remaining_imports)
+        log('remaining imports:', level=2)
+        log(remaining_imports, level=2)
         if as_modules:
             pattern = 'Require %s.\n%s'
         else:

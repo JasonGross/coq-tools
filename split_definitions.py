@@ -3,7 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 import split_definitions_old
 from split_file import postprocess_split_proof_term
 from coq_version import get_coq_accepts_time, get_proof_term_works_with_time
-from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 import util
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
@@ -43,17 +43,17 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
-def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), **kwargs):
+def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), **kwargs):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
     def fallback():
-        if verbose: log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
-        return split_definitions_old.split_statements_to_definitions(statements, verbose=verbose, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
+        log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
+        return split_definitions_old.split_statements_to_definitions(statements, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
     # check for -time
-    if not get_coq_accepts_time(coqtop, verbose=verbose, log=log):
+    if not get_coq_accepts_time(coqtop, log=log):
         return fallback()
-    if not get_proof_term_works_with_time(coqtop, is_coqtop=True, verbose=verbose, log=log, **kwargs):
-        statements = postprocess_split_proof_term(statements, log=log, verbose=verbose, **kwargs)
+    if not get_proof_term_works_with_time(coqtop, is_coqtop=True, log=log, **kwargs):
+        statements = postprocess_split_proof_term(statements, log=log, **kwargs)
     p = Popen([coqtop, '-q', '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)(?=Chars [0-9]+ - [0-9]+|$)'.replace(' ', r'\s*'),
                            flags=re.DOTALL)
@@ -63,14 +63,14 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = '\n'.join(statements) + '\n\n'
     statements_bytes = statements_string.encode('utf-8')
-    if verbose: log('Sending statements to coqtop...')
-    if verbose >= 3: log(statements_string)
+    log('Sending statements to coqtop...')
+    log(statements_string, level=3)
     (stdout, stderr) = p.communicate(input=statements_bytes)
     stdout = util.s(stdout)
     if 'know what to do with -time' in stdout.strip().split('\n')[0]:
         # we're using a version of coqtop that doesn't support -time
         return fallback()
-    if verbose: log('Done.  Splitting to definitions...')
+    log('Done.  Splitting to definitions...')
 
     rtn = []
     cur_definition = {}
@@ -78,7 +78,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
     cur_definition_names = '||'
     last_char_end = 0
 
-    #if verbose >= 3: log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)')
+    #log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)', level=3)
     responses = split_reg.findall(stdout)
     for char_start, char_end, full_response_text in responses:
         char_start, char_end = int(char_start), int(char_end)
@@ -88,7 +88,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
         if char_end <= last_char_end: continue
         match = prompt_reg.match(full_response_text)
         if not match:
-            log('Warning: Could not find statements in %d:%d: %s' % (char_start, char_end, full_response_text))
+            log('Warning: Could not find statements in %d:%d: %s' % (char_start, char_end, full_response_text), level=LOG_ALWAYS)
             continue
         response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown = match.groups()
         statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
@@ -104,7 +104,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
             cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-        if verbose >= 2: log((statement, (char_start, char_end), definitions_removed, terms_defined, 'last_definitions:', last_definitions, 'cur_definition_names:', cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text))
+        log((statement, (char_start, char_end), definitions_removed, terms_defined, 'last_definitions:', last_definitions, 'cur_definition_names:', cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text), level=2)
 
 
         # first, we handle the case where we have just finished
@@ -169,7 +169,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
 
         last_definitions = cur_definition_names
 
-    if verbose >= 2: log((last_definitions, cur_definition_names))
+    log((last_definitions, cur_definition_names), level=2)
     if last_definitions.strip('||'):
         rtn.append({'statements':tuple(cur_definition[cur_definition_names]['statements']),
                     'statement':'\n'.join(cur_definition[cur_definition_names]['statements']),
@@ -178,7 +178,7 @@ def split_statements_to_definitions(statements, verbose=DEFAULT_VERBOSITY, log=D
 
     if last_char_end + 1 < len(statements_bytes):
         last_statement = statements_bytes[last_char_end:].decode('utf-8')
-        if verbose >= 2: log('Appending end of code from %d to %d: %s' % (last_char_end, len(statements_bytes), last_statement))
+        log('Appending end of code from %d to %d: %s' % (last_char_end, len(statements_bytes), last_statement), level=2)
         last_statement = strip_newlines(last_statement)
         rtn.append({'statements':tuple(last_statement,),
                     'statement':last_statement,

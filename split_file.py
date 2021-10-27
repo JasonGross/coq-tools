@@ -1,5 +1,5 @@
 from strip_comments import strip_comments
-from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import DEFAULT_LOG
 from coq_version import get_coq_accepts_time
 import subprocess
 import re
@@ -11,7 +11,6 @@ __all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "
 
 def fill_kwargs(kwargs):
     ret = {
-        'verbose'               : DEFAULT_VERBOSITY,
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
         'coqc_args'             : tuple(),
@@ -178,11 +177,10 @@ def postprocess_split_proof_term_iter(statements, on_first_example=None):
             yield statement
 def postprocess_split_proof_term(statements, do_warn=True, **kwargs):
     def do_warn_method(statement_num, statement, proof_term):
-        if kwargs['verbose'] > 0:
-            kwargs['log']("""Warning: Your version of Coq suffers from bug #5349 (https://coq.inria.fr/bugs/show_bug.cgi?id=5349)
+        kwargs['log']("""Warning: Your version of Coq suffers from bug #5349 (https://coq.inria.fr/bugs/show_bug.cgi?id=5349)
 and does not support [Proof (term).] with -time.  Falling back to
 replacing [Proof (term).] with [Proof. exact (term). Qed.], which may fail.""")
-    if do_warn and 'verbose' in kwargs.keys() and 'log' in kwargs.keys():
+    if do_warn and 'log' in kwargs.keys():
         do_warn = do_warn_method
     else:
         do_warn = None

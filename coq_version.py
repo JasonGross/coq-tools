@@ -14,8 +14,7 @@ def get_coqc_version_helper(coqc):
     return util.normalize_newlines(util.s(stdout).replace('The Coq Proof Assistant, version ', '')).replace('\n', ' ').strip()
 
 def get_coqc_version(coqc_prog, **kwargs):
-    if kwargs['verbose'] >= 2:
-        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-v"]))
+    kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-v"]), level=2)
     return get_coqc_version_helper(coqc_prog)
 
 @memoize
@@ -25,8 +24,7 @@ def get_coqc_config_helper(coqc):
     return util.normalize_newlines(util.s(stdout)).strip()
 
 def get_coqc_config(coqc_prog, **kwargs):
-    if kwargs['verbose'] >= 2:
-        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"]))
+    kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"]), level=2)
     return get_coqc_config_helper(coqc_prog)
 
 def get_coqc_coqlib(coqc_prog, **kwargs):
@@ -39,8 +37,7 @@ def get_coqc_help_helper(coqc):
     return util.s(stdout).strip()
 
 def get_coqc_help(coqc_prog, **kwargs):
-    if kwargs['verbose'] >= 2:
-        kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "--help"]))
+    kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "--help"]), level=2)
     return get_coqc_help_helper(coqc_prog)
 
 @memoize
@@ -50,8 +47,7 @@ def get_coqtop_version_helper(coqtop):
     return util.normalize_newlines(util.s(stdout).replace('Welcome to Coq ', '').replace('Skipping rcfile loading.', '')).replace('\n', ' ').strip()
 
 def get_coqtop_version(coqtop_prog, **kwargs):
-    if kwargs['verbose'] >= 2:
-        kwargs['log']('Running command: "%s"' % '" "'.join([coqtop_prog, "-q", "-v"]))
+    kwargs['log']('Running command: "%s"' % '" "'.join([coqtop_prog, "-q", "-v"]), level=2)
     return get_coqtop_version_helper(coqtop_prog)
 
 @memoize

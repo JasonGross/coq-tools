@@ -29,7 +29,7 @@ add_logging_arguments(parser)
 
 
 def absolutize_imports(filename, **kwargs):
-    if kwargs['verbose']: kwargs['log']('Processing %s...' % filename)
+    kwargs['log']('Processing %s...' % filename)
     absolutized_contents = get_file(filename, update_globs=True, **kwargs)
     if kwargs['inplace']:
         do_backup = kwargs['suffix'] is not None and len(kwargs['suffix']) > 0
@@ -45,7 +45,6 @@ if __name__ == '__main__':
         else:
             return prog
     env = {
-        'verbose': args.verbose,
         'log': args.log,
         'coqc': prepend_coqbin(args.coqc),
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i

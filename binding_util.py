@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 from coq_version import group_coq_args
-from custom_arguments import DEFAULT_LOG, DEFAULT_VERBOSITY
+from custom_arguments import DEFAULT_LOG
 
 __all__ = ["has_dir_binding", "deduplicate_trailing_dir_bindings", "process_maybe_list"]
 
@@ -24,10 +24,10 @@ def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_nam
             ret.extend(binding)
     return tuple(ret)
 
-def process_maybe_list(ls, log=DEFAULT_LOG, verbose=DEFAULT_VERBOSITY):
+def process_maybe_list(ls, log=DEFAULT_LOG):
     if ls is None: return tuple()
     if isinstance(ls, str): return tuple([ls])
     if isinstance(ls, tuple): return ls
     if isinstance(ls, list): return tuple(ls)
-    if verbose >= 1: log("Unknown type '%s' of list '%s'" % (str(type(ls)), repr(ls)))
+    log("Unknown type '%s' of list '%s'" % (str(type(ls)), repr(ls)))
     return tuple(ls)

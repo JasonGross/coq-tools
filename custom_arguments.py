@@ -3,7 +3,7 @@ import sys, os
 from argparse_compat import argparse
 from util import PY3
 
-__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY"]
+__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -18,24 +18,28 @@ class CoqLibnameAction(argparse.Action):
         getattr(namespace, self.dest).append(tuple(values))
 
 DEFAULT_VERBOSITY=1
+LOG_ALWAYS=None
 
 def make_logger(log_files):
-    def log(text, force_stdout=False):
-        for i in log_files:
+    # log if level <= the level of the logger
+    def log(text, level=DEFAULT_VERBOSITY, max_level=None, force_stdout=False, end='\n'):
+        selected_log_files = [f for flevel, f in log_files if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level))]
+        for i in selected_log_files:
             if force_stdout and i.fileno() == 2: continue # skip stderr if we write to stdout
-            i.write(str(text) + '\n')
+            i.write(str(text) + end)
             i.flush()
             if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
-        if force_stdout and not any(i.fileno() == 1 for i in log_files): # not already writing to stdout
+        if force_stdout and not any(i.fileno() == 1 for i in selected_log_files): # not already writing to stdout
             if PY3:
                 sys.stdout.buffer.write(text.encode('utf-8'))
+                sys.stdout.buffer.write(end.encode('utf-8'))
                 sys.stdout.flush()
             else:
-                print(text)
+                print(text, end=end)
     return log
 
-DEFAULT_LOG = make_logger([sys.stderr])
+DEFAULT_LOG = make_logger([(DEFAULT_VERBOSITY, sys.stderr)])
 
 class DeprecatedAction(argparse.Action):
     def __init__(self, replacement=None, *args, **kwargs):
@@ -85,23 +89,38 @@ def add_passing_libname_arguments(parser):
     add_libname_arguments_gen(parser, 'passing')
     add_libname_arguments_gen(parser, 'nonpassing')
 
+def TupleType(*types):
+    def call(strings):
+        vals = strings.split(',')
+        if len(vals) != len(types):
+            raise ValueError("Got %d arguments, expected %d arguments" % (len(vals), len(types)))
+        return tuple(ty(val) for ty, val in zip(types, vals))
+    return call
+
 def add_logging_arguments(parser):
     parser.add_argument('--verbose', '-v', dest='verbose',
                         action='count',
-                        help='display some extra information')
+                        help='display some extra information by default (does not impact --verbose-log-file)')
     parser.add_argument('--quiet', '-q', dest='quiet',
                         action='count',
                         help='the inverse of --verbose')
     parser.add_argument('--log-file', '-l', dest='log_files', nargs='+', type=argparse.FileType('w'),
                         default=[sys.stderr],
                         help='The files to log output to.  Use - for stdout.')
+    parser.add_argument('--verbose-log-file', dest='verbose_log_files', nargs='+', type=TupleType(int, argparse.FileType('w')),
+                        default=[],
+                        help=(('The files to log output to at verbosity other than the default verbosity (%d if no -v/-q arguments are passed); ' +
+                               'each argument should be a pair of a verbosity level and a file name. '
+                               'Use - for stdout.') % DEFAULT_VERBOSITY))
 
 def process_logging_arguments(args):
     if args.verbose is None: args.verbose = DEFAULT_VERBOSITY
     if args.quiet is None: args.quiet = 0
-    args.log = make_logger(args.log_files)
     args.verbose -= args.quiet
+    args.log = make_logger([(args.verbose, f) for f in args.log_files]
+                           + args.verbose_log_files)
     del args.quiet
+    del args.verbose
     return args
 
 def tokenize_CoqProject(contents):

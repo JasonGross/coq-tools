@@ -4,7 +4,7 @@ import os, sys, shutil, re
 from argparse_compat import argparse
 from split_file import split_coq_file_contents_with_comments
 from strip_comments import strip_comments
-from custom_arguments import add_logging_arguments, process_logging_arguments
+from custom_arguments import add_logging_arguments, process_logging_arguments, LOG_ALWAYS
 from file_util import write_to_file
 from util import PY3
 if PY3: from util import raw_input
@@ -109,13 +109,13 @@ def minimize_lifted_statements(statements):
         return statements
 
 def move_from_proof(filename, **kwargs):
-    if kwargs['verbose']: kwargs['log']('Processing %s...' % filename)
+    kwargs['log']('Processing %s...' % filename)
     try:
         with open(filename, 'r') as f:
             contents = f.read()
     except IOError as e:
-        if kwargs['verbose']: kwargs['log']('Failed to process %s' % filename)
-        if kwargs['verbose'] >= 2: kwargs['log'](repr(e))
+        kwargs['log']('Failed to process %s' % filename)
+        kwargs['log'](repr(e), level=2)
         return
     ret = []
     cur_statements = []
@@ -125,7 +125,7 @@ def move_from_proof(filename, **kwargs):
     orig_space_count = 0
     cur_diff_space_count = 0
     if ''.join(split_coq_file_contents_with_comments(contents)) != contents:
-        kwargs['log']('WARNING: Could not split %s' % filename)
+        kwargs['log']('WARNING: Could not split %s' % filename, level=LOG_ALWAYS)
         return
     for i in split_coq_file_contents_with_comments(contents):
         is_definition_full = (ALL_DEFINITIONS_REG.match(i) is not None
@@ -139,10 +139,10 @@ def move_from_proof(filename, **kwargs):
         #if 'not_reachable_iff' in i:
         #    print((ALL_DEFINITIONS_REG.match(i), strip_parens(strip_comments(i)), ONELINE_DEFINITIONS_REG.match(i)))
         if not is_definition_start and not cur_statements and not cur_statement:
-            if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
+            kwargs['log'](repr(i), level=3)
             ret.append(i)
         elif is_definition_start:
-            if kwargs['verbose'] >= 2: kwargs['log']('Starting definition (%d): %s' % (len(deferred_statements), repr(i)))
+            kwargs['log']('Starting definition (%d): %s' % (len(deferred_statements), repr(i)), level=2)
             if not cur_statement and not deferred_statements:
                 orig_space_count = len(get_leading_space(i))
             if cur_statement:
@@ -150,10 +150,10 @@ def move_from_proof(filename, **kwargs):
             cur_diff_space_count = max(0, len(get_leading_space(i)) - orig_space_count)
             cur_statement = [remove_leading_space(i, cur_diff_space_count)]
         elif (SAFE_REG.match(i) or not i.strip()) and cur_statement:
-            if kwargs['verbose'] >= 3: kwargs['log'](repr(i))
+            kwargs['log'](repr(i), level=3)
             cur_statement.append(remove_leading_space(i, cur_diff_space_count))
         elif is_definition_end and cur_statement:
-            if kwargs['verbose'] >= 2: kwargs['log']('Ending definition: ' + repr(i))
+            kwargs['log']('Ending definition: ' + repr(i), level=2)
             cur_statement.append(remove_leading_space(i, cur_diff_space_count))
             cur_statements.append(''.join(cur_statement))
             #print(''.join(preminimize_lifted_statements(cur_statements)))
@@ -169,10 +169,10 @@ def move_from_proof(filename, **kwargs):
                 cur_statements = []
                 deferred_copied_statements = []
         elif MOVE_UP_REG.match(i) or is_definition_full:
-            if kwargs['verbose'] >= 2: kwargs['log']('Lifting: ' + repr(i))
+            kwargs['log']('Lifting: ' + repr(i), level=2)
             cur_statements.append(set_leading_space(i, orig_space_count))
         elif COPY_UP_REG.match(i) and cur_statement:
-            if kwargs['verbose'] >= 2: kwargs['log']('Lift-copying: ' + repr(i))
+            kwargs['log']('Lift-copying: ' + repr(i), level=2)
             cur_statement.append(remove_leading_space(i, cur_diff_space_count))
             cur_statements.append(set_leading_space(i, orig_space_count))
             deferred_copied_statements.append(remove_leading_space(i, cur_diff_space_count))
@@ -198,7 +198,6 @@ def move_from_proof(filename, **kwargs):
 if __name__ == '__main__':
     args = process_logging_arguments(parser.parse_args())
     env = {
-        'verbose': args.verbose,
         'log': args.log,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,

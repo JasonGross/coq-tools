@@ -4,7 +4,7 @@ from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
 from split_file import split_coq_file_contents
-from custom_arguments import DEFAULT_VERBOSITY, DEFAULT_LOG
+from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from util import cmp_compat as cmp
 import util
 
@@ -35,7 +35,6 @@ def fill_kwargs(kwargs):
         'libnames'              : DEFAULT_LIBNAMES,
         'non_recursive_libnames': tuple(),
         'ocaml_dirnames'        : tuple(),
-        'verbose'               : DEFAULT_VERBOSITY,
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
         'coq_makefile'          : 'coq_makefile',
@@ -105,18 +104,21 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
             return retval
         else:
             DEFAULT_LOG('WARNING: Multiple physical paths match logical path %s: %s.  Selecting %s.'
-                        % (lib, ', '.join(existing_filenames), retval))
+                        % (lib, ', '.join(existing_filenames), retval),
+                        level=LOG_ALWAYS)
             return retval
     if len(filenames) != 0:
         DEFAULT_LOG('WARNING: One or more physical paths match logical path %s, but none of them exist: %s'
-                    % (lib, ', '.join(filenames)))
+                    % (lib, ', '.join(filenames)),
+                    level=LOG_ALWAYS)
     if len(local_filenames) > 0:
         retval = local_filenames[0]
         if len(local_filenames) == 1:
             return retval
         else:
             DEFAULT_LOG('WARNING: Multiple local physical paths match logical path %s: %s.  Selecting %s.'
-                        % (lib, ', '.join(local_filenames), retval))
+                        % (lib, ', '.join(local_filenames), retval),
+                        level=LOG_ALWAYS)
             return retval
     if len(filenames) > 0:
         retval = filenames[0]
@@ -124,7 +126,8 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
             return retval
         else:
             DEFAULT_LOG('WARNING: Multiple non-existent physical paths match logical path %s: %s.  Selecting %s.'
-                        % (lib, ', '.join(filenames), retval))
+                        % (lib, ', '.join(filenames), retval),
+                        level=LOG_ALWAYS)
             return retval
     return fix_path(os.path.relpath(os.path.normpath(lib.replace('.', os.sep) + ext), '.'))
 
@@ -150,7 +153,7 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
 def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), exts=exts)
-#    if '.' in filename and kwargs['verbose']:
+#    if '.' in filename:
 #        # TODO: Do we still need this warning?
 #        kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return libname
@@ -161,9 +164,8 @@ def is_local_import(libname, **kwargs):
 
 def get_raw_file_as_bytes(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    if kwargs['verbose']:
-        filename_extra = '' if os.path.isabs(filename) else ' (%s)' % os.path.abspath(filename)
-        kwargs['log']('getting %s%s' % (filename, filename_extra))
+    filename_extra = '' if os.path.isabs(filename) else ' (%s)' % os.path.abspath(filename)
+    kwargs['log']('getting %s%s' % (filename, filename_extra))
     with open(filename, 'rb') as f:
         return f.read()
 
@@ -254,16 +256,16 @@ def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambd
         start, end, loc, append, ty = ref
         cur_code = contents[start:end].decode('utf-8')
         if ty not in absolutize or loc == libname:
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
+            kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
         # sanity check for correct replacement, to skip things like record builder notation
         elif append != '<>' and not constr_name_endswith(cur_code, append):
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
+            kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
         elif ty == 'mod' and not is_absolutizable_mod_reference(contents, ref):
-            if kwargs['verbose'] >= 2: kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append))
+            kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
         else: # ty in absolutize and loc != libname
             rep = transform_base(loc) + ('.' + append if append != '<>' else '')
-            if kwargs['verbose'] == 2: kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep))
-            if kwargs['verbose'] > 2: kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty))
+            kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep), level=2, max_level=3)
+            kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty), level=3)
             contents = contents[:start] + rep.encode('utf-8') + contents[end:]
             contents = remove_from_require_before(contents, start)
 
@@ -306,10 +308,9 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
             for arg in unrecognized_args:
                 cmds += ['-arg', arg]
         else:
-            if kwargs['verbose']: kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
+            kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
-    if kwargs['verbose']:
-        kwargs['log'](' '.join(cmds))
+    kwargs['log'](' '.join(cmds))
     try:
         p_make_makefile = subprocess.Popen(cmds,
                                            stdout=subprocess.PIPE)
@@ -322,8 +323,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get .glob files, to work around this.")
         sys.exit(1)
-    if kwargs['verbose']:
-        kwargs['log'](' '.join(['make', '-k', '-f', mkfile] + targets))
+    kwargs['log'](' '.join(['make', '-k', '-f', mkfile] + targets))
     try:
         p_make = subprocess.Popen(['make', '-k', '-f', mkfile] + targets, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
         return p_make.communicate()
@@ -348,10 +348,9 @@ def make_one_glob_file(v_file, **kwargs):
     if get_coq_accepts_o(coqc_prog, **kwargs):
         cmds += ['-o', o_file]
     else:
-        kwargs['log']("WARNING: Clobbering '%s' because coqc does not support -o" % o_file)
+        kwargs['log']("WARNING: Clobbering '%s' because coqc does not support -o" % o_file, level=LOG_ALWAYS)
     cmds += ['-dump-glob', v_file_root + '.glob', v_file_root + ext]
-    if kwargs['verbose']:
-        kwargs['log'](' '.join(cmds))
+    kwargs['log'](' '.join(cmds))
     try:
         p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
         return p.communicate()
@@ -400,10 +399,9 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         file_mtimes[filename] = os.stat(filename).st_mtime
     if update_globs:
         if file_mtimes[filename] > time.time():
-            kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (filename, file_mtimes[filename], time.time()))
+            kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (filename, file_mtimes[filename], time.time()), level=LOG_ALWAYS)
         if time.time() - file_mtimes[filename] < 2:
-            if kwargs['verbose']:
-                kwargs['log']("NOTE: The file %s is very new (%d, %d seconds old), delaying until it's a bit older" % (filename, file_mtimes[filename], time.time() - file_mtimes[filename]))
+            kwargs['log']("NOTE: The file %s is very new (%d, %d seconds old), delaying until it's a bit older" % (filename, file_mtimes[filename], time.time() - file_mtimes[filename]))
         # delay until the .v file is old enough that a .glob file will be considered newer
         # if we just wait until they're not equal, we apparently get issues like https://gitlab.com/Zimmi48/coq/-/jobs/535005442
         while time.time() - file_mtimes[filename] < 2:
@@ -412,7 +410,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     if os.path.isfile(globname):
         if os.stat(globname).st_mtime > file_mtimes[filename]:
             return get_raw_file(globname, **kwargs)
-        elif kwargs['verbose']:
+        else:
             kwargs['log']("WARNING: Assuming that %s is not a valid reflection of %s because %s is newer (%d >= %d)" % (globname, filename, filename, file_mtimes[filename], os.stat(globname).st_mtime))
     return None
 
@@ -579,7 +577,7 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
                 if imports and not any(i in imports for i in coqlib_imports):
                     imports = tuple(list(coqlib_imports) + list(imports))
             except IOError as e:
-                kwargs['log']("WARNING: --inline-coqlib passed, but no Coq.Init.Prelude found on disk.\n  Searched in %s\n  (Error was: %s)\n\n" % (repr(mykwargs['libnames']), repr(e)))
+                kwargs['log']("WARNING: --inline-coqlib passed, but no Coq.Init.Prelude found on disk.\n  Searched in %s\n  (Error was: %s)\n\n" % (repr(mykwargs['libnames']), repr(e)), level=LOG_ALWAYS)
         if not fast: make_globs(imports, **kwargs)
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)

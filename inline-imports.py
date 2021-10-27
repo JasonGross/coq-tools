@@ -60,7 +60,6 @@ if __name__ == '__main__':
     args = process_logging_arguments(parser.parse_args())
 
     env = {
-        'verbose': args.verbose,
         'log': args.log,
         'coqc': (args.coqc if args.coqbin == '' else os.path.join(args.coqbin, args.coqc)),
         'absolutize': args.absolutize,
