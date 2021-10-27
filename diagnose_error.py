@@ -138,7 +138,7 @@ def get_timeout(coqc=None):
     return TIMEOUT.get(coqc)
 
 def set_timeout(key, value, **kwargs):
-    kwargs['log']('\nThe timeout for %s has been set to: %d' % (coqc, value))
+    kwargs['log']('\nThe timeout for %s has been set to: %d' % (key, value))
     TIMEOUT[key] = value
 
 def reset_timeout():
