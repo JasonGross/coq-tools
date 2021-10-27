@@ -372,7 +372,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
             passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
-            if not diagnose_error.has_error(passing_output):
+            if not (diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(passing_output)):
                 # we return passing_runtime, under the presumption
                 # that in Coq's test-suite, the file should pass, and
                 # so this is a better indicator of how long it'll take

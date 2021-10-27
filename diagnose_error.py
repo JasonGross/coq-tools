@@ -7,7 +7,7 @@ from util import re_escape
 from custom_arguments import DEFAULT_LOG
 import util
 
-__all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache"]
+__all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
 
 DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
 DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(?!Warning)'
@@ -53,6 +53,13 @@ def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAUL
         return True
     else:
         return False
+
+TIMEOUT_POSTFIX = '\nTimeout!'
+
+@memoize
+def is_timeout(output):
+    """Returns True if the output was killed with a timeout, False otherwise"""
+    return output.endswith(TIMEOUT_POSTFIX)
 
 @memoize
 def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
@@ -156,7 +163,7 @@ def timeout_Popen_communicate(log, *args, **kwargs):
 
     p.terminate()
     thread.join()
-    return (tuple(map((lambda s: (s if s else '') + '\nTimeout!'), ret['value'])), ret['returncode'])
+    return (tuple(map((lambda s: (s if s else '') + TIMEOUT_POSTFIX), ret['value'])), ret['returncode'])
 
 
 def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
