@@ -131,6 +131,10 @@ parser.add_argument('--timeout', dest='timeout', metavar='SECONDS', type=int, de
                           "Default: -1"))
 parser.add_argument('--no-timeout', dest='timeout', action='store_const', const=0,
                     help=("Do not use a timeout"))
+parser.add_argument('--passing-timeout', dest='passing_timeout', metavar='SECONDS', type=int, default=-1,
+                    help=("Like --timeout, but only for the passing Coq"))
+parser.add_argument('--nonpassing-timeout', dest='nonpassing_timeout', metavar='SECONDS', type=int, default=-1,
+                    help=("Like --timeout, but only for the non-passing Coq"))
 parser.add_argument('--no-minimize-before-inlining', dest='minimize_before_inlining',
                     action='store_const', const=False, default=True,
                     help=("Don't run the full minimization script before inlining [Requires], " +
@@ -240,8 +244,8 @@ def get_error_reg_string(output_file_name, **kwargs):
         diagnose_error.reset_timeout()
         if kwargs['verbose'] > 2: kwargs['log']('\nContents:\n\n%s\n\n' % contents)
         output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=1, **kwargs)
-        if kwargs['timeout'] < 0 and diagnose_error.get_timeout() is not None:
-            kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout())
+        if kwargs['timeout'] < 0 and diagnose_error.get_timeout(kwargs['coqc']) is not None:
+            kwargs['log']('The timeout has been set to: %d' % diagnose_error.get_timeout(kwargs['coqc']))
         result = ''
         kwargs['log']("\nThis file produces the following output when Coq'ed:\n%s" % output, force_stdout=True)
         while result not in ('y', 'n', 'yes', 'no'):
@@ -371,7 +375,8 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
     output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
         if kwargs['passing_coqc']:
-            passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
+            if ignore_coq_output_cache: diagnose_error.reset_coq_output_cache(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['passing_timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
+            passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(kwargs['passing_coqc'], kwargs['passing_coqc_args'], new_contents, kwargs['passing_timeout'], cwd=kwargs['passing_base_dir'], is_coqtop=kwargs['passing_coqc_is_coqtop'], verbose_base=2, **kwargs)
             if not (diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(passing_output)):
                 # we return passing_runtime, under the presumption
                 # that in Coq's test-suite, the file should pass, and
@@ -415,7 +420,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
             if kwargs['remove_temp_file']: kwargs['log']('%s not saved.' % changed_description)
         if not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
-        if timeout_retry_count > 1 and outputs[output_i].strip().startswith('Timeout!'):
+        if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
             if kwargs['verbose'] >= verbose_base: kwargs['log']('\nRetrying another %d time%s...' % (timeout_retry_count - 1, 's' if timeout_retry_count > 2 else ''))
             return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                                   unchanged_message=unchanged_message, success_message=success_message,
@@ -1184,7 +1189,8 @@ if __name__ == '__main__':
         'header': args.header,
         'dynamic_header': args.dynamic_header,
         'strip_trailing_space': args.strip_trailing_space,
-        'timeout': args.timeout,
+        'timeout': (args.nonpassing_timeout if args.nonpassing_timeout != -1 else args.timeout),
+        'passing_timeout': (args.passing_timeout if args.passing_timeout != -1 else args.timeout),
         'absolutize': args.absolutize,
         'minimize_before_inlining': args.minimize_before_inlining,
         'save_typeclasses': args.save_typeclasses,

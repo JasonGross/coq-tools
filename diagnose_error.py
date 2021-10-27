@@ -54,7 +54,7 @@ def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAUL
     else:
         return False
 
-TIMEOUT_POSTFIX = '\nTimeout!'
+TIMEOUT_POSTFIX = '\nTimeout! (external)'
 
 @memoize
 def is_timeout(output):
@@ -132,14 +132,18 @@ def make_reg_string(output, strict_whitespace=False):
     if not util.PY3: ret = ret.encode('utf-8')
     return ret
 
-TIMEOUT = None
+TIMEOUT = {}
 
-def get_timeout():
-    return TIMEOUT
+def get_timeout(coqc=None):
+    return TIMEOUT.get(coqc)
+
+def set_timeout(coqc, value, **kwargs):
+    kwargs['log']('\nThe timeout for %s has been set to: %d' % (coqc, value))
+    TIMEOUT[coqc] = value
 
 def reset_timeout():
     global TIMEOUT
-    TIMEOUT = None
+    TIMEOUT = {}
 
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = { 'value' : ('', ''), 'returncode': None }
@@ -220,9 +224,8 @@ def reset_coq_output_cache(coqc_prog, coqc_prog_args, contents, timeout_val, cwd
 def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, is_coqtop=False, pass_on_stdin=False, verbose_base=1, retry_with_debug_when=(lambda output: 'is not a compiled interface for this version of OCaml' in output), **kwargs):
     """Returns the coqc output of running through the given
     contents.  Pass timeout_val = None for no timeout."""
-    global TIMEOUT
-    if timeout_val is not None and timeout_val < 0 and TIMEOUT is not None:
-        return get_coq_output(coqc_prog, coqc_prog_args, contents, TIMEOUT, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=retry_with_debug_when, **kwargs)
+    if timeout_val is not None and timeout_val < 0 and get_timeout(coqc_prog) is not None:
+        return get_coq_output(coqc_prog, coqc_prog_args, contents, get_timeout(coqc_prog), cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=retry_with_debug_when, **kwargs)
 
     key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
@@ -234,8 +237,8 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     runtime = finish - start
     if kwargs['verbose'] >= verbose_base + 1:
         kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\n\n' % (returncode, util.s(stdout), util.s(stderr), runtime))
-    if TIMEOUT is None and timeout_val is not None:
-        TIMEOUT = 3 * max((1, int(math.ceil(finish - start))))
+    if get_timeout(coqc_prog) is None and timeout_val is not None:
+        set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
     clean_v_file(file_name)
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime))
     if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
