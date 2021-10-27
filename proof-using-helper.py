@@ -2,7 +2,7 @@
 from __future__ import with_statement
 import os, sys, re
 from argparse_compat import argparse
-from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS
 from memoize import memoize
 from file_util import read_from_file, write_to_file
 
@@ -39,8 +39,8 @@ REG_SUB_PROOF_USING = re.compile(r'Proof using[^\.]+\.', re.MULTILINE)
 #        cur_match = reg.search(source_text)
 #        while cur_match:
 #            ignoring = source_text[:cur_match.start()].strip()
-#            if ignoring and env['verbose'] > 2:
-#                env['log']('Ignoring: ' + repr(ignoring))
+#            if ignoring:
+#                env['log']('Ignoring: ' + repr(ignoring), level=3)
 #            yield cur_match.groups()
 #            source_text = source_text[cur_match.end():]
 #            cur_match = reg.search(source_text)
@@ -112,8 +112,7 @@ def get_end_of_first_line_location(term, **env):
     stack = []
     i = 0
     while i < len(term):
-        if env['verbose'] >= 3:
-            env['log']('DEBUG: stack: %s, pre: %s' % (str(stack), repr(term[:i])))
+        env['log']('DEBUG: stack: %s, pre: %s' % (str(stack), repr(term[:i])), level=3)
         if len(stack) == 0:
             if term[i] == '.' and (len(term) == i + 1 or (term[i+1] in ' \t\r\n')):
                 return i+1
@@ -146,8 +145,7 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
     ending = re.search(ALL_ENDINGS, after_match, re.MULTILINE)
     if ending:
         proof_part = after_match[:ending.start()]
-        if env['verbose'] >= 2:
-            env['log']('Inspecting proof: %s' % proof_part)
+        env['log']('Inspecting proof: %s' % proof_part, level=2)
         if proof_part.count('Proof') == 1:
             proof_match = re.search('Proof(?: using[^\.]*)?\.', proof_part)
             if proof_match:
@@ -158,23 +156,21 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
                             suggestion +
                             after_match[proof_match.end():])
                 else:
-                    if env['verbose'] >= 0:
-                        env['log']('Warning: Mismatch between existing Proof using and suggested Proof using:')
-                        env['log']('In %s, id %s, found %s, expected %s' % (filename, rest_id, proof_match.group(), suggestion))
+                    env['log']('Warning: Mismatch between existing Proof using and suggested Proof using:', level=0)
+                    env['log']('In %s, id %s, found %s, expected %s' % (filename, rest_id, proof_match.group(), suggestion), level=0)
                     return FOUND_BUT_UNCHANGED
             else:
-                if env['verbose'] >= 0: env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id))
+                env['log']('Warning: Mismatched Proofs found in %s for %s' % (filename, rest_id), level=0)
                 return FOUND_BUT_UNCHANGED
         elif proof_part.count('Proof') == 0:
             loc = get_end_of_first_line_location(proof_part, **env)
             indent = get_indent(match.group())
-            if env['verbose'] >= 3:
-                env['log']('Before proof: %s\nAfter proof: %s' % (proof_part[:loc], proof_part[loc:]))
+            env['log']('Before proof: %s\nAfter proof: %s' % (proof_part[:loc], proof_part[loc:]), level=3)
             return '%s%s%s\n%s%s\n%s%s' % (before_match, match.group(), proof_part[:loc], indent, suggestion, proof_part[loc:], after_match[ending.start():])
         else:
-            if env['verbose'] >= 0: env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id))
+            env['log']('Warning: Too many Proofs found in %s for %s' % (filename, rest_id), level=0)
     else:
-        if env['verbose'] >= 0: env['log']('Warning: No %s found in %s for %s' % (ALL_ENDINGS, filename, rest_id))
+        env['log']('Warning: No %s found in %s for %s' % (ALL_ENDINGS, filename, rest_id), level=0)
     return None
 
 def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **env):
@@ -185,8 +181,8 @@ def unsafe_update_definitions(name, contents, filename, rest_id, suggestion, **e
         for match in re.finditer(ALL_DEFINITIONS_LESS_PROPER_STR, contents, re.MULTILINE | re.DOTALL):
             if match.group().strip('\n\t .').split(' ')[-1] + '_Proper' == name:
                 return update_proof(name, contents[:match.start()], match, contents[match.end():], filename, rest_id, suggestion, **env)
-    if env['verbose'] >= 0 and (env['verbose'] > 1 or not re.search('|'.join(env['hide_reg']), rest_id)):
-        env['log']('Warning: No %s found in %s' % (rest_id, filename))
+    env['log']('Warning: No %s found in %s' % (rest_id, filename),
+               level=(2 if re.search('|'.join(env['hide_reg']), rest_id) else 0))
     return None
 
 def update_definitions(contents, filename, rest_id, suggestion, **env):
@@ -221,13 +217,13 @@ def update_definitions(contents, filename, rest_id, suggestion, **env):
                         else:
                             return pre + ret + post
                 else:
-                    if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_end, rest_id, filename))
+                    env['log']('Warning: Too many %s found for %s in %s' % (cur_end, rest_id, filename), level=0)
                     break
             else:
-                if env['verbose'] >= 0: env['log']('Warning: Too many %s found for %s in %s' % (cur_mod, rest_id, filename))
+                env['log']('Warning: Too many %s found for %s in %s' % (cur_mod, rest_id, filename), level=0)
                 break
-        if env['verbose'] >= 0: env['log']('Warning: Module disambiguation was insufficient to uniqueize %s in %s' % (rest_id, filename))
-        if env['verbose'] > 1: env['log']('Found: %s' % repr(re.findall(ALL_DEFINITIONS_STR % name, contents, re.MULTILINE)))
+        env['log']('Warning: Module disambiguation was insufficient to uniqueize %s in %s' % (rest_id, filename), level=0)
+        env['log']('Found: %s' % repr(re.findall(ALL_DEFINITIONS_STR % name, contents, re.MULTILINE)), level=2)
     return contents
 
 if __name__ == '__main__':
@@ -235,7 +231,6 @@ if __name__ == '__main__':
     source = args.source
     env = {
         'lib_to_dir': lib_to_dir_map(args.libnames + args.non_recursive_libnames),
-        'verbose': args.verbose,
         'log': args.log,
         'hide_reg': args.hide_reg
         }
@@ -251,11 +246,11 @@ if __name__ == '__main__':
                 updated = update_definitions(orig, filename, rest_id, suggestion, **env)
                 if updated is not None:
                     if updated != orig:
-                        if env['verbose'] >= 1: env['log']('Updating %s in %s' % (rest_id, filename))
+                        env['log']('Updating %s in %s' % (rest_id, filename), level=1)
                         mwrite_to_file(filename, updated, do_backup=True)
                     elif len(filenames) > 1 and not is_first:
-                        if env['verbose'] >= 1: env['log']('Found %s in %s' % (rest_id, filename))
+                        env['log']('Found %s in %s' % (rest_id, filename), level=1)
                     break
                 is_first = False
         else:
-            env['log']('Warning: Could not find theorem %s' % theorem_id)
+            env['log']('Warning: Could not find theorem %s' % theorem_id, level=LOG_ALWAYS)

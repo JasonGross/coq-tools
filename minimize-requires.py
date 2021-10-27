@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 import shutil, os, os.path, sys, re
 from argparse_compat import argparse
-from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
+from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS, DEFAULT_VERBOSITY
 from split_file import get_coq_statement_byte_ranges, UnsupportedCoqVersionError
 from import_util import get_byte_references_for, get_file_as_bytes, sort_files_by_dependency
 from file_util import write_to_file
@@ -51,25 +51,23 @@ def insert_references(contents, ranges, references, **kwargs):
     assert(contents is bytes(contents))
     ret = []
     prev = 0
-    if kwargs['verbose']:
-        bad = [(start, end, loc, append, ty) for start, end, loc, append, ty in references
-               if append != '<>' or ty != 'lib']
-        if bad:
-            kwargs['log']('Invalid glob entries: %s' % '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
-                                                                 for start, end, loc, append, ty in bad))
+    bad = [(start, end, loc, append, ty) for start, end, loc, append, ty in references
+           if append != '<>' or ty != 'lib']
+    if bad:
+        kwargs['log']('Invalid glob entries: %s' % '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
+                                                             for start, end, loc, append, ty in bad))
     for start, finish in ranges:
         if prev < start:
             ret.append((contents[prev:start], tuple()))
-        if kwargs['verbose']:
-            bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
-                   if (start <= rstart or rend <= finish) and
-                   not ((start <= rstart and rend <= finish) or
-                        finish <= rstart or rend <= start)]
-            if bad:
-                kwargs['log']('Invalid glob entries partially overlapping (%d, %d]: %s'
-                              % (start, finish,
-                                 '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
-                                           for start, end, loc, append, ty in bad)))
+        bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
+               if (start <= rstart or rend <= finish) and
+               not ((start <= rstart and rend <= finish) or
+                    finish <= rstart or rend <= start)]
+        if bad:
+            kwargs['log']('Invalid glob entries partially overlapping (%d, %d]: %s'
+                          % (start, finish,
+                             '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
+                                       for start, end, loc, append, ty in bad)))
 
         cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
                                if start <= rstart and rend <= finish)
@@ -156,7 +154,8 @@ def step_state(state, action):
 def state_to_contents(state):
     return ''.join(reversed([v[0].decode('utf-8') for v in state]))
 
-def make_check_state(original_contents, verbose_base=0, **kwargs):
+# the higher verbose_base, the less verbose we are, since we start at a higher level by default
+def make_check_state(original_contents, verbose_base=4-DEFAULT_VERBOSITY, **kwargs):
     assert(original_contents is bytes(original_contents))
     expected_output, orig_cmds, orig_retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents.decode('utf-8'), kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
@@ -165,12 +164,10 @@ def make_check_state(original_contents, verbose_base=0, **kwargs):
         # TODO: Should we be checking the error message and the retcode and the output, or just the retcode?
         retval = (diagnose_error.has_error(output) or output != expected_output or retcode != orig_retcode)
         if retval:
-            if kwargs['verbose'] + verbose_base >= 3:
-                kwargs['log']('Failed change.  Error when running "%s":\n%s' % ('" "'.join(cmds), output))
-        elif kwargs['verbose'] + verbose_base >= 4:
-            kwargs['log']('Successful change')
-            if kwargs['verbose'] + verbose_base >= 5:
-                kwargs['log']('New contents:\n"""\n%s\n"""' % contents)
+            kwargs['log']('Failed change.  Error when running "%s":\n%s' % ('" "'.join(cmds), output), level=verbose_base-1)
+        else:
+            kwargs['log']('Successful change', level=verbose_base)
+            kwargs['log']('New contents:\n"""\n%s\n"""' % contents, level=verbose_base+1)
         return not retval
 
     def check_state(state):
@@ -191,7 +188,6 @@ def make_save_state(filename, **kwargs):
 if __name__ == '__main__':
     args = process_logging_arguments(parser.parse_args())
     env = {
-        'verbose': args.verbose,
         'log': args.log,
         'keep_exports': args.keep_exports,
         'keep_going': args.keep_going,
@@ -236,7 +232,7 @@ if __name__ == '__main__':
                 contents = get_file_as_bytes(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
                 refs = get_byte_references_for(name, types=('lib',), update_globs=True, **env)
                 if refs is None:
-                    env['log']('ERROR: Failed to get references for %s' % name)
+                    env['log']('ERROR: Failed to get references for %s' % name, level=LOG_ALWAYS)
                     failed.append((name, 'failed to get references'))
                     if env['keep_going']:
                         continue
@@ -245,10 +241,10 @@ if __name__ == '__main__':
                 annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
                 save_state = make_save_state(name, **env)
                 check_state = make_check_state(contents, **env)
-                verbose_check_state = make_check_state(contents, verbose_base=4-env['verbose'], **env)
-                if env['verbose']: env['log']('Running coq on initial contents...')
+                verbose_check_state = make_check_state(contents, verbose_base=DEFAULT_VERBOSITY, **env)
+                env['log']('Running coq on initial contents...')
                 if not verbose_check_state(annotated_contents):
-                    env['log']('ERROR: Failed to update %s' % name)
+                    env['log']('ERROR: Failed to update %s' % name, level=LOG_ALWAYS)
                     failed.append((name, 'failed to update'))
                     if env['keep_going']:
                         continue
@@ -258,12 +254,12 @@ if __name__ == '__main__':
                 final_state = run_binary_search(annotated_contents, check_state, step_state, save_state, valid_actions)
                 if final_state is not None:
                     if not check_state(final_state):
-                        env['log']('Internal error: Inconsistent final state on %s...' % name)
+                        env['log']('Internal error: Inconsistent final state on %s...' % name, level=LOG_ALWAYS)
                         failed.append((name, 'inconsistent final state'))
                         if not env['keep_going']:
                             break
                     else:
-                        if env['verbose']: env['log']('Saving final version of %s...' % name)
+                        env['log']('Saving final version of %s...' % name)
                         save_state(final_state, final=True)
             except KeyboardInterrupt:
                 raise
@@ -271,15 +267,15 @@ if __name__ == '__main__':
                 raise
             except BaseException as e:
                 if env['keep_going']:
-                    env['log']('Failure on %s with error %s' % (name, repr(e)))
+                    env['log']('Failure on %s with error %s' % (name, repr(e)), level=LOG_ALWAYS)
                     failed.append((name, e))
                 else:
                     raise e
         if failed:
-            env['log']('The following files failed:')
+            env['log']('The following files failed:', level=LOG_ALWAYS)
             for name, e in failed:
-                env['log'](name)
+                env['log'](name, level=LOG_ALWAYS)
             sys.exit(1)
     except UnsupportedCoqVersionError:
-        env['log']('ERROR: Your version of coqc (%s) does not support -time' % env['coqc'])
+        env['log']('ERROR: Your version of coqc (%s) does not support -time' % env['coqc'], level=LOG_ALWAYS)
         sys.exit(1)

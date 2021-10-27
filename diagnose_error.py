@@ -4,7 +4,7 @@ from Popen_noblock import Popen_async, Empty
 from memoize import memoize
 from file_util import clean_v_file
 from util import re_escape
-from custom_arguments import DEFAULT_LOG
+from custom_arguments import LOG_ALWAYS
 import util
 
 __all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
@@ -175,7 +175,7 @@ def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
         try:
             return timeout_Popen_communicate(log, *args, **kwargs)
         except OSError as e:
-            log('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)), force_stdout=True)
+            log('Warning: subprocess.Popen%s%s failed with %s\nTrying again in 10s' % (repr(tuple(args)), repr(kwargs), repr(e)), force_stdout=True, level=LOG_ALWAYS)
             time.sleep(10)
 
 COQ_OUTPUT = {}
@@ -208,12 +208,12 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
     else:
         cmds.extend([file_name, '-q'])
     cmd_to_print = '"%s%s"' % ('" "'.join(cmds), pseudocmds)
-    if kwargs['verbose'] >= kwargs['verbose_base'] or (kwargs['verbose'] >= kwargs['verbose_base'] - 1 and sanitize_cmd(cmd_to_print) not in prepare_cmds_for_coq_output_printed_cmd_already):
-        prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
-        kwargs['log']('\nRunning command: %s' % cmd_to_print)
-    if kwargs['verbose'] >= kwargs['verbose_base'] + 1:
-        kwargs['log']('\nContents:\n%s\n' % contents)
-
+    kwargs['log']('\nRunning command: %s' % cmd_to_print,
+                  level=(kwargs['verbose_base']
+                         - (1 if sanitize_cmd(cmd_to_print) not in prepare_cmds_for_coq_output_printed_cmd_already else 0)))
+    prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
+    kwargs['log']('\nContents:\n%s\n' % contents,
+                  level=kwargs['verbose_base']+1)
     return key, file_name, cmds, input_val
 
 def reset_coq_output_cache(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, is_coqtop=False, pass_on_stdin=False, verbose_base=1, **kwargs):
@@ -235,16 +235,18 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(kwargs['log'], cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val, cwd=cwd)
     finish = time.time()
     runtime = finish - start
-    if kwargs['verbose'] >= verbose_base + 1:
-        kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\n\n' % (returncode, util.s(stdout), util.s(stderr), runtime))
+    kwargs['log']('\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\n\n' % (returncode, util.s(stdout), util.s(stderr), runtime),
+                  level=verbose_base + 1)
     if get_timeout(coqc_prog) is None and timeout_val is not None:
         set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
     clean_v_file(file_name)
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime))
-    if kwargs['verbose'] >= verbose_base + 2: kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])))
+    kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])),
+                  level=verbose_base + 2)
     if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
         debug_args = get_coq_debug_native_compiler_args(coqc_prog)
-        if kwargs['verbose'] >= verbose_base - 1: kwargs['log']('Retrying with %s...' % ' '.join(debug_args))
+        kwargs['log']('Retrying with %s...' % ' '.join(debug_args),
+                      level=verbose_base - 1)
         return get_coq_output(coqc_prog, list(debug_args) + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
     return COQ_OUTPUT[key][1]
 
@@ -267,7 +269,7 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, cwd=None, is_co
         if yielded and not completed:
             if input_val:
                 i = input_val.index('\n') + 1 if '\n' in input_val else len(input_val)
-                if kwargs['verbose'] >= 3: print(input_val[:i], end='')
+                kwargs['log'](input_val[:i], level=3, end='')
                 p.stdin.write(input_val[:i])
                 input_val = input_val[i:]
                 p.stdin.flush()
@@ -276,7 +278,7 @@ def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, cwd=None, is_co
                 completed = True
                 p.stdin.close()
         curv = p.stdout.get(True)
-        if kwargs['verbose'] >= 3: print(curv, end='')
+        kwargs['log'](curv, level=3, end='')
         cur += curv
         if sep in cur:
             vals = cur.split(sep)

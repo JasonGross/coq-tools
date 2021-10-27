@@ -5,7 +5,6 @@ getting C.glob
 getting D.glob
 getting AA.v
 getting AA.glob
-The timeout for coqc has been set to: 3
 Running coq on initial contents...
 Successful change
 Saving final version of AA.v...
