@@ -792,7 +792,7 @@ def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
             return cur_definition
 
     def try_admit_matching_definitions(definitions, output_file_name, **kwargs2):
-        return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs, **kwargs2)
+        return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **dict(list(kwargs.items()) + list(kwargs2.items())))
 
     return try_admit_matching_definitions
 
