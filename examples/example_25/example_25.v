@@ -1,2 +1,3 @@
 Definition bar : nat. exact 2. Defined.
-Fail Definition foo := 1 + bar.
+Definition baz := Eval unfold bar in bar.
+Fail Definition foo := 1 + baz.

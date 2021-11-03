@@ -85,13 +85,14 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-\(Axiom proof_admitted : False.
-Tactic Notation "admit" := abstract case proof_admitted.
+\(Axiom proof_admitted : False\.
+Tactic Notation "admit" := abstract case proof_admitted\.
 
-\)\?Definition bar : nat.
-admit.
-Defined.
-Fail Definition foo := 1 + bar.
+\)\?Definition bar : nat\.
+admit\.
+Defined\.
+Definition baz := Eval unfold bar in bar\.
+Fail Definition foo := 1 + baz\.
 
 EOF
 )

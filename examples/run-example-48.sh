@@ -47,13 +47,13 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line \(19\|20\), characters 72-73:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 2\(0\|1\), characters 72-73:
 Error:
 In environment
-f := fun _ : foo => eq_refl : forall _ : foo, eq Foo\.foo Set
-The term "f" has type "forall _ : foo, eq Foo\.foo Set"
+f := fun _ : bar => eq_refl : forall _ : bar, eq Foo\.foo Set
+The term "f" has type "forall _ : bar, eq Foo\.foo Set"
 while it is expected to have type "forall _ : Set, ?T" (cannot unify.
-"Set" and "foo")\.
+"Set" and "bar")\.
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
@@ -109,7 +109,8 @@ Arguments eq_refl {A x} , \[A\] x\.
 Definition foo@{} : Set\.
 admit\.
 Defined\.
-Check let f := (fun _ : foo => (eq_refl Set : eq Foo\.foo@{Set} Set)) in f : forall _ : Set, _\.
+Definition bar := Eval unfold foo in foo\.
+Check let f := (fun _ : bar => (eq_refl Set : eq Foo\.foo@{Set} Set)) in f : forall _ : Set, _\.
 
 EOF
 )
