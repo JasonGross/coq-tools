@@ -781,42 +781,42 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
     return definitions
 
 
-def try_admit_matching_definitions(definitions, output_file_name, matcher, **kwargs):
+def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if len(cur_definition['statements']) > 2 and matcher(cur_definition):
-            statements = (cur_definition['statements'][0], 'admit.', 'Defined.')
+            statements = (cur_definition['statements'][0], 'Admitted.') if use_admitted else (cur_definition['statements'][0], 'admit.', 'Defined.')
             return {'statements':statements,
                     'statement':'\n'.join(statements),
                     'terms_defined':cur_definition['terms_defined']}
         else:
             return cur_definition
 
-    return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs)
+    def try_admit_matching_definitions(definitions, output_file_name, **kwargs2):
+        return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs, **kwargs2)
 
-def try_admit_qeds(definitions, output_file_name, **kwargs):
+    return try_admit_matching_definitions
+
+def make_try_admit_qeds(**kwargs):
     QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
-    return try_admit_matching_definitions(definitions, output_file_name,
-                                          (lambda definition: QED_REG.search(definition['statement'])),
-                                          noun_description='Admitting Qeds',
-                                          verb_description='admit Qeds',
-                                          **kwargs)
+    return make_try_admit_matching_definitions((lambda definition: QED_REG.search(definition['statement'])),
+                                               noun_description='Admitting Qeds',
+                                               verb_description='admit Qeds',
+                                               **kwargs)
 
-def try_admit_lemmas(definitions, output_file_name, **kwargs):
+def make_try_admit_lemmas(**kwargs):
     LEMMA_REG = re.compile(r'^\s*' +
                            r'(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*' +
                            r'(?:Lemma|Remark|Fact|Corollary|Proposition)\s*', flags=re.MULTILINE)
-    return try_admit_matching_definitions(definitions, output_file_name,
-                                          (lambda definition: LEMMA_REG.search(definition['statement'])),
-                                          noun_description='Admitting lemmas',
-                                          verb_description='admit lemmas',
-                                          **kwargs)
+    return make_try_admit_matching_definitions((lambda definition: LEMMA_REG.search(definition['statement'])),
+                                               noun_description='Admitting lemmas',
+                                               verb_description='admit lemmas',
+                                               **kwargs)
 
-def try_admit_definitions(definitions, output_file_name, **kwargs):
-    return try_admit_matching_definitions(definitions, output_file_name,
-                                          (lambda definition: True),
-                                          noun_description='Admitting definitions',
-                                          verb_description='admit definitions',
-                                          **kwargs)
+def make_try_admit_definitions(**kwargs):
+    return make_try_admit_matching_definitions((lambda definition: True),
+                                               noun_description='Admitting definitions',
+                                               verb_description='admit definitions',
+                                               **kwargs)
 
 
 def try_split_imports(definitions, output_file_name, **kwargs):
@@ -1112,7 +1112,8 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     if env['admit_opaque']:
         if env['admit_obligations']:
             tasks += (('replace Qed Obligation with Admit Obligations', try_admit_qed_obligations),)
-        tasks += ((('replace Qeds with Admitteds', try_admit_qeds),) +
+        tasks += ((('replace Qeds with Admitteds', make_try_admit_qeds(use_admitted=True)),
+                   ('replace Qeds with admit. Defined.', make_try_admit_qeds(use_admitted=False))) +
                   # we've probably just removed a lot, so try to remove definitions again
                   recursive_tasks +
                   (('admit [abstract ...]s', try_admit_abstracts),) +
@@ -1125,8 +1126,10 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     if env['admit_transparent']:
         if env['admit_obligations']:
             tasks += (('replace Obligation with Admit Obligations', try_admit_obligations),)
-        tasks += (('admit lemmas', try_admit_lemmas),
-                  ('admit definitions', try_admit_definitions))
+        tasks += (('admit lemmas with Admitted', make_try_admit_lemmas(use_admitted=True)),
+                  ('admit definitions with Admitted', make_try_admit_definitions(use_admitted=True)),
+                  ('admit lemmas with admit. Defined', make_try_admit_lemmas(use_admitted=False)),
+                  ('admit definitions with admit. Defined', make_try_admit_definitions(use_admitted=False)))
 
     if not env['aggressive'] and not env['save_typeclasses']:
         tasks += (('remove hints', try_remove_hints),)
