@@ -1028,8 +1028,8 @@ End AdmitTactic.
     return '%s%s%s' % (header, tac_code, re.sub(tac_code_re, '\n', contents.replace(before, ''), flags=re.DOTALL|re.MULTILINE))
 
 
-def default_on_fatal(message):
-    if message is not None: DEFAULT_LOG(message)
+def default_on_fatal(message, log=DEFAULT_LOG, **env):
+    if message is not None: log(message, level=0, force_stderr=True)
     sys.exit(1)
 
 def minimize_file(output_file_name, die=default_on_fatal, **env):
@@ -1045,7 +1045,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
                                           failure_description='validate all coq runs', changed_description='File',
                                           timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
                                           **env):
-        return die('Fatal error: Sanity check failed.')
+        return die('Fatal error: Sanity check failed.', **env)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
         env['log']('\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...')
@@ -1077,7 +1077,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
                                           **env):
         env['log']('I will not be able to proceed.')
         env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)', level=2)
-        return die(None)
+        return die(None, **env)
 
     env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
     output, cmds, retcode, runtime = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], is_coqtop=env['coqc_is_coqtop'], verbose_base=2, **env)
@@ -1099,7 +1099,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
                                           **env):
         env['log']('I will not be able to proceed.')
         env['log']('re.search(' + repr(env['error_reg_string']) + ', <output above>)', level=2)
-        return die(None)
+        return die(None, **env)
 
     recursive_tasks = (('remove goals ending in [Abort.]', try_remove_aborted),
                        ('remove unused Ltacs', try_remove_ltac),
@@ -1349,7 +1349,7 @@ if __name__ == '__main__':
             error_log = args.error_log.read()
             args.error_log.close()
             if not diagnose_error.has_error(error_log, env['error_reg_string']):
-                default_on_fatal('The computed error message was not present in the given error log.')
+                default_on_fatal('The computed error message was not present in the given error log.', **env)
 
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)

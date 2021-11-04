@@ -22,21 +22,23 @@ LOG_ALWAYS=None
 
 def make_logger(log_files):
     # log if level <= the level of the logger
-    def log(text, level=DEFAULT_VERBOSITY, max_level=None, force_stdout=False, end='\n'):
+    def log(text, level=DEFAULT_VERBOSITY, max_level=None, force_stdout=False, force_stderr=False, end='\n'):
         selected_log_files = [f for flevel, f in log_files if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level))]
         for i in selected_log_files:
-            if force_stdout and i.fileno() == 2: continue # skip stderr if we write to stdout
+            if force_stderr and i.fileno() == 1 and not force_stdout: continue # skip stdout if we write to stderr
+            if force_stdout and i.fileno() == 2 and not force_stderr: continue # skip stderr if we write to stdout
             i.write(str(text) + end)
             i.flush()
             if i.fileno() > 2: # stderr
                 os.fsync(i.fileno())
-        if force_stdout and not any(i.fileno() == 1 for i in selected_log_files): # not already writing to stdout
-            if PY3:
-                sys.stdout.buffer.write(text.encode('utf-8'))
-                sys.stdout.buffer.write(end.encode('utf-8'))
-                sys.stdout.flush()
-            else:
-                print(text, end=end)
+        for (force, fno, sys_file) in ((force_stdout, 1, sys.stdout), (force_stderr, 2, sys.stderr)):
+            if force and not any(i.fileno() == fno for i in selected_log_files): # not already writing to std{out,err}
+                if PY3:
+                    sys_file.buffer.write(text.encode('utf-8'))
+                    sys_file.buffer.write(end.encode('utf-8'))
+                    sys_file.flush()
+                else:
+                    print(text, end=end, file=sys_file)
     return log
 
 DEFAULT_LOG = make_logger([(DEFAULT_VERBOSITY, sys.stderr)])
