@@ -122,7 +122,7 @@ def make_reg_string(output, strict_whitespace=False):
     else:
         re_string = re_escape(error_string)
     re_string = re.sub(r'tmp(?:[A-Za-z\d]|\\_)+',
-                       r'tmp[A-Za-z_\\d]+',
+                       r'[A-Za-z_\\d]+',
                        re_string)
     if r'Universe\ instance\ should\ have\ length\ ' not in re_string:
         re_string = re.sub(r'[\d]+',
