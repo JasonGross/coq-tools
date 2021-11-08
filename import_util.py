@@ -4,11 +4,12 @@ from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
 from split_file import split_coq_file_contents
+from strip_comments import strip_comments
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT"]
 
 file_mtimes = {}
 file_contents = {}
@@ -21,7 +22,6 @@ DEFAULT_LIBNAMES=(('.', 'Top'), )
 IMPORT_ABSOLUTIZE_TUPLE = ('lib', 'mod')
 ALL_ABSOLUTIZE_TUPLE = ('lib', 'proj', 'rec', 'ind', 'constr', 'def', 'syndef', 'class', 'thm', 'lem', 'prf', 'ax', 'inst', 'prfax', 'coind', 'scheme', 'vardef', 'mod')# , 'modtype')
 
-IMPORT_REG = re.compile('^R([0-9]+):([0-9]+) ([^ ]+) <> <> lib$', re.MULTILINE)
 IMPORT_LINE_REG = re.compile(r'^\s*(?:Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
 def warning(*objs):
@@ -248,6 +248,11 @@ def is_absolutizable_mod_reference(contents, reference):
     cur_statement = re.sub(r'\s+', ' ', ([''] + split_coq_file_contents(contents[:start].decode('utf-8')))[-1]).strip()
     return cur_statement.split(' ')[0] in ('Import', 'Export', 'Include')
 
+# we absolutize requires, etc, without assuming that we have access to
+# the statement-splitting of the file; this is required for inlining
+# installed files, where we can't guarantee that we know how to run
+# coqc on the file.
+#
 # contents should be bytes; globs should be string
 def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     assert(contents is bytes(contents))
@@ -393,6 +398,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     if filename[-2:] != '.v': filename += '.v'
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + '.glob'
+    if not os.path.exists(filename): return None
     if filename not in raw_file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         raw_file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
         file_contents[filename] = {}
@@ -415,12 +421,12 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     return None
 
 
-def get_byte_references_for(filename, types, **kwargs):
+def get_byte_references_for(filename, types, appends=None, **kwargs):
     globs = get_glob_file_for(filename, **kwargs)
     if globs is None: return None
     references = get_references_from_globs(globs)
     return tuple((start, end, loc, append, ty) for start, end, loc, append, ty in references
-                 if types is None or ty in types)
+                 if (types is None or ty in types) and (appends is None or append in appends))
 
 def get_file_as_bytes(filename, absolutize=('lib',), update_globs=False, mod_remap=dict(), transform_base=(lambda x: x), **kwargs):
     kwargs = fill_kwargs(kwargs)
@@ -445,27 +451,71 @@ def get_file_as_bytes(filename, absolutize=('lib',), update_globs=False, mod_rem
 def get_file(*args, **kwargs):
     return util.normalize_newlines(get_file_as_bytes(*args, **kwargs).decode('utf-8'))
 
-def get_require_dict(lib, **kwargs):
+# this is used to mark which statements are tied to which requires
+def insert_references(contents, ranges, references, **kwargs):
+    assert(contents is bytes(contents))
+    ret = []
+    prev = 0
+    bad = [(start, end, loc, append, ty) for start, end, loc, append, ty in references
+           if append != '<>' or ty != 'lib']
+    if bad:
+        kwargs['log']('Invalid glob entries: %s' % '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
+                                                             for start, end, loc, append, ty in bad))
+    for start, finish in ranges:
+        if prev < start:
+            ret.append((contents[prev:start], tuple()))
+        bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
+               if (start <= rstart or rend <= finish) and
+               not ((start <= rstart and rend <= finish) or
+                    finish <= rstart or rend <= start)]
+        if bad:
+            kwargs['log']('Invalid glob entries partially overlapping (%d, %d]: %s'
+                          % (start, finish,
+                             '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
+                                       for start, end, loc, append, ty in bad)))
+
+        cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
+                               if start <= rstart and rend <= finish)
+        ret.append((contents[start:finish], cur_references))
+        prev = finish
+    if prev < len(contents):
+        ret.append((contents[prev:], tuple()))
+    return tuple(reversed(ret))
+
+def remove_after_first_range(text_as_bytes, ranges):
+    if ranges:
+        start = min((start for start, end, loc in ranges))
+        return text_as_bytes[:start]
+    else:
+        return text_as_bytes
+
+REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT, EXPORT, IMPORT = 'REQUIRE', 'REQUIRE_IMPORT', 'REQUIRE_EXPORT', 'EXPORT', 'IMPORT'
+def classify_require_kind(text_as_bytes, ranges):
+    prefix = strip_comments(re.sub(r'\s+', ' ', remove_after_first_range(text_as_bytes, ranges).decode('utf-8'))).strip()
+    is_require = prefix.startswith('Require ')
+    if is_require: prefix = prefix[len('Require '):].strip()
+    if prefix.startswith('Import '):
+        return REQUIRE_IMPORT if is_require else IMPORT
+    if prefix.startswith('Export '):
+        return REQUIRE_EXPORT if is_require else EXPORT
+    return REQUIRE if is_require else None
+
+def get_require_dict(lib, update_globs=True, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
-    glob_name = filename_of_lib(lib, ext='.glob', **kwargs)
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if lib not in lib_imports_slow.keys():
-        make_globs([lib], **kwargs)
-        if os.path.isfile(glob_name): # making succeeded
-            contents = get_raw_file(glob_name, **kwargs)
-            lines = contents.split('\n')
+        globs = get_byte_references_for(v_name, types=('lib',), appends=('<>',), update_globs=update_globs, **kwargs)
+        if globs is not None:
             lib_imports_slow[lib] = {}
-            for start, end, name in IMPORT_REG.findall(contents):
+            for start, end, name, append, ty in reversed(globs):
                 name = norm_libname(name, **kwargs)
                 if name not in lib_imports_slow[lib].keys():
                     lib_imports_slow[lib][name] = []
-                lib_imports_slow[lib][name].append((int(start), int(end)))
+                lib_imports_slow[lib][name].append((start, end))
             for name in lib_imports_slow[lib].keys():
                 lib_imports_slow[lib][name] = tuple(lib_imports_slow[lib][name])
-    if lib in lib_imports_slow.keys():
-        return lib_imports_slow[lib]
-    return {}
+    return lib_imports_slow.get(lib, {})
 
 def get_require_names(lib, **kwargs):
     return tuple(sorted(get_require_dict(lib, **kwargs).keys()))

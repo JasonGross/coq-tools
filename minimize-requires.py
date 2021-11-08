@@ -3,7 +3,7 @@ import shutil, os, os.path, sys, re
 from argparse_compat import argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS, DEFAULT_VERBOSITY
 from split_file import get_coq_statement_byte_ranges, UnsupportedCoqVersionError
-from import_util import get_byte_references_for, get_file_as_bytes, sort_files_by_dependency
+from import_util import insert_references, get_byte_references_for, get_file_as_bytes, sort_files_by_dependency, classify_require_kind, EXPORT, REQUIRE_EXPORT
 from file_util import write_to_file
 from memoize import memoize
 from minimizer_drivers import run_binary_search
@@ -47,45 +47,8 @@ parser.add_argument('--coqc', metavar='COQC', dest='coqc', type=str, default='co
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 
-def insert_references(contents, ranges, references, **kwargs):
-    assert(contents is bytes(contents))
-    ret = []
-    prev = 0
-    bad = [(start, end, loc, append, ty) for start, end, loc, append, ty in references
-           if append != '<>' or ty != 'lib']
-    if bad:
-        kwargs['log']('Invalid glob entries: %s' % '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
-                                                             for start, end, loc, append, ty in bad))
-    for start, finish in ranges:
-        if prev < start:
-            ret.append((contents[prev:start], tuple()))
-        bad = [(rstart, rend, loc, append, ty) for rstart, rend, loc, append, ty in references
-               if (start <= rstart or rend <= finish) and
-               not ((start <= rstart and rend <= finish) or
-                    finish <= rstart or rend <= start)]
-        if bad:
-            kwargs['log']('Invalid glob entries partially overlapping (%d, %d]: %s'
-                          % (start, finish,
-                             '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
-                                       for start, end, loc, append, ty in bad)))
-
-        cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
-                               if start <= rstart and rend <= finish)
-        ret.append((contents[start:finish], cur_references))
-        prev = finish
-    if prev < len(contents):
-        ret.append((contents[prev:], tuple()))
-    return tuple(reversed(ret))
-
-def remove_after_first_range(text_as_bytes, ranges):
-    if ranges:
-        start = min((start for start, end, loc in ranges))
-        return text_as_bytes[:start]
-    else:
-        return text_as_bytes
-
 def mark_exports(state, keep_exports):
-    return tuple((text_as_bytes, ranges, bool(keep_exports and ranges and 'Export' in remove_after_first_range(text_as_bytes, ranges).decode('utf-8')))
+    return tuple((text_as_bytes, ranges, bool(keep_exports and ranges and classify_require_kind(text_as_bytes, ranges) in (EXPORT, REQUIRE_EXPORT)))
                  for text_as_bytes, ranges in state)
 
 SKIP='SKIP'
@@ -230,7 +193,7 @@ if __name__ == '__main__':
             try:
                 ranges = get_coq_statement_byte_ranges(name, **env)
                 contents = get_file_as_bytes(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
-                refs = get_byte_references_for(name, types=('lib',), update_globs=True, **env)
+                refs = get_byte_references_for(name, types=('lib',), appends=('<>',), update_globs=True, **env)
                 if refs is None:
                     env['log']('ERROR: Failed to get references for %s' % name, level=LOG_ALWAYS)
                     failed.append((name, 'failed to get references'))
