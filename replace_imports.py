@@ -166,46 +166,46 @@ def recursively_get_requires_from_file(filename, **kwargs):
 def include_imports(filename, as_modules=True, fast=False, log=DEFAULT_LOG, coqc='coqc', absolutize=ALL_ABSOLUTIZE_TUPLE, coq_makefile='coq_makefile', **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
-    If as_modules == True, then the imports will be wrapped in modules.
+If as_modules == True, then the imports will be wrapped in modules.
 
-    This method requires access to the coqdep program if fast == False.
-    Without it, it will fall back to manual parsing of the imports,
-    which may change behavior.
+This method requires access to the coqdep program if fast == False.
+Without it, it will fall back to manual parsing of the imports,
+which may change behavior.
 
-    >>> import tempfile, os
-    >>> f = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
-    >>> g = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
-    >>> g_name = os.path.relpath(g.name, '.')[:-2]
-    >>> f.write("  Require  Import %s Coq.Init.Logic Arith.\n  Require  Export \tPArith\t Coq.Init.Logic.\n  Require Bool.\n Import Bool. (* asdf *)\n Require Import QArith\n  ZArith\n  Setoid.\nRequire Import %s.\n Require\n  Import\n%s\n\n\t.\t(*foo*)\n\nInductive t := a | b.\n\n(*asdf*)" % (g_name, g_name, g_name))
-    >>> g.write(r"Require Export Ascii String.\n\nInductive q := c | d.")
-    >>> f.close()
-    >>> g.close()
-    >>> print(include_imports(f.name, as_modules=False))
-    Require Import Coq.Arith.Arith Coq.Bool.Bool Coq.Init.Logic Coq.PArith.PArith Coq.QArith.QArith Coq.Setoids.Setoid Coq.ZArith.ZArith Coq.Strings.Ascii Coq.Strings.String.
+>>> import tempfile, os
+>>> f = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
+>>> g = tempfile.NamedTemporaryFile(dir='.', suffix='.v', delete=False)
+>>> g_name = os.path.relpath(g.name, '.')[:-2]
+>>> f.write("  Require  Import %s Coq.Init.Logic Arith.\\n  Require  Export \tPArith\t Coq.Init.Logic.\\n  Require Bool.\\n Import Bool. (* asdf *)\\n Require Import QArith\\n  ZArith\\n  Setoid.\\nRequire Import %s.\\n Require\\n  Import\\n%s\\n\\n\t.\t(*foo*)\\n\\nInductive t := a | b.\\n\\n(*asdf*)" % (g_name, g_name, g_name))
+>>> g.write(r"Require Export Ascii String.\\n\\nInductive q := c | d.")
+>>> f.close()
+>>> g.close()
+>>> print(include_imports(f.name, as_modules=False))
+Require Import Coq.Arith.Arith Coq.Bool.Bool Coq.Init.Logic Coq.PArith.PArith Coq.QArith.QArith Coq.Setoids.Setoid Coq.ZArith.ZArith Coq.Strings.Ascii Coq.Strings.String.
 
-    Inductive q := c | d.
-    (* asdf *)
-
-
-    Inductive t := a | b.
-
-    (*asdf*)
-
-    >>> print(include_imports(f.name, as_modules=False, fast=True))
-    Require Import Arith Bool Coq.Init.Logic PArith QArith Setoid ZArith Ascii String.
-
-    Inductive q := c | d.
-    (* asdf *)
+Inductive q := c | d.
+(* asdf *)
 
 
-    Inductive t := a | b.
+Inductive t := a | b.
 
-    (*asdf*)
-    >>> exts = ('.v', '.v.d', '.glob', '.vo', '.o', '.cmi', '.cmxs', '.native', '.cmx', '.vok', '.vos')
-    >>> names = [f.name[:-2] + ext for ext in exts] + [g.name[:-2] + ext for ext in exts]
-    >>> names = [i for i in names if os.path.exists(i)]
-    >>> for name in names: os.remove(name)
-    """
+(*asdf*)
+
+>>> print(include_imports(f.name, as_modules=False, fast=True))
+Require Import Arith Bool Coq.Init.Logic PArith QArith Setoid ZArith Ascii String.
+
+Inductive q := c | d.
+(* asdf *)
+
+
+Inductive t := a | b.
+
+(*asdf*)
+>>> exts = ('.v', '.v.d', '.glob', '.vo', '.o', '.cmi', '.cmxs', '.native', '.cmx', '.vok', '.vos')
+>>> names = [f.name[:-2] + ext for ext in exts] + [g.name[:-2] + ext for ext in exts]
+>>> names = [i for i in names if os.path.exists(i)]
+>>> for name in names: os.remove(name)
+"""
     if 'make_coqc' in kwargs.keys():
         coqc = kwargs['make_coqc']
     if filename[-2:] != '.v': filename += '.v'

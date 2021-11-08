@@ -489,14 +489,19 @@ def remove_after_first_range(text_as_bytes, ranges):
     else:
         return text_as_bytes
 
-REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT, EXPORT, IMPORT = 'REQUIRE', 'REQUIRE_IMPORT', 'REQUIRE_EXPORT', 'EXPORT', 'IMPORT'
+REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT, EXPORT, IMPORT = 'REQUIRE', 'REQUIRE IMPORT', 'REQUIRE EXPORT', 'EXPORT', 'IMPORT'
 def classify_require_kind(text_as_bytes, ranges):
-    prefix = strip_comments(re.sub(r'\s+', ' ', remove_after_first_range(text_as_bytes, ranges).decode('utf-8'))).strip()
-    is_require = prefix.startswith('Require ')
-    if is_require: prefix = prefix[len('Require '):].strip()
-    if prefix.startswith('Import '):
+    """cassifies the kind of require statement
+
+>>> res = {REQUIRE:'R', REQUIRE_IMPORT:'RI', REQUIRE_EXPORT:'RE', EXPORT:'E', IMPORT:'I', None:None}
+>>> print(res[classify_require_kind(b'From Coq Require Export ZArith.ZArith.', ((24, 37, 'Coq.ZArith.ZArith'),))])
+RE
+"""
+    prefix = strip_comments(re.sub(r'\s+', ' ', remove_after_first_range(text_as_bytes, ranges).decode('utf-8'))).strip() + ' '
+    is_require = 'Require ' in prefix
+    if 'Import ' in prefix:
         return REQUIRE_IMPORT if is_require else IMPORT
-    if prefix.startswith('Export '):
+    if 'Export ' in prefix:
         return REQUIRE_EXPORT if is_require else EXPORT
     return REQUIRE if is_require else None
 
@@ -632,3 +637,14 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
     return [lib]
+
+if __name__ == "__main__":
+    # if we're working in Python 3.3, we can test this file
+    try:
+        import doctest
+        success = True
+    except ImportError:
+        print('This is not the main file to use.\nOnly run it if you have doctest (Python 3.3+) and are testing things.')
+        success = False
+    if success:
+        doctest.testmod()

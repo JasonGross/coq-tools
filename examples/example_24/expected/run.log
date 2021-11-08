@@ -1,29 +1,29 @@
-getting AA.glob
-getting A.glob
-getting B.glob
-getting C.glob
-getting D.glob
 getting AA.v
+getting AA.glob
+getting A.v
+getting A.glob
+getting B.v
+getting B.glob
+getting C.v
+getting C.glob
+getting D.v
+getting D.glob
 getting AA.glob
 Running coq on initial contents...
 Successful change
 Saving final version of AA.v...
-getting D.v
 getting D.glob
 Running coq on initial contents...
 Successful change
 Saving final version of D.v...
-getting C.v
 getting C.glob
 Running coq on initial contents...
 Successful change
 Saving final version of C.v...
-getting B.v
 getting B.glob
 Running coq on initial contents...
 Successful change
 Saving final version of B.v...
-getting A.v
 getting A.glob
 Running coq on initial contents...
 Successful change
