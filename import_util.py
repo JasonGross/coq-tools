@@ -254,26 +254,31 @@ def is_absolutizable_mod_reference(contents, reference):
 # coqc on the file.
 #
 # contents should be bytes; globs should be string
-def update_with_glob(contents, globs, absolutize, libname, transform_base=(lambda x: x), **kwargs):
+def update_one_with_glob(contents, ref, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     assert(contents is bytes(contents))
     kwargs = fill_kwargs(kwargs)
-    for ref in get_references_from_globs(globs):
-        start, end, loc, append, ty = ref
-        cur_code = contents[start:end].decode('utf-8')
-        if ty not in absolutize or loc == libname:
-            kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
-        # sanity check for correct replacement, to skip things like record builder notation
-        elif append != '<>' and not constr_name_endswith(cur_code, append):
-            kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
-        elif ty == 'mod' and not is_absolutizable_mod_reference(contents, ref):
-            kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
-        else: # ty in absolutize and loc != libname
-            rep = transform_base(loc) + ('.' + append if append != '<>' else '')
-            kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep), level=2, max_level=3)
-            kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty), level=3)
-            contents = contents[:start] + rep.encode('utf-8') + contents[end:]
-            contents = remove_from_require_before(contents, start)
+    start, end, loc, append, ty = ref
+    cur_code = contents[start:end].decode('utf-8')
+    if ty not in absolutize or loc == libname:
+        kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
+    # sanity check for correct replacement, to skip things like record builder notation
+    elif append != '<>' and not constr_name_endswith(cur_code, append):
+        kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
+    elif ty == 'mod' and not is_absolutizable_mod_reference(contents, ref):
+        kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
+    else: # ty in absolutize and loc != libname
+        rep = transform_base(loc) + ('.' + append if append != '<>' else '')
+        kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep), level=2, max_level=3)
+        kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty), level=3)
+        contents = contents[:start] + rep.encode('utf-8') + contents[end:]
+        contents = remove_from_require_before(contents, start)
 
+    return contents
+
+def update_with_glob(contents, globs, *args, **kwargs):
+    assert(contents is bytes(contents))
+    for ref in get_references_from_globs(globs):
+        contents = update_one_with_glob(contents, ref, *args, **kwargs)
     return contents
 
 def get_all_v_files(directory, exclude=tuple()):
@@ -452,12 +457,12 @@ def get_file(*args, **kwargs):
     return util.normalize_newlines(get_file_as_bytes(*args, **kwargs).decode('utf-8'))
 
 # this is used to mark which statements are tied to which requires
-def insert_references(contents, ranges, references, **kwargs):
+def insert_references(contents, ranges, references, types=('lib',), appends=('<>',), **kwargs):
     assert(contents is bytes(contents))
     ret = []
     prev = 0
     bad = [(start, end, loc, append, ty) for start, end, loc, append, ty in references
-           if append != '<>' or ty != 'lib']
+           if append not in appends or ty not in types]
     if bad:
         kwargs['log']('Invalid glob entries: %s' % '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
                                                              for start, end, loc, append, ty in bad))
@@ -474,7 +479,7 @@ def insert_references(contents, ranges, references, **kwargs):
                              '\n'.join('R%d:%d %s <> %s %s' % (start, end, loc, append, ty)
                                        for start, end, loc, append, ty in bad)))
 
-        cur_references = tuple((rstart - start, rend - start, loc) for rstart, rend, loc, append, ty in references
+        cur_references = tuple((rstart - start, rend - start, loc, append, ty) for rstart, rend, loc, append, ty in references
                                if start <= rstart and rend <= finish)
         ret.append((contents[start:finish], cur_references))
         prev = finish
@@ -484,7 +489,7 @@ def insert_references(contents, ranges, references, **kwargs):
 
 def remove_after_first_range(text_as_bytes, ranges):
     if ranges:
-        start = min((start for start, end, loc in ranges))
+        start = min((r[0] for r in ranges))
         return text_as_bytes[:start]
     else:
         return text_as_bytes

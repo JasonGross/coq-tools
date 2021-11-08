@@ -90,7 +90,7 @@ def step_state(state, action):
     while len(state) > 0:
         (text_as_bytes, references, force_keep), state = state[0], state[1:]
         if references:
-            (start, end, loc), new_references = references[0], tuple(references[1:])
+            (start, end, _loc, _append, _ty), new_references = references[0], tuple(references[1:])
             if action == SKIP or action is None:
                 ret.append((text_as_bytes, new_references, force_keep))
             elif action == REMOVE and not force_keep:
