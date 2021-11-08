@@ -3,13 +3,13 @@ import os, subprocess, re, sys, glob, os.path, tempfile, time
 from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
-from split_file import split_coq_file_contents
+from split_file import split_coq_file_contents, get_coq_statement_byte_ranges
 from strip_comments import strip_comments
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs"]
 
 file_mtimes = {}
 file_contents = {}
@@ -426,7 +426,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     return None
 
 
-def get_byte_references_for(filename, types, appends=None, **kwargs):
+def get_byte_references_for(filename, types=None, appends=None, **kwargs):
     globs = get_glob_file_for(filename, **kwargs)
     if globs is None: return None
     references = get_references_from_globs(globs)
@@ -486,6 +486,13 @@ def insert_references(contents, ranges, references, types=('lib',), appends=('<>
     if prev < len(contents):
         ret.append((contents[prev:], tuple()))
     return tuple(reversed(ret))
+
+def get_file_statements_insert_references(filename, **kwargs):
+    ranges = get_coq_statement_byte_ranges(filename, **kwargs)
+    contents = get_file_as_bytes(filename, **kwargs)
+    refs = get_byte_references_for(filename, **kwargs)
+    if refs is None: return None
+    return insert_references(contents, ranges, refs, **kwargs)
 
 def remove_after_first_range(text_as_bytes, ranges):
     if ranges:

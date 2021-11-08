@@ -2,8 +2,8 @@
 import shutil, os, os.path, sys, re
 from argparse_compat import argparse
 from custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS, DEFAULT_VERBOSITY
-from split_file import get_coq_statement_byte_ranges, UnsupportedCoqVersionError
-from import_util import insert_references, get_byte_references_for, get_file_as_bytes, sort_files_by_dependency, classify_require_kind, EXPORT, REQUIRE_EXPORT
+from split_file import UnsupportedCoqVersionError
+from import_util import get_file_statements_insert_references, sort_files_by_dependency, classify_require_kind, EXPORT, REQUIRE_EXPORT
 from file_util import write_to_file
 from memoize import memoize
 from minimizer_drivers import run_binary_search
@@ -119,8 +119,8 @@ def state_to_contents(state):
 
 # the higher verbose_base, the less verbose we are, since we start at a higher level by default
 def make_check_state(original_contents, verbose_base=4-DEFAULT_VERBOSITY, **kwargs):
-    assert(original_contents is bytes(original_contents))
-    expected_output, orig_cmds, orig_retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents.decode('utf-8'), kwargs['timeout'], verbose_base=2, **kwargs)
+    # original_contents is str
+    expected_output, orig_cmds, orig_retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], original_contents, kwargs['timeout'], verbose_base=2, **kwargs)
     @memoize
     def check_contents(contents):
         output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], contents, kwargs['timeout'], verbose_base=2, **kwargs)
@@ -191,20 +191,18 @@ if __name__ == '__main__':
         failed = []
         for name in env['input_files']:
             try:
-                ranges = get_coq_statement_byte_ranges(name, **env)
-                contents = get_file_as_bytes(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, **env)
-                refs = get_byte_references_for(name, types=('lib',), appends=('<>',), update_globs=True, **env)
-                if refs is None:
+                annotated_contents = get_file_statements_insert_references(name, absolutize=(('lib',) if args.absolutize else tuple()), update_globs=True, types=('lib',), appends=('<>',), **env)
+                if annotated_contents is None:
                     env['log']('ERROR: Failed to get references for %s' % name, level=LOG_ALWAYS)
                     failed.append((name, 'failed to get references'))
                     if env['keep_going']:
                         continue
                     else:
                         break
-                annotated_contents = mark_exports(insert_references(contents, ranges, refs, **env), env['keep_exports'])
+                annotated_contents = mark_exports(annotated_contents, env['keep_exports'])
                 save_state = make_save_state(name, **env)
-                check_state = make_check_state(contents, **env)
-                verbose_check_state = make_check_state(contents, verbose_base=DEFAULT_VERBOSITY, **env)
+                check_state = make_check_state(state_to_contents(annotated_contents), **env)
+                verbose_check_state = make_check_state(state_to_contents(annotated_contents), verbose_base=DEFAULT_VERBOSITY, **env)
                 env['log']('Running coq on initial contents...')
                 if not verbose_check_state(annotated_contents):
                     env['log']('ERROR: Failed to update %s' % name, level=LOG_ALWAYS)
