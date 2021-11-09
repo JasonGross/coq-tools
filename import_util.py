@@ -9,7 +9,7 @@ from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs"]
+__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs", "split_requires_of_statements"]
 
 file_mtimes = {}
 file_contents = {}
@@ -490,7 +490,7 @@ def insert_references(contents, ranges, references, types=('lib',), appends=('<>
         prev = finish
     if prev < len(contents):
         ret.append((contents[prev:], tuple()))
-    return tuple(reversed(ret))
+    return tuple(ret)
 
 def get_file_statements_insert_references(filename, **kwargs):
     ranges = get_coq_statement_byte_ranges(filename, **kwargs)
@@ -521,6 +521,34 @@ RE
     if 'Export ' in prefix:
         return REQUIRE_EXPORT if is_require else EXPORT
     return REQUIRE if is_require else None
+
+def split_requires_of_statements(annotated_contents, types=('lib',), appends=('<>',), **kwargs):
+    already_required = set()
+    prefix, postfix = '\nRequire ', '.'
+    for statement, references in annotated_contents:
+        statement_str = statement.decode('utf-8')
+        if not references:
+            yield (statement, references)
+            continue
+        rkind = classify_require_kind(statement, references)
+        if rkind not in (REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT) or len(references) == 1 and rkind == REQUIRE:
+            yield (statement, references)
+            continue
+        remaining_references = []
+        emitted_require = False
+        for start, end, loc, append, ty in references:
+            if ty in types and append in appends:
+                if loc not in already_required:
+                    already_required.add(loc)
+                    emitted_require = True
+                    yield ((prefix + loc + postfix).encode('utf-8'),
+                           (len(prefix), len(prefix) - start + end, loc, append, ty))
+            else:
+                remaining_references.append((start - len('Require '), end - len('Require '), loc, append, ty))
+        if rkind == REQUIRE: continue
+        statement_str = re.sub(r'Require\s', '', statement_str, count=1)
+        if emitted_require and not re.match(r'\s', statement_str[0]): yield ('\n'.encode('utf-8'), tuple()) # we need an extra newline
+        yield (statement_str.encode('utf-8'), tuple(remaining_references))
 
 def get_require_dict(lib, update_globs=True, **kwargs):
     kwargs = fill_kwargs(kwargs)

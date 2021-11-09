@@ -199,7 +199,7 @@ if __name__ == '__main__':
                         continue
                     else:
                         break
-                annotated_contents = mark_exports(annotated_contents, env['keep_exports'])
+                annotated_contents = mark_exports(tuple(reversed(annotated_contents)), env['keep_exports'])
                 save_state = make_save_state(name, **env)
                 check_state = make_check_state(state_to_contents(annotated_contents), **env)
                 verbose_check_state = make_check_state(state_to_contents(annotated_contents), verbose_base=DEFAULT_VERBOSITY, **env)
