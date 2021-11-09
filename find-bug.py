@@ -4,7 +4,7 @@ import traceback
 import custom_arguments
 from argparse_compat import argparse
 from replace_imports import include_imports, normalize_requires, get_required_contents, recursively_get_requires_from_file, absolutize_and_mangle_libname
-from import_util import get_file, get_recursive_require_names
+from import_util import get_file, get_recursive_require_names, run_recursively_get_imports
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents, split_leading_comments_and_whitespace
@@ -950,6 +950,21 @@ def try_strip_comments(output_file_name, **kwargs):
                                    **kwargs)
 
 
+def try_normalize_requires(output_file_name, **kwargs):
+    contents = read_from_file(output_file_name)
+    old_contents = contents
+    # we need to clear the libimport cache to get an accurate list of requires
+    clear_libimport_cache(lib_of_filename(output_file_name, **kwargs))
+    new_contents = normalize_requires(output_file_name, update_globs=True, **env)
+
+    check_change_and_write_to_file(old_contents, new_contents, output_file_name,
+                                   unchanged_message='No Requires to normalize.',
+                                   success_message='Succeeded in normalizing Requires.',
+                                   failure_description='normalize Requires',
+                                   changed_descruption='Normalized Requires file',
+                                   **kwargs)
+
+
 
 def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailing_space, **kwargs):
     contents = read_from_file(output_file_name)
@@ -1058,7 +1073,8 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     env['log']('\nNow, I will attempt to strip the comments from this file...')
     try_strip_comments(output_file_name, **env)
 
-
+    env['log']('\nNow, I will attempt to factor out all of the [Require]s...')
+    try_normalize_requires(output_file_name, **env)
 
     contents = read_from_file(output_file_name)
     env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')
@@ -1313,8 +1329,8 @@ if __name__ == '__main__':
                 if arg[0] == '-I': env.get(passing_prefix + 'ocaml_dirnames', []).append(arg[1])
 
         if env['minimize_before_inlining']:
-            env['log']('\nFirst, I will attempt to factor out all of the [Require]s %s, and store the result in %s...' % (bug_file_name, output_file_name))
-            inlined_contents = normalize_requires(bug_file_name, **env)
+            env['log']('\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s...' % (bug_file_name, output_file_name))
+            inlined_contents = get_file(bug_file_name, update_globs=True, **env)
             args.bug_file.close()
             inlined_contents = maybe_add_coqlib_import(inlined_contents, **env)
             inlined_contents = add_admit_tactic(inlined_contents, **env)
@@ -1360,7 +1376,7 @@ if __name__ == '__main__':
             # order.  As soon as we succeed, we reset the list
             last_output = get_file(output_file_name, **env)
             clear_libimport_cache(lib_of_filename(output_file_name, **env))
-            cur_output_gen = (lambda mod_remap: add_admit_tactic(normalize_requires(output_file_name, mod_remap=mod_remap, **env), **env).strip() + '\n')
+            cur_output_gen = (lambda mod_remap: add_admit_tactic(get_file(output_file_name, mod_remap=mod_remap, **env), **env).strip() + '\n')
             cur_output = cur_output_gen(dict())
             # keep a list of libraries we've already tried to inline, and don't try them again
             libname_blacklist = []
@@ -1384,15 +1400,32 @@ if __name__ == '__main__':
                         # we prefer wrapping modules via Include,
                         # because this is a bit more robust against
                         # future module inlining (see example test 45)
-                        def get_test_output(absolutize_mods=False, first_wrap_then_include=True):
+                        def get_test_output(absolutize_mods=False, first_wrap_then_include=True, without_require=True, insert_at_top=False):
                             test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: absolutize_and_mangle_libname(req_module, first_wrap_then_include=first_wrap_then_include)})
-                            return ('\n' + test_output).replace(rep, '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, **env).strip() + '\n').strip() + '\n'
-                        test_output = get_test_output(absolutize_mods=False, first_wrap_then_include=True)
+                            replacement = '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, without_require=without_require, **env).strip() + '\n'
+                            if without_require:
+                                all_imports = run_recursively_get_imports(req_module, **env) # like get_recursive_require_names, but with better sorting properties, I think, and also automatically strips off the self module
+                                replacement = ''.join('Require %s.\n' % i for i in all_imports) + '\n' + replacement
+                            if insert_at_top:
+                                header, test_output = split_leading_comments_and_whitespace(test_output)
+                                return add_admit_tactic((
+                                    header +
+                                    replacement + '\n' +
+                                    ('\n' + test_output).replace(rep, '\n')).strip() + '\n',
+                                                        **env)
+                            else:
+                                return ('\n' + test_output).replace(rep, replacement, 1).replace(rep, '\n').strip() + '\n'
                         test_output_alts = [
-                            (' without Include', get_test_output(absolutize_mods=False, first_wrap_then_include=False)),
-                            (' via Include, absolutizing mod references', get_test_output(absolutize_mods=True, first_wrap_then_include=True)),
-                            (' without Include, absolutizing mod references', get_test_output(absolutize_mods=True, first_wrap_then_include=False))
+                            (((' without Include' if not first_wrap_then_include else ' via Include')
+                              + (', absolutizing mod references' if absolutize_mods else '')
+                              + (', stripping Requires' if without_require else ', with Requires')),
+                             get_test_output(absolutize_mods=absolutize_mods, first_wrap_then_include=first_wrap_then_include, without_require=without_require, insert_at_top=insert_at_top))
+                            for absolutize_mods in (False, True)
+                            for first_wrap_then_include in (True, False)
+                            for without_require, insert_at_top in ((True, False),
+                                                                   (False, True))
                         ]
+                        (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
                     except IOError as e:
                         env['log']('\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s' % (req_module, str(e), str(tuple(env['libnames'])), str(tuple(env['non_recursive_libnames']))))
                         continue
@@ -1401,8 +1434,8 @@ if __name__ == '__main__':
 
                     if not check_change_and_write_to_file(
                             cur_output, test_output, output_file_name,
-                            unchanged_message='Invalid empty file!', success_message=('Inlining %s via an Include succeeded.' % req_module),
-                            failure_description=('inline %s via Include' % req_module), changed_description='File',
+                            unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, test_output_descr)),
+                            failure_description=('inline %s%s' % (req_module, test_output_descr)), changed_description='File',
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             display_source_to_error=False,
                             **env):
@@ -1423,8 +1456,8 @@ if __name__ == '__main__':
                             # what's going wrong in both cases
                             check_change_and_write_to_file(
                                 cur_output, test_output, output_file_name,
-                                unchanged_message='Invalid empty file!', success_message=('Inlining %s via an Include succeeded.' % req_module),
-                                failure_description=('inline %s via Include' % req_module), changed_description='File',
+                                unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, test_output_descr)),
+                                failure_description=('inline %s%s' % (req_module, test_output_descr)), changed_description='File',
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                                 display_source_to_error=True,
                                 **env)
@@ -1437,11 +1470,10 @@ if __name__ == '__main__':
                             env['inline_failure_libnames'].append(req_module)
                             continue
 
-                    if minimize_file(output_file_name, die=(lambda x: False), **env):
+                    if minimize_file(output_file_name, die=(lambda *args, **kargs: False), **env):
                         break
 
                 clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
-                cur_output_gen = (lambda mod_remap: add_admit_tactic(normalize_requires(output_file_name, update_globs=True, mod_remap=mod_remap, **env), **env).strip() + '\n')
                 cur_output = cur_output_gen(dict())
 
             # and we make one final run, or, in case there are no requires, one run

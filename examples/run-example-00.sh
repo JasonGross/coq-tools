@@ -49,8 +49,7 @@ EXPECTED_ERROR=$(cat <<EOF
 getting example_[0-9]\+\.v (${ABS_PATH}/example_[0-9]\+\.v)
 getting example_[0-9]\+\.glob (${ABS_PATH}/example_[0-9]\+\.glob)
 
-First, I will attempt to factor out all of the \[Require\]s example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
-getting example_[0-9]\+\.glob (${ABS_PATH}/example_[0-9]\+\.glob)
+First, I will attempt to absolutize relevant \[Require\]s in example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
 
 Now, I will attempt to coq the file, and find the error\.\.\.
 
@@ -63,7 +62,7 @@ The timeout for coqc has been set to: 3
 This file produces the following output when Coq'ed:
 Set
      : Type
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(1\|2\), characters 0-15:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(0\|1\), characters 0-15:
 Error: The command has not failed\s\?!
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s

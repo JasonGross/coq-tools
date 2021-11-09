@@ -102,6 +102,6 @@ if __name__ == '__main__':
         p.stdin.close()
         p.wait()
         print("Mismatch: good prefix search:\n%s" % search_for)
-        print("Mismatch: bad next characters at %d: %s" % (len(search_for), repr(sys.argv[2][len(search_for):][:10])))
-        print("Mismatch: expected next characters at %d: %s" % (len(stdout)-1, repr(sys.argv[1][len(stdout)-1:][:10])))
+        print("Mismatch: expected next characters at %d: %s" % (len(search_for), repr(sys.argv[2][len(search_for):][:10])))
+        print("Mismatch: actual next characters at %d: %s" % (len(stdout)-1, repr(sys.argv[1][len(stdout)-1:][:10])))
     #sys.exit(p.errorcode)

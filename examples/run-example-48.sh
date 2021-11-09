@@ -47,7 +47,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 2\(0\|1\), characters 72-73:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 72-73:
 Error:
 In environment
 f := fun _ : bar => eq_refl : forall _ : bar, eq Foo\.foo Set
@@ -92,8 +92,8 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-noinit" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
+Require Coq\.Init\.Ltac\.
 
-Declare ML Module "ltac_plugin"\.
 Inductive False : Prop := \.
 Axiom proof_admitted : False\.
 Tactic Notation "admit" := abstract case proof_admitted\.
@@ -102,7 +102,6 @@ Global Set Universe Polymorphism\.
 Definition foo@{i} := Type@{i}\.
 
 End Foo\.
-Require Coq\.Init\.Ltac\.
 Import Coq\.Init\.Ltac\.
 Monomorphic Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : eq x x\.
 Arguments eq_refl {A x} , \[A\] x\.
