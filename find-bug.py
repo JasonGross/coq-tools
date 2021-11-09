@@ -11,6 +11,7 @@ from split_file import split_coq_file_contents, split_leading_comments_and_white
 from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
+from import_util import split_requires_of_statements, get_file_statements_insert_references
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib, get_coq_accepts_compile
 from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
@@ -965,6 +966,25 @@ def try_normalize_requires(output_file_name, **kwargs):
                                    **kwargs)
 
 
+def try_split_requires(output_file_name, **kwargs):
+    contents = read_from_file(output_file_name)
+    old_contents = contents
+    annotated_contents = get_file_statements_insert_references(output_file_name, update_globs=True, types=('lib',), appends=('<>',), **kwargs)
+    if annotated_contents is None:
+        env['log']('\nNon-fatal error: Failed to get references for %s' % output_file_name, level=LOG_ALWAYS)
+        return False
+
+    annotated_contents = split_requires_of_statements(annotated_contents, **env)
+    new_contents = ''.join(v[0].decode('utf-8') for v in annotated_contents)
+
+    return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
+                                          unchanged_message='No Requires to split.',
+                                          success_message='Succeeded in splitting Requires.',
+                                          failure_description='split Requires',
+                                          changed_descruption='Split Requires file',
+                                          **kwargs)
+
+
 
 def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailing_space, **kwargs):
     contents = read_from_file(output_file_name)
@@ -1075,6 +1095,9 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
 
     env['log']('\nNow, I will attempt to factor out all of the [Require]s...')
     try_normalize_requires(output_file_name, **env)
+
+    env['log']('\nNow, I will attempt to split up [Require] statements...')
+    try_split_requires(output_file_name, **env)
 
     contents = read_from_file(output_file_name)
     env['log']('\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods.')

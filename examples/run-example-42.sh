@@ -88,9 +88,8 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Module Export B\.
 Definition foo : 1 = 2 -> forall P, ~~P -> P\.
 Proof\.
   intros\.
@@ -99,11 +98,21 @@ Proof\.
   congruence\.
 Defined\.
 
-Require Import Foo\.A\.
-Require Import Foo\.C\.
+Module Export Foo_DOT_A_WRAPPED\.
+Module Export A\.
+Axiom a : Set\.
 
-End B\.
-Import Foo\.C\.
+End A\.
+Module Export Foo\.
+Module A\.
+Include Foo_DOT_A_WRAPPED\.A\.
+End A\.
+Require Coq\.Logic\.Classical_Prop\.
+
+Lemma npp : forall P, ~~P -> P\.
+Proof\.
+tauto\.
+Qed\.
 
 Definition bar := Eval unfold foo in foo\.
 
