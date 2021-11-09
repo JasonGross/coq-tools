@@ -1359,7 +1359,7 @@ if __name__ == '__main__':
             # requires to the top, then try to replace them in reverse
             # order.  As soon as we succeed, we reset the list
             last_output = get_file(output_file_name, **env)
-            clear_libimport_cache(lib_of_filename(output_file_name, libnames=tuple(env['libnames']), non_recursive_libnames=tuple(env['non_recursive_libnames'])))
+            clear_libimport_cache(lib_of_filename(output_file_name, **env))
             cur_output_gen = (lambda mod_remap: add_admit_tactic(normalize_requires(output_file_name, mod_remap=mod_remap, **env), **env).strip() + '\n')
             cur_output = cur_output_gen(dict())
             # keep a list of libraries we've already tried to inline, and don't try them again
