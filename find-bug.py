@@ -1405,7 +1405,7 @@ if __name__ == '__main__':
                             replacement = '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, without_require=without_require, **env).strip() + '\n'
                             if without_require:
                                 all_imports = run_recursively_get_imports(req_module, **env) # like get_recursive_require_names, but with better sorting properties, I think, and also automatically strips off the self module
-                                replacement = ''.join('Require %s.\n' % i for i in all_imports) + '\n' + replacement
+                                replacement = '\n' + ''.join('Require %s.\n' % i for i in all_imports) + replacement
                             if insert_at_top:
                                 header, test_output = split_leading_comments_and_whitespace(test_output)
                                 return add_admit_tactic((
