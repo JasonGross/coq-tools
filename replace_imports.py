@@ -103,7 +103,7 @@ def absolutize_and_mangle_libname(lib, first_wrap_then_include=False):
     module_name, mangled_module_name, lib_parts, full_module_name = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
     return full_module_name
 
-def contents_as_module_without_require(lib, other_imports, first_wrap_then_include=False, export=False, **kwargs):
+def contents_as_module(lib, other_imports, first_wrap_then_include=False, export=False, without_require=True, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs['absolutize'])
     if import_all_directories and not export:
         # N.B. This strategy does not work with the Include strategy
@@ -115,7 +115,7 @@ def contents_as_module_without_require(lib, other_imports, first_wrap_then_inclu
         transform_base = lambda x: x
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
-    contents = strip_requires(contents)
+    if without_require: contents = strip_requires(contents)
     kwargs['log'](contents, level=3)
     module_name, mangled_module_name, lib_parts, _ = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
     # import the top-level wrappers
@@ -154,7 +154,7 @@ Preserve any leading whitespace/comments.
     return header + contents
 
 def get_required_contents(libname, **kwargs):
-    return contents_as_module_without_require(libname, other_imports=[], export=True, **fill_kwargs(kwargs))
+    return contents_as_module(libname, other_imports=[], export=True, **fill_kwargs(kwargs))
 
 def recursively_get_requires_from_file(filename, **kwargs):
     if filename[-2:] != '.v': filename += '.v'
@@ -217,7 +217,7 @@ Inductive t := a | b.
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module_without_require(import_name, imports_done, log=log, absolutize=absolutize, **kwargs) + '\n'
+                rtn += contents_as_module(import_name, imports_done, log=log, absolutize=absolutize, without_require=True, **kwargs) + '\n'
             else:
                 rtn += contents_without_imports(import_name, log=log, absolutize=tuple(), **kwargs) + '\n'
             imports_done.append(import_name)

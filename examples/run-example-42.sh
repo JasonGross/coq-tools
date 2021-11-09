@@ -47,7 +47,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 2\(2\|3\), characters 6-25:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-25:
 Error:
 The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*
@@ -88,11 +88,21 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
-(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-finder from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
+Module Export B\.
+Definition foo : 1 = 2 -> forall P, ~~P -> P\.
+Proof\.
+  intros\.
+  try tauto\.
 
-Require Foo\.B\.
-Import Foo\.B\.
+  congruence\.
+Defined\.
+
+Require Import Foo\.A\.
+Require Import Foo\.C\.
+
+End B\.
 Import Foo\.C\.
 
 Definition bar := Eval unfold foo in foo\.

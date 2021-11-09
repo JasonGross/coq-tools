@@ -45,7 +45,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(0\|1\), characters 10-14:
+File "/tmp/tmp[A-Za-z0-9_]\+\.v", line \(9\|10\), characters 10-14:
 Error: The reference True was not found in the current environment\.
 EOF
 )

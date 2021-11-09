@@ -23,6 +23,7 @@ ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
 .DEFAULT_GOAL := test-suite
+.SECONDEXPANSION:
 
 # Order the builds for 8 so they don't run in parallel
 example_08-2_result.log: | example_08_result.log
@@ -135,7 +136,7 @@ print-support::
 	@printf "coqc is < 8.12:\t\t\tYes\n"
 endif
 
-$(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $(wildcard example_%/*.v run-example-%.sh) Makefile
+$(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $$(wildcard example_%/example_%.v) run-example-%.sh
 	$(VECHO) "TEST run-example-$*.sh..." >&2
 	$(Q)yes "y" 2>/dev/null | ./run-example-$*.sh >"example_$*_make.log" 2>&1; RV=$$?; (echo "$$RV" > "$@")
 	$(Q)RV="$$(cat "$@")"; if [ "$$RV" -eq 0 ]; then RESULT="$(GREEN)success!$(NC)"; else RESULT="$(RED)failure$(NC)"; fi; \
