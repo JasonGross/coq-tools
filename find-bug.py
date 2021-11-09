@@ -12,7 +12,7 @@ from split_definitions import split_statements_to_definitions, join_definitions
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_ltac_support_snippet, get_coqc_coqlib, get_coq_accepts_compile
 from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
 from binding_util import has_dir_binding, deduplicate_trailing_dir_bindings, process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
@@ -1275,11 +1275,17 @@ if __name__ == '__main__':
         temp_file.close()
         env['remove_temp_file'] = True
 
+    def make_make_coqc(coqc_prog, **kwargs):
+        if get_coq_accepts_compile(coqc_prog, **kwargs): return os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + coqc_prog
+        if 'coqtop' in coqc_prog: return coqc_prog.replace('coqtop', 'coqc')
+        return 'coqc'
+
     if env['coqc_is_coqtop']:
         if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
-        env['make_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + env['coqc']
+        env['make_coqc'] = make_make_coqc(env['coqc'], **env)
     if env['passing_coqc_is_coqtop']:
         if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
+        env['passing_make_coqc'] = make_make_coqc(env['passing_coqc'], **env)
 
     coqc_help = get_coqc_help(env['coqc'], **env)
     coqc_version = get_coqc_version(env['coqc'], **env)

@@ -15,8 +15,8 @@ DEFAULT_LIBNAMES=(('.', 'Top'), )
 
 IMPORT_LINE_REG = re.compile(r'^\s*(?:From|Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)', re.MULTILINE | re.DOTALL)
 
-def fill_kwargs(kwargs):
-    defaults = {
+def fill_kwargs(kwargs, for_makefile=True):
+    rtn = {
         'fast':False,
         'log':DEFAULT_LOG,
         'libnames':DEFAULT_LIBNAMES,
@@ -25,12 +25,13 @@ def fill_kwargs(kwargs):
         'absolutize':ALL_ABSOLUTIZE_TUPLE,
         'coq_makefile':'coq_makefile'
     }
-    for k, v in defaults.items():
-        if k not in kwargs.keys():
-            kwargs[k] = v
-    if 'make_coqc' in kwargs.keys(): # handle the case where coqc for the makefile is different
-        kwargs['coqc'] = kwargs['make_coqc']
-    return kwargs
+    rtn.update(kwargs)
+    if for_makefile:
+        if 'make_coqc' in rtn.keys(): # handle the case where coqc for the makefile is different
+            rtn['coqc'] = rtn['make_coqc']
+        if 'passing_make_coqc' in rtn.keys(): # handle the case where coqc for the makefile is different
+            rtn['passing_coqc'] = rtn['passing_make_coqc']
+    return rtn
 
 def contents_without_imports(lib, **kwargs):
     v_file = filename_of_lib(lib, ext='.v', **kwargs)
