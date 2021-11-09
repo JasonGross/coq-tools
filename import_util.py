@@ -30,7 +30,7 @@ def warning(*objs):
 def error(*objs):
     print("ERROR: ", *objs, file=sys.stderr)
 
-def fill_kwargs(kwargs):
+def fill_kwargs(kwargs, for_makefile=False):
     rtn = {
         'libnames'              : DEFAULT_LIBNAMES,
         'non_recursive_libnames': tuple(),
@@ -41,8 +41,13 @@ def fill_kwargs(kwargs):
         'walk_tree'             : True,
         'coqc_args'             : tuple(),
         'inline_coqlib'         : None,
-        }
+    }
     rtn.update(kwargs)
+    if for_makefile:
+        if 'make_coqc' in rtn.keys(): # handle the case where coqc for the makefile is different
+            rtn['coqc'] = rtn['make_coqc']
+        if 'passing_make_coqc' in rtn.keys(): # handle the case where coqc for the makefile is different
+            rtn['passing_coqc'] = rtn['passing_make_coqc']
     return rtn
 
 def safe_kwargs(kwargs):
@@ -298,7 +303,7 @@ def get_maybe_passing_arg(kwargs, key):
     return kwargs[key]
 
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
-    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    kwargs = safe_kwargs(fill_kwargs(kwargs, for_makefile=True))
     f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
     mkfile = os.path.basename(f.name)
     f.close()
