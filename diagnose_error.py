@@ -181,7 +181,7 @@ def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
 COQ_OUTPUT = {}
 
 def sanitize_cmd(cmd):
-    return re.sub(r'("/tmp/tmp)[^ "]*?(\.v")', r'\1XXXXXXXX\2', cmd)
+    return re.sub(r'("/tmp/tmp)[^ "]*?((?:\.v)?")', r'\1XXXXXXXX\2', cmd)
 
 prepare_cmds_for_coq_output_printed_cmd_already = set()
 def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, **kwargs):
