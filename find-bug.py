@@ -1299,7 +1299,7 @@ if __name__ == '__main__':
         env['remove_temp_file'] = True
 
     def make_make_coqc(coqc_prog, **kwargs):
-        if get_coq_accepts_compile(coqc_prog, **kwargs): return os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + coqc_prog
+        if get_coq_accepts_compile(coqc_prog): return os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + coqc_prog
         if 'coqtop' in coqc_prog: return coqc_prog.replace('coqtop', 'coqc')
         return 'coqc'
 

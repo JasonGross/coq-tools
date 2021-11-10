@@ -60,6 +60,17 @@ def get_coq_accepts_top(coqc):
     clean_v_file(temp_file_name)
     return '-top: no such file or directory' not in util.s(stdout)
 
+@memoize
+def get_coq_accepts_compile(coqtop):
+    temp_file = tempfile.NamedTemporaryFile(suffix='.v', dir='.', delete=True)
+    temp_file_name = temp_file.name
+    p = subprocess.Popen([coqtop, "-q", "-compile", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    rc = p.returncode
+    temp_file.close()
+    clean_v_file(temp_file_name)
+    return rc == 0
+
 def get_coq_accepts_option(coqc_prog, option, **kwargs):
     help_text = get_coqc_help(coqc_prog, **kwargs)
     return any((option + sep) in help_text for sep in '\t ')
@@ -72,9 +83,6 @@ def get_coq_accepts_time(coqc_prog, **kwargs):
 
 def get_coq_accepts_w(coqc_prog, **kwargs):
     return get_coq_accepts_option(coqc_prog, '-w', **kwargs)
-
-def get_coq_accepts_compile(coqc_prog, **kwargs):
-    return get_coq_accepts_option(coqc_prog, '-compile', **kwargs)
 
 @memoize
 def get_coqc_native_compiler_ondemand_errors(coqc):
