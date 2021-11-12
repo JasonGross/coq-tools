@@ -182,6 +182,8 @@ def process_CoqProject(env, contents, passing=''):
         elif tokens[i][-2:] == '.v':
             env[passing + '_CoqProject_v_files'].append(tokens[i])
             i += 1
+        elif any(tokens[i][-len(ext):] == ext for ext in ('.mli', '.ml', '.mlg', '.mllib', '.ml4')):
+            i += 1
         else:
             if 'log' in env.keys(): env['log']('Unknown _CoqProject entry: %s' % repr(tokens[i]))
             env[passing + '_CoqProject_unknown'].append(tokens[i])

@@ -2,3 +2,8 @@
 -R . Foo # this is also a comment
 #### more comment
 example_47.v
+foo.mli
+foo.ml
+foo.mlg
+foo.mllib
+foo.ml4
