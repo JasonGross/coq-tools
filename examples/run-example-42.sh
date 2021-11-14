@@ -47,7 +47,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-25:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-25:
 Error:
 The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*

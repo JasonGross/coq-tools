@@ -1,10 +1,11 @@
 from __future__ import with_statement, print_function
-import os, sys, tempfile, subprocess, re, time, math, glob, threading
+import os, sys, tempfile, subprocess, re, time, math, glob, threading, shutil, traceback
 from Popen_noblock import Popen_async, Empty
 from memoize import memoize
 from file_util import clean_v_file
 from util import re_escape
 from custom_arguments import LOG_ALWAYS
+from coq_version import group_coq_args, get_coqc_help
 import util
 
 __all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
@@ -181,21 +182,51 @@ def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
 COQ_OUTPUT = {}
 
 def sanitize_cmd(cmd):
-    return re.sub(r'("/tmp/tmp)[^ "]*?((?:\.v)?")', r'\1XXXXXXXX\2', cmd)
+    return re.sub(r'("/tmp/tmp)[^/"]*?((?:/[^"]*?)?(?:\.v)?")', r'\1XXXXXXXX\2', cmd)
+
+def get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs):
+    coqc_help = get_coqc_help(coqc_prog, **kwargs)
+    for arg_group in group_coq_args(coqc_prog_args, coqc_help):
+        if arg_group[0] == '-top':
+            ret = arg_group[1].split('.')
+            return ret[:-1], ret[-1] + '.v'
+    return None, None
 
 prepare_cmds_for_coq_output_printed_cmd_already = set()
 def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, **kwargs):
+    def make_rmtree_onerror(file_name):
+        def rmtree_onerror(function, path, exc_info):
+            kwargs['log']('Non-fatal error encountered when cleaning up %s:\n' % file_name)
+            etype, value, tb = exc_info
+            if hasattr(traceback, 'TracebackException'):
+                kwargs['log'](''.join(traceback.TracebackException(type(value), value, tb, capture_locals=True).format()))
+            else:
+                kwargs['log'](traceback.format_exception(type(value), value, tb))
+        return rmtree_onerror
+
     key = (coqc_prog, tuple(coqc_prog_args), kwargs['pass_on_stdin'], contents, timeout_val, cwd)
+    cmds = [coqc_prog] + list(coqc_prog_args)
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
+        cleaner = lambda: None
     else:
-        with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='wb') as f:
-            f.write(contents.encode('utf-8'))
+        intermediate_dirs, topfilename = get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs)
+        if topfilename is None:
+            with tempfile.NamedTemporaryFile(suffix='.v', delete=False, mode='wb') as f:
+                f.write(contents.encode('utf-8'))
             file_name = f.name
+            cleaner = lambda: clean_v_file(file_name)
+        else:
+            temp_dir_name = tempfile.mkdtemp()
+            os.makedirs(os.path.join(temp_dir_name, *intermediate_dirs), exist_ok=True)
+            file_name = os.path.join(temp_dir_name, *intermediate_dirs, topfilename)
+            with open(file_name, mode='wb') as f:
+                f.write(contents.encode('utf-8'))
+            cleaner = lambda: shutil.rmtree(temp_dir_name, onerror=make_rmtree_onerror(file_name))
+            cmds.extend(['-R', temp_dir_name, '']) # make sure we bind the entire tree; use -R for compat with 8.4
 
     file_name_root = os.path.splitext(file_name)[0]
 
-    cmds = [coqc_prog] + list(coqc_prog_args)
     pseudocmds = ''
     input_val = None
     if kwargs['is_coqtop']:
@@ -214,10 +245,11 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
     prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
     kwargs['log']('\nContents:\n%s\n' % contents,
                   level=kwargs['verbose_base']+1)
-    return key, file_name, cmds, input_val
+    return key, file_name, cmds, input_val, cleaner
 
 def reset_coq_output_cache(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, is_coqtop=False, pass_on_stdin=False, verbose_base=1, **kwargs):
-    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
+    key, file_name, cmds, input_val, cleaner = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
+    cleaner()
 
     if key in COQ_OUTPUT.keys(): del COQ_OUTPUT[key]
 
@@ -227,9 +259,11 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
     if timeout_val is not None and timeout_val < 0 and get_timeout(coqc_prog) is not None:
         return get_coq_output(coqc_prog, coqc_prog_args, contents, get_timeout(coqc_prog), cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=retry_with_debug_when, **kwargs)
 
-    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
+    key, file_name, cmds, input_val, cleaner = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=timeout_val, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
 
-    if key in COQ_OUTPUT.keys(): return COQ_OUTPUT[key][1]
+    if key in COQ_OUTPUT.keys():
+        cleaner()
+        return COQ_OUTPUT[key][1]
 
     start = time.time()
     ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(kwargs['log'], cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None), input=input_val, cwd=cwd)
@@ -239,7 +273,7 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
                   level=verbose_base + 1)
     if get_timeout(coqc_prog) is None and timeout_val is not None:
         set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
-    clean_v_file(file_name)
+    cleaner()
     COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime))
     kwargs['log']('Storing result: COQ_OUTPUT[%s]:\n%s' % (repr(key), repr(COQ_OUTPUT[key])),
                   level=verbose_base + 2)

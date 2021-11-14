@@ -9,11 +9,11 @@
 
 ##########################################################
 # Various options that must be updated for each example
-N="45"
+N="49"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=(-Q . Foo "$@")
+EXTRA_ARGS=("$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -47,10 +47,10 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-b
-     : A.SET
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 0-21:
-Error: The command has not failed.*
+foo
+     : Prop
+File "/tmp/tmp[A-Za-z0-9_]\+/example_49.v", line 1[0-9], characters 0-26:
+Error: The command has not failed!
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
@@ -86,34 +86,16 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-Q" "\." "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Module Export Foo_DOT_A_WRAPPED\.
-Module Export A\.
-Axiom a : Set\.
-Definition SET := Set\.
 
-End A\.
-Module Export Foo\.
-Module Export A\.
-Include Foo_DOT_A_WRAPPED\.A\.
-End A\.
-
-Module Export Foo_DOT_A_DOT_B_WRAPPED\.
-Module Export B\.
-Definition SET : nat := O\.
-Definition SET2 := SET\.
-Import Foo\.A\.
-Definition b : SET := let test := SET2 : nat in Foo\.A\.a\.
-
-End B\.
-Module Export Foo\.
-Module Export A\.
-Module Export B\.
-Include Foo_DOT_A_DOT_B_WRAPPED\.B\.
-
-Fail Check Foo\.A\.B\.b\.
+Module Export AdmitTactic\.
+Module Import LocalFalse\.
+End LocalFalse\.
+End AdmitTactic\.
+Definition foo := True\.
+Fail Check example_49\.foo\.
 
 EOF
 )

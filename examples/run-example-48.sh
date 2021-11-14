@@ -47,7 +47,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 72-73:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 72-73:
 Error:
 In environment
 f := fun _ : bar => eq_refl : forall _ : bar, eq Foo\.foo Set
