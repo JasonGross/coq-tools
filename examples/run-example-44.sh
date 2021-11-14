@@ -46,7 +46,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 7-10:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 7-10:
 Error: The term "6" has type "nat" while it is expected to have type "Set".
 EOF
 )

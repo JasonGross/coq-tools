@@ -44,7 +44,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-9:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-9:
 Error:
 The term "bar" has type "False -> False" while it is expected to have type
  "True".

@@ -42,7 +42,7 @@ set -x
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 6-7:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-7:
 Error: The term "x" has type "Set" while it is expected to have type "nat"\.
 EOF
 )

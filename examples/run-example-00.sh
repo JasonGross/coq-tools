@@ -55,14 +55,14 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 
 Coqing the file (bug_[0-9]\+\.v)\.\.\.
 
-Running command: "coqc"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "/tmp/tmp[A-Za-z0-9_]\+\.v" "-q"
+Running command: "coqc"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "-R" "/tmp/tmp[A-Za-z0-9_]\+" "" "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
 
 The timeout for coqc has been set to: 3
 
 This file produces the following output when Coq'ed:
 Set
      : Type
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1\(0\|1\), characters 0-15:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-15:
 Error: The command has not failed\s\?!
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s

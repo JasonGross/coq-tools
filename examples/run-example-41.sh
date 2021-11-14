@@ -50,7 +50,7 @@ EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
 foo
      : Type
-File "/tmp/tmp[A-Za-z0-9_]\+\.v", line 1[0-9], characters 0-15:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 0-15:
 Error: The command has not failed\s\?!
 EOF
 )
