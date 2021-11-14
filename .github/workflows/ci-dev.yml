@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        coq-version: ['8.4']
+        coq-version: ['dev', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
 
     runs-on: ubuntu-latest
 
