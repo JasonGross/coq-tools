@@ -219,7 +219,7 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
         else:
             temp_dir_name = tempfile.mkdtemp()
             os.makedirs(os.path.join(temp_dir_name, *intermediate_dirs), exist_ok=True)
-            file_name = os.path.join(temp_dir_name, *intermediate_dirs, topfilename)
+            file_name = os.path.join(os.path.join(temp_dir_name, *intermediate_dirs), topfilename)
             with open(file_name, mode='wb') as f:
                 f.write(contents.encode('utf-8'))
             cleaner = lambda: shutil.rmtree(temp_dir_name, onerror=make_rmtree_onerror(file_name))
