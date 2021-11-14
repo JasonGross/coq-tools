@@ -7,7 +7,7 @@ from util import re_escape
 from custom_arguments import LOG_ALWAYS
 import util
 
-__all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_coq_output_iterable", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
+__all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
 
 DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
 DEFAULT_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n(?!Warning)'
@@ -249,48 +249,3 @@ def get_coq_output(coqc_prog, coqc_prog_args, contents, timeout_val, cwd=None, i
                       level=verbose_base - 1)
         return get_coq_output(coqc_prog, list(debug_args) + list(coqc_prog_args), contents, timeout_val, cwd=cwd, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, retry_with_debug_when=(lambda output: False), **kwargs)
     return COQ_OUTPUT[key][1]
-
-def get_coq_output_iterable(coqc_prog, coqc_prog_args, contents, cwd=None, is_coqtop=False, pass_on_stdin=False, verbose_base=1, sep='\nCoq <', **kwargs):
-    """Returns the coqc output of running through the given
-    contents."""
-
-    key, file_name, cmds, input_val = prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=cwd, timeout_val=None, is_coqtop=is_coqtop, pass_on_stdin=pass_on_stdin, verbose_base=verbose_base, **kwargs)
-
-    if key in COQ_OUTPUT.keys():
-        for i in COQ_OUTPUT[key][1].split(sep): yield i
-
-    p = Popen_async(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, cwd=cwd)
-
-    so_far = []
-    cur = ''
-    yielded = True
-    completed = False
-    while True:
-        if yielded and not completed:
-            if input_val:
-                i = input_val.index('\n') + 1 if '\n' in input_val else len(input_val)
-                kwargs['log'](input_val[:i], level=3, end='')
-                p.stdin.write(input_val[:i])
-                input_val = input_val[i:]
-                p.stdin.flush()
-                yielded = False
-            else:
-                completed = True
-                p.stdin.close()
-        curv = p.stdout.get(True)
-        kwargs['log'](curv, level=3, end='')
-        cur += curv
-        if sep in cur:
-            vals = cur.split(sep)
-            for val in vals[:-1]:
-                yield val
-                yielded = True
-                so_far.append(val)
-            cur = vals[-1]
-    if cur != '':
-        yield cur
-        so_far.append(cur)
-    clean_v_file(file_name)
-    ## remove instances of the file name
-    #stdout = stdout.replace(os.path.basename(file_name[:-2]), 'Top')
-    COQ_OUTPUT[key] = (file_name, (clean_output(sep.join(so_far)), tuple(cmds), None, None))

@@ -3,7 +3,7 @@ import tempfile, sys, os, re
 import custom_arguments
 from argparse_compat import argparse
 from import_util import get_file, lib_of_filename
-from diagnose_error import get_coq_output, get_coq_output_iterable
+from diagnose_error import get_coq_output
 from import_util import lib_of_filename, norm_libname
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
