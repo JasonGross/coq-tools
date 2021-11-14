@@ -1,11 +1,10 @@
 from __future__ import with_statement
 import subprocess, tempfile, re
-from diagnose_error import get_coq_output
 from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "get_proof_term_works_with_time", "get_ltac_support_snippet"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -151,29 +150,3 @@ def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefi
 def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
     bindings, unrecognized_bindings = group_coq_args_split_recognized(args, coqc_help, topname=topname, is_coq_makefile=is_coq_makefile)
     return bindings + [tuple([v]) for v in unrecognized_bindings]
-
-def get_proof_term_works_with_time(coqc_prog, **kwargs):
-    contents = r"""Lemma foo : forall _ : Type, Type.
-Proof (fun x => x)."""
-    output, cmds, retcode, runtime = get_coq_output(coqc_prog, ('-time', '-q'), contents, 1, verbose_base=3, **kwargs)
-    return 'Error: Attempt to save an incomplete proof' not in output
-
-LTAC_SUPPORT_SNIPPET = {}
-def get_ltac_support_snippet(coqc, **kwargs):
-    if coqc in LTAC_SUPPORT_SNIPPET.keys():
-        return LTAC_SUPPORT_SNIPPET[coqc]
-    test = r'''Inductive False : Prop := .
-Axiom proof_admitted : False.
-Tactic Notation "admit" := abstract case proof_admitted.'''
-    errinfo = {}
-    native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, **kwargs))
-    for before, after in (('Declare ML Module "ltac_plugin".\n', ''),
-                          ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
-        contents = '%s\n%s\n%s' % (before, after, test)
-        output, cmds, retcode, runtime = get_coq_output(coqc, tuple(['-q', '-nois'] + native_ondemand_args), contents, timeout_val=None, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)
-        if retcode == 0:
-            LTAC_SUPPORT_SNIPPET[coqc] = (before, after)
-            return (before, after)
-        else:
-            errinfo[contents] = {'output': output, 'cmds': cmds, 'retcode': retcode, 'runtime': runtime}
-    raise Exception('No valid ltac support snipped found.  Debugging info: %s' % repr(errinfo))
