@@ -86,7 +86,7 @@ parser.add_argument('--ignore-coq-prog-args', dest='use_coq_prog_args',
                     action='store_const', const=False, default=True,
                     help=("Don't add extra arguments from a coq-prog-args file header."))
 parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=str,
-                    default='(* File reduced by coq-bug-finder from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
+                    default='(* File reduced by coq-bug-minimizer from %(old_header)s, then from %(original_line_count)d lines to %(final_line_count)d lines *)',
                     help=("A line to be placed at the top of the " +
                           "output file, followed by a newline.  The " +
                           "variables original_line_count and " +
@@ -94,7 +94,7 @@ parser.add_argument('--dynamic-header', dest='dynamic_header', nargs='?', type=s
                           "substitution.  The variable old_header will" +
                           "have the previous contents of this comment. " +
                           "The default is " +
-                          "`(* File reduced by coq-bug-finder from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
+                          "`(* File reduced by coq-bug-minimizer from %%(old_header)s, then from %%(original_line_count)d lines to %%(final_line_count)d lines *)'"))
 parser.add_argument('--header', dest='header', nargs='?', type=str,
                     default='(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s\n   Expected coqc runtime on this file: %(recent_runtime).3f sec *)',
                     help=("A line to be placed at the top of the " +
