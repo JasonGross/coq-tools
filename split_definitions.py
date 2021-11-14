@@ -2,7 +2,8 @@ import re, time
 from subprocess import Popen, PIPE, STDOUT
 import split_definitions_old
 from split_file import postprocess_split_proof_term
-from coq_version import get_coq_accepts_time, get_proof_term_works_with_time
+from coq_version import get_coq_accepts_time
+from coq_running_support import get_proof_term_works_with_time
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 import util
 
