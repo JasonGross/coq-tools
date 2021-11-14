@@ -1,0 +1,36 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: CI (docker)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+
+    strategy:
+      matrix:
+        coq-version: ['8.4']
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: coq-community/docker-coq-action@v1
+      with:
+        coq_version: ${{ matrix.coq-version }}
+        custom_script: |
+          sudo chmod -R a+rw .
+          echo '::group::install general dependencies'
+          sudo apt-get update -y
+          sudo apt-get install -y python3
+          eval $(opam env)
+          echo '::endgroup::'
+          make check PYTHON=python3 CAT_ALL_LOGS=1
