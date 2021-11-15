@@ -1,4 +1,4 @@
-Require Import Lia.
+Require Import Arith.
 Module mA.
   Section secA.
     Axiom axA : Set.
