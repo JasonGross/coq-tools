@@ -13,7 +13,7 @@ N="38"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-ARGS=(--nonpassing-arg=-noinit "--passing-coqc=${COQBIN}coqc" "$@")
+ARGS=(--nonpassing-arg=-nois "--passing-coqc=${COQBIN}coqc" "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -82,7 +82,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${ARGS[@]}" || exit
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-noinit"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs" "-nois"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
