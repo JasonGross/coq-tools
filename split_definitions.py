@@ -56,11 +56,10 @@ def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop'
     if not get_proof_term_works_with_time(coqtop, is_coqtop=True, log=log, **kwargs):
         statements = postprocess_split_proof_term(statements, log=log, **kwargs)
     p = Popen([coqtop, '-q', '-emacs', '-time'] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-    split_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)(?=Chars [0-9]+ - [0-9]+|$)'.replace(' ', r'\s*'),
-                           flags=re.DOTALL)
-    prompt_reg = re.compile(r'^(.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*'),
+    chars_time_reg = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+'.replace(' ', r'\s*'))
+    prompt_reg = re.compile(r'^(.*)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*)$'.replace(' ', r'\s*'),
                             flags=re.DOTALL)
-    defined_reg = re.compile(r'^([^\s]+) is (?:defined|assumed)$', re.MULTILINE)
+    defined_reg = re.compile(r'^(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$', re.MULTILINE)
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = '\n'.join(statements) + '\n\n'
     statements_bytes = statements_string.encode('utf-8')
@@ -80,95 +79,108 @@ def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop'
     last_char_end = 0
 
     #log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)', level=3)
-    responses = split_reg.findall(stdout)
-    for char_start, char_end, full_response_text in responses:
-        char_start, char_end = int(char_start), int(char_end)
-        # if we've travelled backwards in time, as in
-        # COQBUG(https://github.com/coq/coq/issues/14475); we just
-        # ignore this statement
-        if char_end <= last_char_end: continue
-        match = prompt_reg.match(full_response_text)
-        if not match:
-            log('Warning: Could not find statements in %d:%d: %s' % (char_start, char_end, full_response_text), level=LOG_ALWAYS)
+    for i, prompt in enumerate(stdout.split('</prompt>')):
+        if prompt.strip() == '': continue
+        times = chars_time_reg.findall(prompt)
+        if len(times) == 0:
+            if i == 0:
+                log('Warning: ignoring %s' % repr(prompt), level=3)
+            else:
+                log('Warning: Could not find timing info in %s' % repr(prompt), level=1)
             continue
-        response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown = match.groups()
-        statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
-        last_char_end = char_end
+        elif len(times) > 1:
+            log('Warning: found multiple timing info in %s: %s' % (repr(prompt), repr(times)), level=1)
+        full_response_text = chars_time_reg.sub(' ', prompt)
+        for char_start, char_end in times:
+            char_start, char_end = int(char_start), int(char_end)
+            # if we've travelled backwards in time, as in
+            # COQBUG(https://github.com/coq/coq/issues/14475); we just
+            # ignore this statement
+            if char_end <= last_char_end: continue
+            match = prompt_reg.match(full_response_text)
+            if not match:
+                log('Warning: Could not find statements in %d:%d: %s' % (char_start, char_end, full_response_text), level=LOG_ALWAYS)
+                continue
+            response_text, cur_name, line_num1, cur_definition_names, line_num2, unknown = match.groups()
+            statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
+            last_char_end = char_end
 
-        terms_defined = defined_reg.findall(response_text)
+            terms_defined = defined_reg.findall(response_text)
 
-        definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
+            definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
 
-        # first, to be on the safe side, we add the new
-        # definitions key to the dict, if it wasn't already there.
-        if cur_definition_names.strip('|') and cur_definition_names not in cur_definition:
-            cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
-
-
-        log((statement, (char_start, char_end), definitions_removed, terms_defined, 'last_definitions:', last_definitions, 'cur_definition_names:', cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text), level=2)
+            # first, to be on the safe side, we add the new
+            # definitions key to the dict, if it wasn't already there.
+            if cur_definition_names.strip('|') and cur_definition_names not in cur_definition:
+                cur_definition[cur_definition_names] = {'statements':[], 'terms_defined':[]}
 
 
-        # first, we handle the case where we have just finished
-        # defining something.  This should correspond to
-        # len(definitions_removed) > 0 and len(terms_defined) > 0.
-        # If only len(definitions_removed) > 0, then we have
-        # aborted something.  If only len(terms_defined) > 0, then
-        # we have defined something with a one-liner.
-        if definitions_removed:
-            cur_definition[last_definitions]['statements'].append(statement)
-            cur_definition[last_definitions]['terms_defined'] += terms_defined
-            if cur_definition_names.strip('|'):
-                # we are still inside a definition.  For now, we
-                # flatten all definitions.
-                #
-                # TODO(jgross): Come up with a better story for
-                # nested definitions.
-                cur_definition[cur_definition_names]['statements'] += cur_definition[last_definitions]['statements']
-                cur_definition[cur_definition_names]['terms_defined'] += cur_definition[last_definitions]['terms_defined']
-                del cur_definition[last_definitions]
-            else:
-                # we're at top-level, so add this as a new
-                # definition
-                rtn.append({'statements':tuple(cur_definition[last_definitions]['statements']),
-                            'statement':'\n'.join(cur_definition[last_definitions]['statements']),
-                            'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
-                del cur_definition[last_definitions]
-                # print('Adding:')
-                # print(rtn[-1])
-        elif terms_defined:
-            if cur_definition_names.strip('|'):
-                # we are still inside a definition.  For now, we
-                # flatten all definitions.
-                #
-                # TODO(jgross): Come up with a better story for
-                # nested definitions.
+            log((statement, (char_start, char_end), definitions_removed, terms_defined, 'last_definitions:', last_definitions, 'cur_definition_names:', cur_definition_names, cur_definition.get(last_definitions, []), cur_definition.get(cur_definition_names, []), response_text), level=2)
+
+
+            # first, we handle the case where we have just finished
+            # defining something.  This should correspond to
+            # len(definitions_removed) > 0 and len(terms_defined) > 0.
+            # If only len(definitions_removed) > 0, then we have
+            # aborted something (or we're in Coq >= 8.11; see
+            # https://github.com/coq/coq/issues/15201).  If only
+            # len(terms_defined) > 0, then we have defined something
+            # with a one-liner.
+            if definitions_removed:
+                cur_definition[last_definitions]['statements'].append(statement)
+                cur_definition[last_definitions]['terms_defined'] += terms_defined
+                if cur_definition_names.strip('|'):
+                    # we are still inside a definition.  For now, we
+                    # flatten all definitions.
+                    #
+                    # TODO(jgross): Come up with a better story for
+                    # nested definitions.
+                    cur_definition[cur_definition_names]['statements'] += cur_definition[last_definitions]['statements']
+                    cur_definition[cur_definition_names]['terms_defined'] += cur_definition[last_definitions]['terms_defined']
+                    del cur_definition[last_definitions]
+                else:
+                    # we're at top-level, so add this as a new
+                    # definition
+                    rtn.append({'statements':tuple(cur_definition[last_definitions]['statements']),
+                                'statement':'\n'.join(cur_definition[last_definitions]['statements']),
+                                'terms_defined':tuple(cur_definition[last_definitions]['terms_defined'])})
+                    del cur_definition[last_definitions]
+                    # print('Adding:')
+                    # print(rtn[-1])
+            elif terms_defined:
+                if cur_definition_names.strip('|'):
+                    # we are still inside a definition.  For now, we
+                    # flatten all definitions.
+                    #
+                    # TODO(jgross): Come up with a better story for
+                    # nested definitions.
+                    cur_definition[cur_definition_names]['statements'].append(statement)
+                    cur_definition[cur_definition_names]['terms_defined'] += terms_defined
+                else:
+                    # we're at top level, so add this as a new
+                    # definition
+                    rtn.append({'statements':(statement,),
+                                'statement':statement,
+                                'terms_defined':tuple(terms_defined)})
+
+            # now we handle the case where we have just opened a fresh
+            # definition.  We've already added the key to the
+            # dictionary.
+            elif definitions_added:
+                # print(definitions_added)
                 cur_definition[cur_definition_names]['statements'].append(statement)
-                cur_definition[cur_definition_names]['terms_defined'] += terms_defined
             else:
-                # we're at top level, so add this as a new
-                # definition
-                rtn.append({'statements':(statement,),
-                            'statement':statement,
-                            'terms_defined':tuple(terms_defined)})
+                # if we're in a definition, append the statement to
+                # the queue, otherwise, just add it as it's own
+                # statement
+                if cur_definition_names.strip('|'):
+                    cur_definition[cur_definition_names]['statements'].append(statement)
+                else:
+                    rtn.append({'statements':(statement,),
+                                'statement':statement,
+                                'terms_defined':tuple()})
 
-        # now we handle the case where we have just opened a fresh
-        # definition.  We've already added the key to the
-        # dictionary.
-        elif definitions_added:
-            # print(definitions_added)
-            cur_definition[cur_definition_names]['statements'].append(statement)
-        else:
-            # if we're in a definition, append the statement to
-            # the queue, otherwise, just add it as it's own
-            # statement
-            if cur_definition_names.strip('|'):
-                cur_definition[cur_definition_names]['statements'].append(statement)
-            else:
-                rtn.append({'statements':(statement,),
-                            'statement':statement,
-                            'terms_defined':tuple()})
-
-        last_definitions = cur_definition_names
+            last_definitions = cur_definition_names
 
     log((last_definitions, cur_definition_names), level=2)
     if last_definitions.strip('||'):
