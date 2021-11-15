@@ -320,8 +320,15 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         cmds.extend(args)
     if unrecognized_args:
         if coq_makefile_supports_arg(coq_makefile_help):
+            skip_next = False
             for arg in unrecognized_args:
-                cmds += ['-arg', arg]
+                # coq_makefile should never get -top{,file}; this case
+                # will happen if the underlying coqc does not support
+                # -top, but coqtop does, and we're running coqtop as
+                # coqc
+                if arg in ('-top', '-topfile'): skip_next = True
+                elif skip_next: skip_next = False
+                else: cmds += ['-arg', arg]
         else:
             kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
