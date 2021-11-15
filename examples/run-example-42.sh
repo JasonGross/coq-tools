@@ -45,11 +45,12 @@ set -x
 #
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
+# In this file, character 31 is the end character for 8.4
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-25:
-Error:
-The term "(bar, npp, A\.a)" has type
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-\(25\|31\):
+Error:[
+ ]The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*
    Set)%type" while it is expected to have type "Set"\.\?
 EOF
