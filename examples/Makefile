@@ -23,6 +23,7 @@ ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
+ENABLED_LOGS = $(DEFAULT_LOGS)
 
 .DEFAULT_GOAL := test-suite
 .SECONDEXPANSION:
@@ -53,6 +54,7 @@ RED=\033[0;31m
 # No Color
 NC=\033[0m
 GREEN=\033[0;32m
+YELLOW=\033[0;33m
 BOLD=$(shell tput bold)
 NORMAL=$(shell tput sgr0)
 
@@ -87,6 +89,7 @@ test-suite: $(DEFAULT_LOGS)
 
 ifneq (0,$(strip $(COQTOP_SUPPORTS_COMPILE)))
 test-suite: $(ONLY_IF_COQTOP_COMPILE_LOGS)
+ENABLED_LOGS += $(ONLY_IF_COQTOP_COMPILE_LOGS)
 print-support::
 	@printf "coqtop supports -compile:\t\tYes\n"
 else
@@ -96,6 +99,7 @@ endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
 test-suite: $(ONLY_IF_Q_LOGS)
+ENABLED_LOGS += $(ONLY_IF_Q_LOGS)
 print-support::
 	@printf "coqc supports -Q:\t\t\tYes\n"
 else
@@ -105,6 +109,7 @@ endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_W)))
 test-suite: $(ONLY_IF_W_LOGS)
+ENABLED_LOGS += $(ONLY_IF_W_LOGS)
 print-support::
 	@printf "coqc supports -w:\t\t\tYes\n"
 else
@@ -114,6 +119,7 @@ endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
+ENABLED_LOGS += $(ONLY_IF_FROM_LOGS)
 print-support::
 	@printf "coqc supports From ... Require ...:\tYes\n"
 else
@@ -123,6 +129,7 @@ endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
 test-suite: example_20_result.log
+ENABLED_LOGS += example_20_result.log
 print-support::
 	@printf "coqc is 8.3 or 8.4:\t\t\tNo\n"
 else
@@ -133,6 +140,7 @@ endif
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))
 ifneq (0,$(strip $(COQC_SUPPORTS_W)))
 test-suite: example_46_result.log
+ENABLED_LOGS += example_46_result.log
 endif
 print-support::
 	@printf "coqc is < 8.15:\t\t\tNo\n"
@@ -143,6 +151,7 @@ endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11%,$(COQC_VERSION))))
 test-suite: example_48_result.log
+ENABLED_LOGS += example_48_result.log
 print-support::
 	@printf "coqc is < 8.12:\t\t\tNo\n"
 else
@@ -157,48 +166,60 @@ $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $$(wildcard example
 	echo "TEST run-example-$*.sh... $$RESULT" >&2
 
 test-suite-verbose-report::
-	$(Q)$(MAKE) test-suite-report
-	$(Q)for i in $(wildcard example_*_result.log); do                       \
-	        if [ "$$(cat $$i)" -ne 0 ]; then                                \
-	                echo "$(RED)$$i$(NC):";                                 \
-	        else                                                            \
-	                echo "$(GREEN)$$i$(NC):";                               \
-	        fi;                                                             \
-	        cat "$${i%%_result.log}_make.log";                              \
+	$(Q)$(MAKE) test-suite-report -k
+	$(Q)ALL="$(sort $(wildcard $(ENABLED_LOGS)))"; \
+	for i in $$ALL; do                             \
+	        if [ "$$(cat $$i)" -ne 0 ]; then       \
+	                echo "$(RED)$$i$(NC):";        \
+	        else                                   \
+	                echo "$(GREEN)$$i$(NC):";      \
+	        fi;                                    \
+	        cat "$${i%%_result.log}_make.log";     \
 	done
 
 test-suite-verbose-report test-suite-report::
-	$(Q)ALL="$(sort $(wildcard example_*_result.log))";                     \
-	SUCCESS=;                                                               \
-	FAILURE=;                                                               \
-	for i in $$ALL; do                                                      \
-	        if [ "$$(cat $$i)" -ne 0 ]; then                                \
-	                FAILURE="$$FAILURE $$i";                                \
-	        else                                                            \
-	                SUCCESS="$$SUCCESS $$i";                                \
-	        fi;                                                             \
-	done;                                                                   \
-	if [ ! -z "$$FAILURE" ]; then                                           \
-	        echo "$(BOLD)Failing test logs:$(NORMAL)";                      \
-	        for i in $$FAILURE; do                                          \
-	                echo "$(RED)$$i$(NC):";                                 \
-	                cat "$${i%%_result.log}_make.log";                      \
-	        done;                                                           \
-	fi;                                                                     \
-	if [ ! -z "$$SUCCESS" ]; then                                           \
-	        echo "$(BOLD)Passing tests:$(NORMAL)";                          \
-	        for i in $$SUCCESS; do                                          \
-	                echo "$(GREEN)$$i$(NC)";                                \
-	        done;                                                           \
-	fi;                                                                     \
-	if [ ! -z "$$FAILURE" ]; then                                           \
-	        echo "$(RED)$(BOLD)Failing tests:$(NORMAL)$(NC)";               \
-	        for i in $$FAILURE; do                                          \
-	                echo "$(RED)$$i$(NC)";                                  \
-	        done;                                                           \
-		exit $(ERROR_ON_FAILURE);                                       \
-	else                                                                    \
-	        echo "$(GREEN)$(BOLD)All tests succeeded$(NORMAL)$(NC)";        \
+	$(Q)ALL="$(sort $(ENABLED_LOGS))";                               \
+	SUCCESS=;                                                        \
+	FAILURE=;                                                        \
+	UNKNOWN=;                                                        \
+	for i in $$ALL; do                                               \
+	        if [ -f "$$i" ]; then                                    \
+	                if [ "$$(cat $$i)" -ne 0 ]; then                 \
+	                        FAILURE="$$FAILURE $$i";                 \
+	                else                                             \
+	                        SUCCESS="$$SUCCESS $$i";                 \
+	                fi;                                              \
+	        else                                                     \
+	                UNKNOWN="$$UNKNOWN $$i";                         \
+	        fi;                                                      \
+	done;                                                            \
+	if [ ! -z "$$FAILURE" ]; then                                    \
+	        echo "$(BOLD)Failing test logs:$(NORMAL)";               \
+	        for i in $$FAILURE; do                                   \
+	                echo "$(RED)$$i$(NC):";                          \
+	                cat "$${i%%_result.log}_make.log";               \
+	        done;                                                    \
+	fi;                                                              \
+	if [ ! -z "$$SUCCESS" ]; then                                    \
+	        echo "$(BOLD)Passing tests:$(NORMAL)";                   \
+	        for i in $$SUCCESS; do                                   \
+	                echo "$(GREEN)$$i$(NC)";                         \
+	        done;                                                    \
+	fi;                                                              \
+	if [ ! -z "$$UNKNOWN" ]; then                                    \
+	        echo "$(BOLD)Unknown tests:$(NORMAL)";                   \
+	        for i in $$UNKNOWN; do                                   \
+	                echo "$(YELLOW)$$i$(NC)";                        \
+	        done;                                                    \
+	fi;                                                              \
+	if [ ! -z "$$FAILURE" ]; then                                    \
+	        echo "$(RED)$(BOLD)Failing tests:$(NORMAL)$(NC)";        \
+	        for i in $$FAILURE; do                                   \
+	                echo "$(RED)$$i$(NC)";                           \
+	        done;                                                    \
+		exit $(ERROR_ON_FAILURE);                                \
+	elif [ -z "$$UNKNOWN" ]; then                                    \
+	        echo "$(GREEN)$(BOLD)All tests succeeded$(NORMAL)$(NC)"; \
 	fi
 
 
