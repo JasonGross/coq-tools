@@ -105,7 +105,7 @@ def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop'
             statement = strip_newlines(statements_bytes[last_char_end:char_end].decode('utf-8'))
             last_char_end = char_end
 
-            terms_defined = defined_reg.findall(response_text)
+            terms_defined = defined_reg.findall(response_text.strip())
 
             definitions_removed, definitions_shared, definitions_added = get_definitions_diff(last_definitions, cur_definition_names)
 
