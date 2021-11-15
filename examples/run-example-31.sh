@@ -35,8 +35,9 @@ set -x
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(2\|3\), characters 6-13:
-Error:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(2\|3\), characters 6-\(13\|23\):
+Error:[
+ ]The term "eq_refl" has type.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing

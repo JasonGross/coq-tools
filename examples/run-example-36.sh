@@ -36,8 +36,8 @@ set -x
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(7\|8\), characters 47-49:
-Error:
-The term.*
+Error:[
+ ]The term.*
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
