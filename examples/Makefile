@@ -5,12 +5,13 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 47
-CONDITIONAL_TESTS = 06 10 13 18 20 26 27 46 48
+DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 32 33 35 36 37 38 39 40 41 42 43 45 47
+CONDITIONAL_TESTS = 06 10 13 18 20 26 27 34 44 46 48
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 10 26
-ONLY_IF_FROM_TESTS = 13 27
+ONLY_IF_W_TESTS = 44 # 46 (even more special handling due to version constraints)
+ONLY_IF_FROM_TESTS = 13 27 34
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
@@ -20,6 +21,7 @@ DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
 ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
+ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 
 .DEFAULT_GOAL := test-suite
@@ -58,6 +60,7 @@ COQC_VERSION:=$(subst version ,,$(shell coqc --version 2>&1 | grep -o 'version [
 COQC_SUPPORTS_Q:=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQTOP_SUPPORTS_COMPILE:=$(shell coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
+COQC_SUPPORTS_W:=$(shell coqtop --help 2>&1 | grep -c -- '-w ')
 
 .PHONY: check
 check::
@@ -100,6 +103,15 @@ print-support::
 	@printf "coqc supports -Q:\t\t\tNo\n"
 endif
 
+ifneq (0,$(strip $(COQC_SUPPORTS_W)))
+test-suite: $(ONLY_IF_W_LOGS)
+print-support::
+	@printf "coqc supports -w:\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports -w:\t\t\tNo\n"
+endif
+
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
 print-support::
@@ -119,7 +131,9 @@ print-support::
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))
+ifneq (0,$(strip $(COQC_SUPPORTS_W)))
 test-suite: example_46_result.log
+endif
 print-support::
 	@printf "coqc is < 8.15:\t\t\tNo\n"
 else
