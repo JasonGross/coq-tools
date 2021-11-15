@@ -15,7 +15,7 @@ function strip_v() {
             echo "$i"
         fi
         prev_top=""
-        if [ "$i" == "-top" ]; then
+        if [ "$i" == "-top" ] || [ "$i" == "-topfile" ]; then
             prev_top="yes"
         fi
     done
