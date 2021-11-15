@@ -30,7 +30,7 @@ set -x
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
 cp -f "$EXAMPLE_INPUT" "$EXAMPLE_INPUT_COPY"
-find "$DIR/example_$N" -name "*.vo" -o -name "*.glob" -delete
+find "$DIR/example_$N" \( -name "*.vo" -o -name "*.glob" \) -delete
 ${PYTHON} "$DIR/../minimize-requires.py" "$EXAMPLE_INPUT_COPY" -i || exit $?
 
 ######################################################################

@@ -51,7 +51,7 @@ The term "bar" has type "False -> False" while it is expected to have type
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-find "$DIR/example_$N" -name "*.vo" -o -name "*.glob" -delete
+find "$DIR/example_$N" \( -name "*.vo" -o -name "*.glob" \) -delete
 echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
