@@ -13,7 +13,7 @@ N="29"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="A/example_$N.v"
 EXAMPLE_OUTPUT="B/bug_$N.v"
-EXTRA_ARGS=(--nonpassing-Q Foo1 Foo --passing-Q Foo2 Foo -Q A Top --passing-coqc=coqc --no-deps "$@")
+EXTRA_ARGS=(--nonpassing-R Foo1 Foo --passing-R Foo2 Foo -R A Top --passing-coqc=coqc --no-deps "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -37,7 +37,7 @@ set -x
 for dir in Foo1 Foo2; do
     pushd $dir >/dev/null
     for f in A.v B.v; do
-        ${COQBIN}coqc -q -Q . Foo $f || exit $?
+        ${COQBIN}coqc -q -R . Foo $f || exit $?
     done
     popd >/dev/null
 done
@@ -50,7 +50,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-Q" "A" "Top" "-Q" "Foo1" "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-R" "A" "Top" "-R" "Foo1" "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 Require Foo\.A\.
