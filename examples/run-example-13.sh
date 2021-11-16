@@ -90,7 +90,7 @@ EXPECTED=$(cat <<EOF
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
-Definition foo : Type := Set\.
+Definition foo := Set\.
 
 Check foo : Set\.
 
