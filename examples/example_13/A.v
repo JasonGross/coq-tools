@@ -1,1 +1,1 @@
-Definition foo : Type := Set.
+Definition foo := Set.

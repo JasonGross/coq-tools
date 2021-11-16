@@ -20,10 +20,13 @@ def get_ltac_support_snippet(coqc, **kwargs):
         return LTAC_SUPPORT_SNIPPET[coqc]
     test = r'''Inductive False : Prop := .
 Axiom proof_admitted : False.
-Tactic Notation "admit" := abstract case proof_admitted.'''
+Tactic Notation "admit" := abstract case proof_admitted.
+Goal False. admit. Qed.'''
     errinfo = {}
     native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, **kwargs))
     for before, after in (('Declare ML Module "ltac_plugin".\n', ''),
+                          ('Declare ML Module "ltac_plugin".\n', 'Global Set Default Proof Mode "Classic".\n'),
+                          ('Require Coq.Init.Ltac.\n', 'Import Coq.Init.Ltac.\n'),
                           ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
         contents = '%s\n%s\n%s' % (before, after, test)
         output, cmds, retcode, runtime = get_coq_output(coqc, tuple(['-q', '-nois'] + native_ondemand_args), contents, timeout_val=None, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)

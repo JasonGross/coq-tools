@@ -96,14 +96,15 @@ Require Coq\.Init\.Ltac\.
 
 Inductive False : Prop := \.
 Axiom proof_admitted : False\.
-Tactic Notation "admit" := abstract case proof_admitted\.
+\(Global Set Default Proof Mode "Classic"\.
+\)\?Tactic Notation "admit" := abstract case proof_admitted\.
 Module Export Foo\.
 Global Set Universe Polymorphism\.
 Definition foo@{i} := Type@{i}\.
 
 End Foo\.
-Import Coq\.Init\.Ltac\.
-Monomorphic Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : eq x x\.
+\(Import Coq\.Init\.Ltac\.
+\)\?Monomorphic Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : eq x x\.
 Arguments eq_refl {A x} , \[A\] x\.
 Definition foo@{} : Set\.
 admit\.
