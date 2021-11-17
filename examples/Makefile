@@ -5,13 +5,14 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 35 36 37 38 39 40 41 42 43 45 47 49 50
-CONDITIONAL_TESTS = 06 10 13 18 20 26 27 32 33 34 44 46 48
+DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 35 36 37 38 39 40 41 42 43 45 47 50
+CONDITIONAL_TESTS = 06 10 13 18 20 26 27 32 33 34 44 46 48 49
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 10 26
 ONLY_IF_W_TESTS = 44 # 46 (even more special handling due to version constraints)
 ONLY_IF_FROM_TESTS = 13 27 32 33 34
+ONLY_IF_GT_84 = 20 49
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-08.py
@@ -23,6 +24,7 @@ ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
+ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 
 .DEFAULT_GOAL := test-suite
@@ -128,8 +130,8 @@ print-support::
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
-test-suite: example_20_result.log
-ENABLED_LOGS += example_20_result.log
+test-suite: $(ONLY_IF_GT_84_LOGS)
+ENABLED_LOGS += $(ONLY_IF_GT_84_LOGS)
 print-support::
 	@printf "coqc is 8.3 or 8.4:\t\t\tNo\n"
 else
