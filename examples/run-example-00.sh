@@ -55,7 +55,7 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 
 Coqing the file (bug_[0-9]\+\.v)\.\.\.
 
-Running command: "coqc"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\? "-R" "/tmp/tmp[A-Za-z0-9_]\+" "" "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
+Running command: "coqc"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?\( "-R" "/tmp/tmp[A-Za-z0-9_]\+" ""\)\? "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
 
 The timeout for coqc has been set to: 3
 
