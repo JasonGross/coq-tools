@@ -49,7 +49,7 @@ EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
 A -> Baz.B
      : Set
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 23, characters 0-30:
+File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 2[0-9], characters 0-30:
 Error: The command has not failed\s\?!
 EOF
 )
