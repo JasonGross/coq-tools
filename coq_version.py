@@ -91,13 +91,16 @@ def get_coqc_native_compiler_ondemand_errors(coqc):
     (stdout, stderr) = p.communicate()
     temp_file.close()
     clean_v_file(temp_file_name)
-    return 'The native-compiler option is deprecated' in util.s(stdout) or 'deprecated-native-compiler-option' in util.s(stdout)
+    return any(v in util.s(stdout) for v in ('The native-compiler option is deprecated',
+                                             'Native compiler is disabled',
+                                             'native-compiler-disabled',
+                                             'deprecated-native-compiler-option'))
 
 def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
     help_lines = get_coqc_help(coqc_prog, **kwargs).split('\n')
     if any('ondemand' in line for line in help_lines if line.strip().startswith('-native-compiler')):
         if get_coq_accepts_w(coqc_prog, **kwargs):
-            return ('-w', '-deprecated-native-compiler-option', '-native-compiler', 'ondemand')
+            return ('-w', '-deprecated-native-compiler-option,-native-compiler-disabled', '-native-compiler', 'ondemand')
         elif not get_coqc_native_compiler_ondemand_errors(coqc_prog):
             return ('-native-compiler', 'ondemand')
     return tuple()

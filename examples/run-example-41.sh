@@ -87,7 +87,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option"\)\? "-nois" "-R" "Foo2" "Foo" "-R" "Foo1" "Foo" "-R" "Foo3" "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\? "-nois" "-R" "Foo2" "Foo" "-R" "Foo1" "Foo" "-R" "Foo3" "Foo"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
