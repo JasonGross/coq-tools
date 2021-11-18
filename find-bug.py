@@ -1453,7 +1453,8 @@ if __name__ == '__main__':
                             for absolutize_mods in (False, True)
                             for first_wrap_then_include in (True, False)
                             for without_require, insert_at_top in ((True, False),
-                                                                   (False, True))
+                                                                   (False, True),
+                                                                   (False, False))
                         ]
                         (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
                     except IOError as e:
