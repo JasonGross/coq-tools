@@ -172,7 +172,9 @@ def get_raw_file_as_bytes(filename, **kwargs):
     filename_extra = '' if os.path.isabs(filename) else ' (%s)' % os.path.abspath(filename)
     kwargs['log']('getting %s%s' % (filename, filename_extra))
     with open(filename, 'rb') as f:
-        return f.read()
+        contents = f.read()
+    kwargs['log']('====== Contents of %s%s ======\n%s\n==================\n' % (filename, filename_extra, contents.decode('utf-8')), level=4)
+    return contents
 
 def get_raw_file(*args, **kwargs):
     return util.normalize_newlines(get_raw_file_as_bytes(*args, **kwargs).decode('utf-8'))
