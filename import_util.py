@@ -179,11 +179,15 @@ def get_raw_file_as_bytes(filename, **kwargs):
 def get_raw_file(*args, **kwargs):
     return util.normalize_newlines(get_raw_file_as_bytes(*args, **kwargs).decode('utf-8'))
 
+def list_endswith(ls, suffix):
+    return len(suffix) <= len(ls) and ls[-len(suffix):] == suffix
+
 # code, endswith is string
 @memoize
 def constr_name_endswith(code, endswith):
-    first_word = code.split(' ')[0]
-    return first_word.endswith(endswith)
+    first_word = code.split(' ')[0].split('.')
+    endswith = endswith.split(' ')[-1].split('.')
+    return list_endswith(first_word, endswith)
 
 # before, after are both strings
 def move_strings_once(before, after, possibility, relaxed=False):
@@ -266,6 +270,8 @@ def update_one_with_glob(contents, ref, absolutize, libname, transform_base=(lam
     kwargs = fill_kwargs(kwargs)
     start, end, loc, append, ty = ref
     cur_code = contents[start:end].decode('utf-8')
+    rep = transform_base(loc) + ('.' + append if append != '<>' else '')
+    rep_orig = loc + ('.' + append if append != '<>' else '')
     if ty not in absolutize or loc == libname:
         kwargs['log']('Skipping %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
     # sanity check for correct replacement, to skip things like record builder notation
@@ -273,8 +279,9 @@ def update_one_with_glob(contents, ref, absolutize, libname, transform_base=(lam
         kwargs['log']('Skipping invalid %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
     elif ty == 'mod' and not is_absolutizable_mod_reference(contents, ref):
         kwargs['log']('Skipping non-absolutizable module reference %s at %d:%d (%s), location %s %s' % (ty, start, end, cur_code, loc, append), level=2)
+    elif not constr_name_endswith(rep_orig, cur_code):
+        kwargs['log']('Skipping invalid %s at %d:%d (%s) (expected %s), location %s %s' % (ty, start, end, cur_code, rep_orig, loc, append), level=2)
     else: # ty in absolutize and loc != libname
-        rep = transform_base(loc) + ('.' + append if append != '<>' else '')
         kwargs['log']('Qualifying %s %s to %s' % (ty, cur_code, rep), level=2, max_level=3)
         kwargs['log']('Qualifying %s %s to %s from R%s:%s %s <> %s %s' % (ty, cur_code, rep, start, end, loc, append, ty), level=3)
         contents = contents[:start] + rep.encode('utf-8') + contents[end:]
@@ -285,7 +292,10 @@ def update_one_with_glob(contents, ref, absolutize, libname, transform_base=(lam
 def update_with_glob(contents, globs, *args, **kwargs):
     assert(contents is bytes(contents))
     for ref in get_references_from_globs(globs):
-        contents = update_one_with_glob(contents, ref, *args, **kwargs)
+        new_contents = update_one_with_glob(contents, ref, *args, **kwargs)
+        if new_contents != contents:
+            last_successful_ref = ref
+        contents = new_contents
     return contents
 
 def get_all_v_files(directory, exclude=tuple()):
