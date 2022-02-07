@@ -363,7 +363,7 @@ def get_header_dict(contents, old_header=None, original_line_count=0, **env):
             'recent_runtime':0}
 
 CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = 'contents_unchanged', 'change_success', 'change_failure'
-def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=False, **kwargs):
+def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=False, reset_timeout=False, **kwargs):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE, RUNTIME, EXTRA_VERBOSE_DESCRIPTION_OF_FAILURE_MODE_TUPLE_LIST)
     kwargs['header_dict'] = kwargs.get('header_dict', get_header_dict(new_contents, original_line_count=len(old_contents.split('\n')), **env))
     # this is a function, so that once we update the header dict with the runtime, we get the right header
@@ -371,6 +371,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
     if new_contents == old_contents:
         return (CONTENTS_UNCHANGED, get_padded_contents(), tuple(), None, 'No change.  ', None, [])
 
+    if reset_timeout: diagnose_error.reset_timeout()
     if ignore_coq_output_cache: diagnose_error.reset_coq_output_cache(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     output, cmds, retcode, runtime = diagnose_error.get_coq_output(kwargs['coqc'], kwargs['coqc_args'], new_contents, kwargs['timeout'], cwd=kwargs['base_dir'], is_coqtop=kwargs['coqc_is_coqtop'], verbose_base=2, **kwargs)
     if diagnose_error.has_error(output, kwargs['error_reg_string']):
@@ -1461,12 +1462,11 @@ if __name__ == '__main__':
                         env['log']('\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s' % (req_module, str(e), str(tuple(env['libnames'])), str(tuple(env['non_recursive_libnames']))))
                         continue
 
-                    diagnose_error.reset_timeout()
-
                     if not check_change_and_write_to_file(
                             cur_output, test_output, output_file_name,
                             unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, test_output_descr)),
                             failure_description=('inline %s%s' % (req_module, test_output_descr)), changed_description='File',
+                            reset_timeout=True,
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             display_source_to_error=False,
                             **env):
@@ -1478,6 +1478,11 @@ if __name__ == '__main__':
                                 unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, descr)),
                                 failure_description=('inline %s%s' % (req_module, descr)), changed_description='File',
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                                # reset the timeout on each different
+                                # way of inlining, so that an earlier
+                                # one failing doesn't hobble the
+                                # ability of a later one to succeed
+                                reset_timeout=True,
                                 display_source_to_error=True,
                                 **env)
                                    for descr, test_output_alt in test_output_alts):
@@ -1490,6 +1495,7 @@ if __name__ == '__main__':
                                 unchanged_message='Invalid empty file!', success_message=('Inlining %s%s succeeded.' % (req_module, test_output_descr)),
                                 failure_description=('inline %s%s' % (req_module, test_output_descr)), changed_description='File',
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
+                                reset_timeout=True,
                                 display_source_to_error=True,
                                 **env)
 
