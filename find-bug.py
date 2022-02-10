@@ -399,6 +399,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    failure_description='make a change', changed_description='Changed file',
                                    timeout_retry_count=1, ignore_coq_output_cache=False,
                                    verbose_base=1, display_source_to_error=False,
+                                   write_to_temp_file=False,
                                    **kwargs):
     kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents, level=2 + verbose_base)
     change_result, contents, outputs, output_i, error_desc, runtime, error_desc_verbose_list = classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs)
@@ -412,13 +413,14 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
     elif change_result == CHANGE_FAILURE:
         kwargs['log']('\nNon-fatal error: Failed to %s and preserve the error.  %s' % (failure_description, error_desc), level=verbose_base)
         for lvl, msg in error_desc_verbose_list: kwargs['log'](msg, level=lvl)
-        if not kwargs['remove_temp_file']: kwargs['log']('Writing %s to %s.' % (changed_description.lower(), kwargs['temp_file_name']), level=verbose_base)
+        if write_to_temp_file and not kwargs['remove_temp_file']: kwargs['log']('Writing %s to %s.' % (changed_description.lower(), kwargs['temp_file_name']), level=verbose_base)
         kwargs['log']('The new error was:', level=verbose_base)
         kwargs['log'](outputs[output_i], level=verbose_base)
         kwargs['log']('All Outputs:\n%s' % '\n'.join(outputs), level=verbose_base+2)
-        if kwargs['remove_temp_file']: kwargs['log']('%s not saved.' % changed_description, level=verbose_base)
-        if not kwargs['remove_temp_file']:
+        if write_to_temp_file and not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
+        else:
+            kwargs['log']('%s not saved.' % changed_description, level=verbose_base)
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
             kwargs['log']('\nRetrying another %d time%s...' % (timeout_retry_count - 1, 's' if timeout_retry_count > 2 else ''), level=verbose_base)
             return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
@@ -426,6 +428,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                                   failure_description=failure_description, changed_description=changed_description,
                                                   timeout_retry_count=timeout_retry_count-1, ignore_coq_output_cache=True,
                                                   verbose_base=verbose_base,
+                                                  write_to_temp_file=write_to_temp_file,
                                                   **kwargs)
         elif display_source_to_error and diagnose_error.has_error(outputs[output_i]):
             new_line = diagnose_error.get_error_line_number(outputs[output_i])
@@ -1081,7 +1084,12 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
                                           unchanged_message='Invalid empty file!', success_message='Sanity check passed.',
                                           failure_description='validate all coq runs', changed_description='File',
                                           timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
+                                          write_to_temp_file=True,
                                           **env):
+        if os.path.exists(output_file_name):
+            env['log']('\nMoving %s to %s...' % (output_file_name, env['temp_file_name']))
+            write_to_file(env['temp_file_name'], read_from_file(output_file_name))
+            os.remove(output_file_name)
         return die('Fatal error: Sanity check failed.', **env)
 
     if env['max_consecutive_newlines'] >= 0 or env['strip_trailing_space']:
@@ -1396,6 +1404,9 @@ if __name__ == '__main__':
             error_log = args.error_log.read()
             args.error_log.close()
             if not diagnose_error.has_error(error_log, env['error_reg_string']):
+                env['log']('\nMoving %s to %s...' % (output_file_name, env['temp_file_name']))
+                write_to_file(env['temp_file_name'], read_from_file(output_file_name))
+                os.remove(output_file_name)
                 default_on_fatal('The computed error message was not present in the given error log.', **env)
 
         # initial run before we (potentially) do fancy things with the requires
@@ -1497,6 +1508,7 @@ if __name__ == '__main__':
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                                 reset_timeout=True,
                                 display_source_to_error=True,
+                                write_to_temp_file=True,
                                 **env)
 
                             extra_blacklist = [r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist]
