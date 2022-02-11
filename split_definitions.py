@@ -80,6 +80,7 @@ def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop'
 
     #log('re.findall(' + repr(r'Chars ([0-9]+) - ([0-9]+) [^\s]+ (.*?)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*?)</prompt>'.replace(' ', r'\s*')) + ', ' + repr(stdout) + ', ' + 'flags=re.DOTALL)', level=3)
     for i, prompt in enumerate(stdout.split('</prompt>')):
+        log('Processing:\n%s' % prompt, level=4)
         if prompt.strip() == '': continue
         times = chars_time_reg.findall(prompt)
         if len(times) == 0:
