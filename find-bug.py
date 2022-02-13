@@ -407,7 +407,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
         kwargs['log']('\n%s' % unchanged_message, level=verbose_base)
         return False
     elif change_result == CHANGE_SUCCESS:
-        kwargs['log']('\n%s' % success_message, level=verbose_base)
+        kwargs['log'](util.colors.OKGREEN + '\n%s' % success_message + util.colors.ENDC, level=verbose_base)
         write_to_file(output_file_name, contents)
         return True
     elif change_result == CHANGE_FAILURE:
@@ -420,7 +420,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
         if write_to_temp_file and not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
         else:
-            kwargs['log']('%s not saved.' % changed_description, level=verbose_base)
+            kwargs['log'](util.colors.WARNING + ('%s not saved.' % changed_description + util.colors.ENDC), level=verbose_base)
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
             kwargs['log']('\nRetrying another %d time%s...' % (timeout_retry_count - 1, 's' if timeout_retry_count > 2 else ''), level=verbose_base)
             return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
