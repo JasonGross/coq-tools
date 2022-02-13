@@ -179,7 +179,7 @@ parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=a
 parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
                     help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
 parser.add_argument('--no-color', dest='color_on', action='store_const', const=False, default=True,
-                    help=("Don't print any messages with color."))
+                    help=("Don't color any log messages."))
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
