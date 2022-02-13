@@ -178,7 +178,7 @@ parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=a
                     help='If given, ensure that the computed error message occurs in this log.')
 parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
                     help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
-parser.add_argument('--no-color', dest='coloron', action='store_const', const=False, default=True,
+parser.add_argument('--no-color', dest='color_on', action='store_const', const=False, default=True,
                     help=("Don't print any messages with color."))
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
@@ -409,7 +409,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
         kwargs['log']('\n%s' % unchanged_message, level=verbose_base)
         return False
     elif change_result == CHANGE_SUCCESS:
-        kwargs['log'](util.color('\n%s' % success_message, util.colors.OKGREEN, kwargs['coloron']), level=verbose_base)
+        kwargs['log'](util.color('\n%s' % success_message, util.colors.OKGREEN, kwargs['color_on']), level=verbose_base)
         write_to_file(output_file_name, contents)
         return True
     elif change_result == CHANGE_FAILURE:
@@ -422,7 +422,7 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
         if write_to_temp_file and not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
         else:
-            kwargs['log'](util.color('%s not saved.' % changed_description, util.colors.WARNING, kwargs['coloron']), level=verbose_base)
+            kwargs['log'](util.color('%s not saved.' % changed_description, util.colors.WARNING, kwargs['color_on']), level=verbose_base)
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
             kwargs['log']('\nRetrying another %d time%s...' % (timeout_retry_count - 1, 's' if timeout_retry_count > 2 else ''), level=verbose_base)
             return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
@@ -1285,7 +1285,7 @@ if __name__ == '__main__':
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
         'inline_coqlib': args.inline_coqlib,
         'yes': args.yes,
-        'coloron' : args.coloron,
+        'color_on' : args.color_on,
         'inline_failure_libnames': [],
         }
 
