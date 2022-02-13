@@ -77,8 +77,9 @@ def normalize_newlines(string):
 # Terminal colors (maybe something cleverer needs to be done for other
 # platforms).
 class colors:
-  #ESC ='\033'
-  ESC = ''
+  ESC ='\033'
+  #Escape code doesn't render on github so we use the standard escaped escape.
+  #ESC = ''
 
   HEADER    = ESC + '[95m'
   OKBLUE    = ESC + '[94m'
