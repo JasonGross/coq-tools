@@ -91,3 +91,10 @@ class colors:
   BOLD      = ESC + '[1m'
   UNDERLINE = ESC + '[4m'
 
+# Colors a string a given color
+# Example usage: color("Hello World!", colors.OKBLUE)
+def color(str, col, on=True):
+    if not on:
+      return str;
+    else:
+      return col + str + colors.ENDC;
