@@ -73,3 +73,28 @@ def len_in_bytes(string):
 
 def normalize_newlines(string):
     return string.replace('\r\n', '\n').replace('\r', '\n')
+
+# Terminal colors (maybe something cleverer needs to be done for other
+# platforms).
+class colors:
+  ESC ='\033'
+  #Escape code doesn't render on github so we use the standard escaped escape.
+  #ESC = ''
+
+  HEADER    = ESC + '[95m'
+  OKBLUE    = ESC + '[94m'
+  OKCYAN    = ESC + '[96m'
+  OKGREEN   = ESC + '[92m'
+  WARNING   = ESC + '[93m'
+  FAIL      = ESC + '[91m'
+  ENDC      = ESC + '[0m'
+  BOLD      = ESC + '[1m'
+  UNDERLINE = ESC + '[4m'
+
+# Colors a string a given color
+# Example usage: color("Hello World!", colors.OKBLUE)
+def color(str, col, on=True):
+    if not on:
+      return str;
+    else:
+      return col + str + colors.ENDC;
