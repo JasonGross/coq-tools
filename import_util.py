@@ -314,6 +314,16 @@ def get_maybe_passing_arg(kwargs, key):
     if kwargs.get('passing_coqc'): return kwargs['passing_' + key]
     return kwargs[key]
 
+def get_keep_error_reversed(mkfile, **kwargs):
+    # old versions of coq_makefile reversed the meaning of KEEP_ERROR,
+    # see https://github.com/coq/coq/pull/15880.  So we need to not
+    # pass it if the logic is reversed, but we should pass it
+    # otherwise, because we need .glob files even if coqc fails.
+    return r'''ifneq (,$(KEEP_ERROR))
+.DELETE_ON_ERROR:
+''' in get_raw_file(mkfile, **kwargs)
+
+
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs, for_makefile=True))
     f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
@@ -357,9 +367,11 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get .glob files, to work around this.")
         sys.exit(1)
-    kwargs['log'](' '.join(['make', '-k', '-f', mkfile] + targets))
+    keep_error_fragment = [] if get_keep_error_reversed(mkfile, **kwargs) else ['KEEP_ERROR=1']
+    make_cmds = ['make', '-k', '-f', mkfile] + keep_error_fragment + targets
+    kwargs['log'](' '.join(make_cmds))
     try:
-        p_make = subprocess.Popen(['make', '-k', '-f', mkfile] + targets, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
+        p_make = subprocess.Popen(make_cmds, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
         return p_make.communicate()
     finally:
         for filename in (mkfile, mkfile + '.conf', mkfile + '.d', '.%s.d' % mkfile, '.coqdeps.d'):
