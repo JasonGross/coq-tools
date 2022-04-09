@@ -1,0 +1,101 @@
+name: CI (MacOS)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+
+    runs-on: macOS-10.15
+
+    strategy:
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+
+    env:
+      NJOBS: "2"
+      COQ_VERSION: "8.14.0"
+      COQCHKEXTRAFLAGS: ""
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Set up OCaml
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: 4.11.1
+
+    - name: Install system dependencies
+      run: |
+        set -e
+        brew install gnu-time coreutils
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+    - name: Install Coq
+      run: |
+        set -e
+        eval $(opam env)
+        opam update
+        opam pin add coq ${COQ_VERSION}
+      env:
+        OPAMYES: "true"
+        OPAMCONFIRMLEVEL: "unsafe-yes"
+
+    - name: echo build params
+      run: |
+        eval $(opam env)
+        echo "::group::sysctl -n machdep.cpu.brand_string"
+        sysctl -n machdep.cpu.brand_string
+        echo "::endgroup::"
+        echo "::group::sysctl -a | grep machdep.cpu"
+        sysctl -a | grep machdep.cpu
+        echo "::endgroup::"
+        echo "::group::uname -a"
+        uname -a
+        echo "::endgroup::"
+        echo "::group::sw_vers -productVersion"
+        sw_vers -productVersion
+        echo "::endgroup::"
+        echo "::group::system_profiler SPSoftwareDataType"
+        system_profiler SPSoftwareDataType
+        echo "::endgroup::"
+        echo "::group::opam list"
+        opam list
+        echo "::endgroup::"
+        echo "::group::ocamlc -config"
+        ocamlc -config
+        echo "::endgroup::"
+        echo "::group::coqc --config"
+        coqc --config
+        echo "::endgroup::"
+        echo "::group::coqc --version"
+        coqc --version
+        echo "::endgroup::"
+        echo "::group::true | coqtop"
+        true | coqtop
+        echo "::endgroup::"
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: make doctests
+      run: make doctests PYTHON3=python
+      if: ${{ matrix.python-version != '2.7' }}
+    - name: Test
+      run: make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
