@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ###################################################################
 ## This is a template file for new examples.  It explains how to ##
 ## check for various things.                                     ##

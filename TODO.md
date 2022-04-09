@@ -45,7 +45,7 @@
   pass to `--coqc`:
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 function strip_v() {
     for i in "$@"
     do
