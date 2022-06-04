@@ -17,7 +17,11 @@ jobs:
 
     strategy:
       matrix:
-        coq-version: ['dev', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
+        coq-version: ['8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
+        ocaml-version: ['minimal']
+        include:
+          - coq-version: 'dev'
+            ocaml-version: '4.13-flambda'
 
     runs-on: ubuntu-latest
 
@@ -26,6 +30,7 @@ jobs:
     - uses: coq-community/docker-coq-action@v1
       with:
         coq_version: ${{ matrix.coq-version }}
+        ocaml_version: ${{ matrix.ocaml-version }}
         custom_script: |
           sudo chmod -R a+rw .
           echo '::group::install general dependencies'
