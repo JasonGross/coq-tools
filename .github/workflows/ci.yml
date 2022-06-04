@@ -19,15 +19,17 @@ jobs:
       matrix:
         python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
         env:
-        - { COQ_VERSION: "8.13.1", COQ_PACKAGE: "coq-8.13.1", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest"  }
-        - { COQ_VERSION: "8.12.2", COQ_PACKAGE: "coq-8.12.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest"  }
-        - { COQ_VERSION: "8.11.2", COQ_PACKAGE: "coq-8.11.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest"  }
+        - { COQ_VERSION: "8.15.0", COQ_PACKAGE: "coq-8.14.0", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-latest" }
+        - { COQ_VERSION: "8.14.1", COQ_PACKAGE: "coq-8.14.1", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-latest" }
+        - { COQ_VERSION: "8.13.2", COQ_PACKAGE: "coq-8.13.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest" }
+        - { COQ_VERSION: "8.12.2", COQ_PACKAGE: "coq-8.12.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest" }
+        - { COQ_VERSION: "8.11.2", COQ_PACKAGE: "coq-8.11.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest" }
         - { COQ_VERSION: "8.10.2", COQ_PACKAGE: "coq-8.10.2", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05", os: "ubuntu-latest" }
-        - { COQ_VERSION: "8.9.1" , COQ_PACKAGE: "coq-8.9.1" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04" }
-        - { COQ_VERSION: "8.8.2" , COQ_PACKAGE: "coq-8.8.2" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04" }
-        - { COQ_VERSION: "8.7.2" , COQ_PACKAGE: "coq-8.7.2" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04" }
-        - { COQ_VERSION: "8.6.1" , COQ_PACKAGE: "coq-8.6.1" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04" }
-        - { COQ_VERSION: "8.5pl3", COQ_PACKAGE: "coq-8.5pl3", PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04" }
+        - { COQ_VERSION: "8.9.1" , COQ_PACKAGE: "coq-8.9.1" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04"  }
+        - { COQ_VERSION: "8.8.2" , COQ_PACKAGE: "coq-8.8.2" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04"  }
+        - { COQ_VERSION: "8.7.2" , COQ_PACKAGE: "coq-8.7.2" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04"  }
+        - { COQ_VERSION: "8.6.1" , COQ_PACKAGE: "coq-8.6.1" , PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04"  }
+        - { COQ_VERSION: "8.5pl3", COQ_PACKAGE: "coq-8.5pl3", PPA: "ppa:jgross-h/many-coq-versions"           , os: "ubuntu-18.04"  }
 
     env: ${{ matrix.env }}
     runs-on: ${{ matrix.env.os }}
