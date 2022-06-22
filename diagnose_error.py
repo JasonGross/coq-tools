@@ -109,6 +109,10 @@ def make_reg_string(output, strict_whitespace=False):
         re_string = re.sub(r'(Constant\\ )[^\s]+(\\ )',
                            r'\1[^\\s]+\2',
                            re_escape(error_string))
+    elif 'Anomaly' in error_string and re.search(r'Universe [^\s]+ undefined', error_string):
+        re_string = re.sub(r'(Universe\\ )[^\s]+(\\ )',
+                           r'\1[^\\s]+\2',
+                           re_escape(error_string))
     elif 'Universe inconsistency' in error_string or 'universe inconsistency' in error_string:
         re_string = re.sub(r'([Uu]niverse\\ inconsistency.*) because(.|\n)*',
                            r'\1 because.*',
