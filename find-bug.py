@@ -8,7 +8,8 @@ from import_util import get_file, get_recursive_require_names, run_recursively_g
 from strip_comments import strip_comments
 from strip_newlines import strip_newlines
 from split_file import split_coq_file_contents, split_leading_comments_and_whitespace
-from split_definitions import split_statements_to_definitions, join_definitions
+import split_definitions
+from split_definitions import split_statements_to_definitions, join_definitions, get_preferred_passing, get_fallback_passing
 from admit_abstract import transform_abstract_to_admit
 from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from import_util import split_requires_of_statements, get_file_statements_insert_references
@@ -164,6 +165,10 @@ parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile
                     help='The path to the coq_makefile program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
                     help='The path to the coqc program that should compile the file successfully.')
+parser.add_argument('--passing-coqtop', metavar='COQTOP', dest='passing_coqtop', type=str, default='',
+                    help=('The path to the coqtop program that should compile the file successfully.'))
+parser.add_argument('--parse-with', choices=[split_definitions.PREFER_PASSING, split_definitions.PASSING, split_definitions.PREFER_NONPASSING, split_definitions.NONPASSING], dest='parse_with', type=str, default=split_definitions.PREFER_PASSING,
+                    help=('Parse and split the document using coqc/coqtop vs passing-coqc/passing-coqtop (default: %s).' % split_definitions.PREFER_NONPASSING))
 parser.add_argument('--base-dir', metavar='DIR', dest='base_dir', type=str, default='',
                     help='The path to the base directory from which coqc should be run')
 parser.add_argument('--passing-base-dir', metavar='DIR', dest='passing_base_dir', type=str, default='',
@@ -172,6 +177,12 @@ parser.add_argument('--passing-coqc-args', metavar='ARG', dest='passing_coqc_arg
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
 parser.add_argument('--nonpassing-coqc-args', metavar='ARG', dest='nonpassing_coqc_args', type=str, action='append',
                     help='Arguments to pass to coqc so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)')
+parser.add_argument('--passing-coqtop-args', metavar='ARG', dest='passing_coqtop_args', type=str, action='append',
+                    help=('Arguments to pass to coqtop so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)\n' +
+                          'NOTE: If you want to pass an argument to both coqc and coqtop, use --nonpassing-arg="-indices-matter", not --coqc-args="-indices-matter"'))
+parser.add_argument('--nonpassing-coqtop-args', metavar='ARG', dest='nonpassing_coqtop_args', type=str, action='append',
+                    help=('Arguments to pass to coqtop so that it compiles the file successfully; e.g., " -indices-matter" (leading and trailing spaces are stripped)\n' +
+                          'NOTE: If you want to pass an argument to both coqc and coqtop, use --nonpassing-arg="-indices-matter", not --coqc-args="-indices-matter"'))
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
 parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=argparse.FileType('r'), default=None,
@@ -1078,7 +1089,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
-    coqc_help = get_coqc_help(env['coqc'], **env)
+    coqc_help = get_coqc_help(get_preferred_passing('coqc', **env), **env)
     env['header_dict'] = get_header_dict(contents, **env)
 
 
@@ -1259,7 +1270,8 @@ if __name__ == '__main__':
                                      + list(process_maybe_list(args.nonpassing_coq_args, log=args.log))
                                      + list(process_maybe_list(args.coq_args, log=args.log)))),
         'coqtop_args': tuple(i.strip()
-                             for i in (list(process_maybe_list(args.coqtop_args, log=args.log))
+                             for i in (list(process_maybe_list(args.nonpassing_coqtop_args, log=args.log))
+                                       + list(process_maybe_list(args.coqtop_args, log=args.log))
                                        + list(process_maybe_list(args.nonpassing_coq_args, log=args.log))
                                        + list(process_maybe_list(args.coq_args, log=args.log)))),
         'coq_makefile': prepend_coqbin(args.coq_makefile),
@@ -1267,11 +1279,21 @@ if __name__ == '__main__':
                                    for i in (list(process_maybe_list(args.passing_coqc_args, log=args.log))
                                              + list(process_maybe_list(args.passing_coq_args, log=args.log))
                                              + list(process_maybe_list(args.coq_args, log=args.log)))),
+        'passing_coqtop_args': tuple(i.strip()
+                                   for i in (list(process_maybe_list(args.passing_coqtop_args, log=args.log))
+                                             + list(process_maybe_list(args.coqtop_args, log=args.log))
+                                             + list(process_maybe_list(args.passing_coq_args, log=args.log))
+                                             + list(process_maybe_list(args.coq_args, log=args.log)))),
         'passing_coqc' : (prepend_coqbin(args.passing_coqc)
                           if args.passing_coqc != ''
                           else (prepend_coqbin(args.coqc)
                                 if args.passing_coqc_args is not None
                                 else None)),
+        'passing_coqtop' : (prepend_coqbin(args.passing_coqtop)
+                            if args.passing_coqtop != ''
+                            else (prepend_coqbin(args.coqtop)
+                                  if args.passing_coqtop_args is not None
+                                  else None)),
         'passing_base_dir': (os.path.abspath(args.passing_base_dir)
                              if args.passing_base_dir != ''
                              else None),
@@ -1287,6 +1309,7 @@ if __name__ == '__main__':
         'yes': args.yes,
         'color_on' : args.color_on,
         'inline_failure_libnames': [],
+        'parse_with': args.parse_with,
         }
 
     if bug_file_name[-2:] != '.v':
@@ -1320,10 +1343,12 @@ if __name__ == '__main__':
         if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
         env['make_coqc'] = make_make_coqc(env['coqc'], **env)
     if env['passing_coqc_is_coqtop']:
-        if env['passing_coqc'] == 'coqc': env['passing_coqc'] = env['coqtop']
+        if env['passing_coqc'] == 'coqc':
+            if env['passing_coqtop'] is not None: env['passing_coqc'] = env['passing_coqtop']
+            else: env['passing_coqc'] = env['coqtop']
         env['passing_make_coqc'] = make_make_coqc(env['passing_coqc'], **env)
 
-    coqc_help = get_coqc_help(env['coqc'], **env)
+    coqc_help = get_coqc_help(get_preferred_passing('coqc', **env), **env)
     coqc_version = get_coqc_version(env['coqc'], **env)
 
     update_env_with_libnames(env, args, include_passing=env['passing_coqc'],
