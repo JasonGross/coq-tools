@@ -4,7 +4,7 @@ from file_util import clean_v_file
 from memoize import memoize
 import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_emacs", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
 
 @memoize
 def get_coqc_version_helper(coqc):
@@ -79,6 +79,9 @@ def get_coq_accepts_o(coqc_prog, **kwargs):
 
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return get_coq_accepts_option(coqc_prog, '-time', **kwargs)
+
+def get_coq_accepts_emacs(coqc_prog, **kwargs):
+    return get_coq_accepts_option(coqc_prog, '-emacs', **kwargs)
 
 def get_coq_accepts_w(coqc_prog, **kwargs):
     return get_coq_accepts_option(coqc_prog, '-w', **kwargs)

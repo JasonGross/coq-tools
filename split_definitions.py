@@ -2,12 +2,35 @@ import re, time
 from subprocess import Popen, PIPE, STDOUT
 import split_definitions_old
 from split_file import postprocess_split_proof_term
-from coq_version import get_coq_accepts_time
+from coq_version import get_coq_accepts_time, get_coq_accepts_emacs
 from coq_running_support import get_proof_term_works_with_time
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 import util
 
-__all__ = ["join_definitions", "split_statements_to_definitions"]
+__all__ = ["join_definitions", "split_statements_to_definitions",
+           "PREFER_PASSING", "PASSING", "PREFER_NONPASSING", "NONPASSING",
+           "get_preferred_passing", "get_fallback_passing"]
+
+PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING = \
+    'prefer-passing', 'passing', 'prefer-nonpassing', 'nonpassing'
+
+DEFAULT_PREFERENCE_KEY = 'parse_with'
+def get_preferred_fallback_passing(key, preference_key=DEFAULT_PREFERENCE_KEY, **env):
+    if env[preference_key] in (PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING):
+        default = env.get('passing_' + key) if env[preference_key] in (PREFER_PASSING, PASSING) else env.get(key)
+        fallback = None if env[preference_key] in (PASSING, NONPASSING) \
+            else env.get('passing_' + key) if env[preference_key] == PREFER_NONPASSING else env.get(key)
+        return (default, fallback)
+    raise ValueError('Invalid value for %s: must be one of %s' % (preference_key, ', '.join(map(repr, (PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING)))))
+
+def get_preferred_passing(key, **env):
+    default, fallback = get_preferred_fallback_passing(key, **env)
+    return default if default is not None else fallback
+
+def get_fallback_passing(key, **env):
+    default, fallback = get_preferred_fallback_passing(key, **env)
+    # no fallback if we use fallback as default
+    return fallback if default is not None else None
 
 def get_definitions_diff(previous_definition_string, new_definition_string):
     """Returns a triple of lists (definitions_removed,
@@ -44,14 +67,26 @@ def strip_newlines(string):
     if string[-1] == '\n': return string[:-1]
     return string
 
-def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), **kwargs):
+def split_statements_to_definitions(statements, log=DEFAULT_LOG, coqtop='coqtop', coqtop_args=tuple(), fallback_coqtop=None, fallback_coqtop_args=None, preference_key=DEFAULT_PREFERENCE_KEY, **kwargs):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
+    if preference_key is not None:
+        env = {'coqtop': coqtop, 'coqtop_args': coqtop_args, 'log': log}
+        env.update(kwargs)
+        coqtop, fallback_coqtop = get_preferred_fallback_passing('coqtop', preference_key=preference_key, **env)
+        coqtop_args, fallback_coqtop_args = get_preferred_fallback_passing('coqtop_args', preference_key=preference_key, **env)
+        return split_statements_to_definitions(statements, log=log, coqtop=coqtop, coqtop_args=coqtop_args, fallback_coqtop=fallback_coqtop, fallback_coqtop_args=fallback_coqtop_args, preference_key=None, **kwargs)
+    if coqtop is None and fallback_coqtop is not None:
+        return split_statements_to_definitions(statements, log=log, coqtop=fallback_coqtop, coqtop_args=fallback_coqtop_args, fallback_coqtop=None, fallback_coqtop_args=None, preference_key=None, **kwargs)
     def fallback():
-        log("Your version of coqtop doesn't support -time.  Falling back to more error-prone method.")
-        return split_definitions_old.split_statements_to_definitions(statements, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
+        if fallback_coqtop is not None:
+            log("Your preferred version of coqtop (%s) doesn't support -emacs -time.  Falling back to fallback coqtop (%s)." % (coqtop, fallback_coqtop))
+            return split_statements_to_definitions(statements, log=log, coqtop=fallback_coqtop, coqtop_args=fallback_coqtop_args, fallback_coqtop=None, fallback_coqtop_args=None, preference_key=None, **kwargs)
+        else:
+            log("Your version of coqtop doesn't support -emacs -time.  Falling back to more error-prone method.")
+            return split_definitions_old.split_statements_to_definitions(statements, log=log, coqtop=coqtop, coqtop_args=coqtop_args)
     # check for -time
-    if not get_coq_accepts_time(coqtop, log=log):
+    if not get_coq_accepts_time(coqtop, log=log) or not get_coq_accepts_emacs(coqtop, log=log):
         return fallback()
     if not get_proof_term_works_with_time(coqtop, is_coqtop=True, log=log, **kwargs):
         statements = postprocess_split_proof_term(statements, log=log, **kwargs)
