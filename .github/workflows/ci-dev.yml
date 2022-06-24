@@ -17,11 +17,8 @@ jobs:
 
     strategy:
       matrix:
-        coq-version: ['8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
-        ocaml-version: ['minimal']
-        include:
-          - coq-version: 'dev'
-            ocaml-version: '4.13-flambda'
+        coq-version: ['dev', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
+        ocaml-version: ['default']
 
     runs-on: ubuntu-latest
 
