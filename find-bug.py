@@ -1380,7 +1380,7 @@ if __name__ == '__main__':
         env['log']('\nCoq version: %s\n' % coqc_version)
 
         extra_args = get_coq_prog_args(get_file(bug_file_name, **env)) if args.use_coq_prog_args else []
-        for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], ''), ('coqtop_args', env['coqtop'], ''), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_')):
+        for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], ''), ('coqtop_args', env['coqtop'], ''), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_'), ('passing_coqtop_args', env['passing_coqtop'] if env['passing_coqtop'] else env['coqtop'], 'passing_')):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + 'libnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-R', dirname, libname])
@@ -1420,7 +1420,7 @@ if __name__ == '__main__':
                 sys.exit(1)
 
         if env['inline_coqlib']:
-            for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args'):
+            for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args', 'passing_coqtop_args'):
                 env[key] = tuple(list(env[key]) + ['-nois', '-coqlib', env['inline_coqlib']])
             env['libnames'] = tuple(list(env['libnames']) + [(os.path.join(env['inline_coqlib'], 'theories'), 'Coq')])
 
