@@ -55,7 +55,7 @@ Now, I will attempt to coq the file, and find the error\.\.\.
 
 Coqing the file (bug_[0-9]\+\.v)\.\.\.
 
-Running command: "coqc"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?\( "-R" "/tmp/tmp[A-Za-z0-9_]\+" ""\)\? "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
+Running command: "coqc"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\? "-nois" "-R" "\." "Top"\( "-top" "Top\.example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?\( "-R" "/tmp/tmp[A-Za-z0-9_]\+" ""\)\? "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
 
 The timeout for coqc has been set to: 3
 
@@ -104,7 +104,7 @@ ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" |
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\? "-nois" "-R" "\." "Top"\( "-top" "example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\? "-nois" "-R" "\." "Top"\( "-top" "Top\.example_[0-9]\+"\)\?\( "-native-compiler" "ondemand"\)\?) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
