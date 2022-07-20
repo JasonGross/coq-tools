@@ -2,14 +2,14 @@ from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path, tempfile, time
 from functools import cmp_to_key
 from memoize import memoize
-from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg
+from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg, group_coq_args
 from split_file import split_coq_file_contents, get_coq_statement_byte_ranges
 from strip_comments import strip_comments
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from util import cmp_compat as cmp
 import util
 
-__all__ = ["filename_of_lib", "lib_of_filename", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs", "split_requires_of_statements"]
+__all__ = ["filename_of_lib", "lib_of_filename", "has_dir_binding", "deduplicate_trailing_dir_bindings", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs", "split_requires_of_statements"]
 
 file_mtimes = {}
 file_contents = {}
@@ -155,13 +155,41 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
         filename = os.path.abspath(filename)
     return (filename, filename.replace(os.sep, '.'))
 
-def lib_of_filename(filename, exts=('.v', '.glob'), **kwargs):
+DEFAULT_LIB_FILENAME_EXTS = ('.v', '.glob')
+def lib_of_filename(filename, exts=DEFAULT_LIB_FILENAME_EXTS, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename, libname = lib_of_filename_helper(filename, libnames=tuple(kwargs['libnames']), non_recursive_libnames=tuple(kwargs['non_recursive_libnames']), exts=exts)
 #    if '.' in filename:
 #        # TODO: Do we still need this warning?
 #        kwargs['log']("WARNING: There is a dot (.) in filename %s; the library conversion probably won't work." % filename)
     return libname
+
+DUMMY_TOPNAME = 'DUMMY TOPNAME'
+def adjust_dummy_topname_binding(filename, bindings, dummy_topname=DUMMY_TOPNAME):
+    if filename is None: return tuple(bindings)
+    _, topname = lib_of_filename_helper(
+        filename,
+        libnames=tuple(tuple(i[1:]) for i in bindings if i[0] == '-R'),
+        non_recursive_libnames=tuple(tuple(i[1:]) for i in bindings if i[0] == '-Q'),
+        exts=DEFAULT_LIB_FILENAME_EXTS)
+    if topname.startswith('.'): # absolute path, will give other errors
+        topname = os.path.splitext(os.path.basename(filename))[0]
+    topname = topname.replace('-', '_DASH_')
+    return tuple((('-top', topname) if i == ('-top', dummy_topname) else i)
+                 for i in bindings)
+
+def has_dir_binding(args, coqc_help, file_name=None):
+    return any(i[0] in ('-R', '-Q') for i in group_coq_args(args, coqc_help))
+
+def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_name=None):
+    kwargs = dict()
+    if file_name is not None: kwargs['topname'] = DUMMY_TOPNAME
+    bindings = group_coq_args(args, coqc_help, **kwargs)
+    ret = []
+    for binding in adjust_dummy_topname_binding(file_name, bindings):
+        if coq_accepts_top or binding[0] != '-top':
+            ret.extend(binding)
+    return tuple(ret)
 
 def is_local_import(libname, **kwargs):
     '''Returns True if libname is an import to a local file that we can discover and include, and False otherwise'''
