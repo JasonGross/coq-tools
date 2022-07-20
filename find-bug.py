@@ -454,14 +454,17 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                                   write_to_temp_file=write_to_temp_file,
                                                   display_extra_verbose_on_error=display_extra_verbose_on_error,
                                                   **kwargs)
-        elif diagnose_error.has_error(outputs[output_i]):
-            new_line = diagnose_error.get_error_line_number(outputs[output_i])
-            new_start, new_end = diagnose_error.get_error_byte_locations(outputs[output_i])
-            new_contents_lines = new_contents.split('\n')
-            new_contents_to_error, new_contents_rest = '\n'.join(new_contents_lines[:new_line-1]), '\n'.join(new_contents_lines[new_line-1:])
+        else:
+            if diagnose_error.has_error(outputs[output_i]):
+                new_line = diagnose_error.get_error_line_number(outputs[output_i])
+                new_start, new_end = diagnose_error.get_error_byte_locations(outputs[output_i])
+                new_contents_lines = new_contents.split('\n')
+                new_contents_to_error, new_contents_rest = '\n'.join(new_contents_lines[:new_line-1]), '\n'.join(new_contents_lines[new_line-1:])
+                source_display = '%s\n%s\n' % (new_contents_to_error,
+                                               new_contents_rest.encode('utf-8')[:new_end].decode('utf-8'))
+            else:
+                source_display = new_contents
             error_key = re.sub(r'File "[^"]+"', r'File ""', outputs[output_i])
-            source_display = '%s\n%s\n' % (new_contents_to_error,
-                                           new_contents_rest.encode('utf-8')[:new_end].decode('utf-8'))
             if display_extra_verbose_on_error and error_key not in skip_extra_verbose_error_state:
                 skip_extra_verbose_error_state.add(error_key)
                 kwargs['log']('%s%s' % (extra_verbose_prefix,
