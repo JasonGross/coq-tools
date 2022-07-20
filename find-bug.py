@@ -192,6 +192,13 @@ parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_tru
                     help='Automatic yes to prompts. Assume "yes" as answer to all prompts and run non-interactively.')
 parser.add_argument('--no-color', dest='color_on', action='store_const', const=False, default=True,
                     help=("Don't color any log messages."))
+parser.add_argument('--verbose-include-failure-warning', dest='verbose_include_failure_warning', action='store_const', const=True, default=False,
+                    help=("Emit a verbose warning when include fails, including the file contents, separately for each error message."))
+parser.add_argument('--verbose-include-failure-warning-prefix', dest='verbose_include_failure_warning_prefix', type=str, default='',
+                    help=("Prefix for --verbose-include-failure-warning"))
+parser.add_argument('--verbose-include-failure-warning-newline', dest='verbose_include_failure_warning_newline', type=str, default='\n',
+                    help=("Replace all newlines in --verbose-include-failure-warning with this string"))
+
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
@@ -414,6 +421,8 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                    timeout_retry_count=1, ignore_coq_output_cache=False,
                                    verbose_base=1, display_source_to_error=False,
                                    write_to_temp_file=False,
+                                   display_extra_verbose_on_error=False, extra_verbose_prefix='', extra_verbose_newline='\n',
+                                   skip_extra_verbose_error_state=set(),
                                    **kwargs):
     kwargs['log']('Running coq on the file\n"""\n%s\n"""' % new_contents, level=2 + verbose_base)
     change_result, contents, outputs, output_i, error_desc, runtime, error_desc_verbose_list = classify_contents_change(old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs)
@@ -443,15 +452,26 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                                   timeout_retry_count=timeout_retry_count-1, ignore_coq_output_cache=True,
                                                   verbose_base=verbose_base,
                                                   write_to_temp_file=write_to_temp_file,
+                                                  display_extra_verbose_on_error=display_extra_verbose_on_error,
                                                   **kwargs)
-        elif display_source_to_error and diagnose_error.has_error(outputs[output_i]):
+        elif diagnose_error.has_error(outputs[output_i]):
             new_line = diagnose_error.get_error_line_number(outputs[output_i])
             new_start, new_end = diagnose_error.get_error_byte_locations(outputs[output_i])
             new_contents_lines = new_contents.split('\n')
             new_contents_to_error, new_contents_rest = '\n'.join(new_contents_lines[:new_line-1]), '\n'.join(new_contents_lines[new_line-1:])
-            kwargs['log']('The file generating the error was:', level=verbose_base)
-            kwargs['log']('%s\n%s\n' % (new_contents_to_error,
-                                        new_contents_rest.encode('utf-8')[:new_end].decode('utf-8')), level=verbose_base)
+            error_key = re.sub(r'File "[^"]+"', r'File ""', outputs[output_i])
+            source_display = '%s\n%s\n' % (new_contents_to_error,
+                                           new_contents_rest.encode('utf-8')[:new_end].decode('utf-8'))
+            if display_extra_verbose_on_error and error_key not in skip_extra_verbose_error_state:
+                skip_extra_verbose_error_state.add(error_key)
+                kwargs['log']('%s%s' % (extra_verbose_prefix,
+                                        ('%sFailed to %s and preserve the error.  %s\nThe new error was:\n%s\n\nThe file generating the error was:\n%s'
+                                         % (extra_verbose_prefix, failure_description, error_desc, outputs[output_i], source_display)
+                                         ).replace('\r\n', '\n').replace('\n', extra_verbose_newline)),
+                              level=verbose_base)
+            if display_source_to_error:
+                kwargs['log']('The file generating the error was:', level=verbose_base)
+                kwargs['log'](source_display, level=verbose_base)
         return False
     else:
         kwargs['log']('ERROR: Unrecognized change result %s on\nclassify_contents_change(\n  %s\n ,%s\n)\n%s'
@@ -1311,6 +1331,8 @@ if __name__ == '__main__':
         'color_on' : args.color_on,
         'inline_failure_libnames': [],
         'parse_with': args.parse_with,
+        'extra_verbose_prefix': args.verbose_include_failure_warning_prefix,
+        'extra_verbose_newline': args.verbose_include_failure_warning_newline,
         }
 
     if bug_file_name[-2:] != '.v':
@@ -1509,6 +1531,7 @@ if __name__ == '__main__':
                             reset_timeout=True,
                             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                             display_source_to_error=False,
+                            display_extra_verbose_on_error=args.verbose_include_failure_warning,
                             **env):
                         # any lazily evaluates the iterator, so we'll
                         # only run the check up to the point of the
@@ -1524,6 +1547,7 @@ if __name__ == '__main__':
                                 # ability of a later one to succeed
                                 reset_timeout=True,
                                 display_source_to_error=True,
+                                display_extra_verbose_on_error=args.verbose_include_failure_warning,
                                 **env)
                                    for descr, test_output_alt in test_output_alts):
                             # let's also display the error and source
@@ -1537,6 +1561,7 @@ if __name__ == '__main__':
                                 timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT, # is this the right retry count?
                                 reset_timeout=True,
                                 display_source_to_error=True,
+                                display_extra_verbose_on_error=args.verbose_include_failure_warning,
                                 write_to_temp_file=True,
                                 **env)
 
