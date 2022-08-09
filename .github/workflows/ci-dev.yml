@@ -22,7 +22,7 @@ jobs:
 
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ matrix.ocaml-version }}-${{ github.head_ref || github.run_id }}
+      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ matrix.ocaml-version }}-${{ github.head_ref || ( github.ref == 'refs/heads/master' && github.run_id ) || github.ref }}
       cancel-in-progress: true
 
     steps:

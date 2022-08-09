@@ -34,7 +34,7 @@ jobs:
     env: ${{ matrix.env }}
     runs-on: ${{ matrix.env.os }}
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.env.COQ_VERSION }}-${{ matrix.python-version }}-${{ github.head_ref || github.run_id }}
+      group: ${{ github.workflow }}-${{ matrix.env.COQ_VERSION }}-${{ matrix.python-version }}-${{ github.head_ref || ( github.ref == 'refs/heads/master' && github.run_id ) || github.ref }}
       cancel-in-progress: true
 
     steps:
