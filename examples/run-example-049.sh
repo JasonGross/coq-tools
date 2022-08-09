@@ -49,7 +49,7 @@ EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
 foo
      : Prop
-File "/tmp/tmp[A-Za-z0-9_]\+/example_49.v", line 1[0-9], characters 0-26:
+File "/tmp/tmp[A-Za-z0-9_]\+/Top/example_${N}.v", line 1[0-9], characters 0-27:
 Error: The command has not failed!
 EOF
 )
@@ -95,7 +95,7 @@ Module Import LocalFalse\.
 End LocalFalse\.
 End AdmitTactic\.
 Definition foo := True\.
-Fail Check example_49\.foo\.
+Fail Check example_${N}\.foo\.
 
 EOF
 )
