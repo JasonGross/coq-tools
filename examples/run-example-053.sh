@@ -90,8 +90,8 @@ EXPECTED=$(cat <<EOF
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
-Module Export Foo\.
-Definition n := nat\.
+Require Top\.Prop\.Foo\.
+
 Fail Check Foo\.n\.
 
 EOF
