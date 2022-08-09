@@ -3,7 +3,7 @@ import sys, os
 from argparse_compat import argparse
 from util import PY3
 
-__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS"]
+__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "add_coq_lsp_arguments", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -16,6 +16,7 @@ class CoqLibnameAction(argparse.Action):
             setattr(namespace, self.dest, [])
             self.non_default = True
         getattr(namespace, self.dest).append(tuple(values))
+
 
 DEFAULT_VERBOSITY=1
 LOG_ALWAYS=None
@@ -232,6 +233,37 @@ def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths):
         elif ':' in coqpath:
             for path in coqpath.split(':'):
                 do_with_path(coqpath if coqpath != '' else '.')
+
+def ErrorAction(e, warning, default):
+    class ErrorAction(argparse.Action):
+        non_default = False
+        def __init__(self, *args, **kwargs):
+            super(ErrorAction, self).__init__(*args, nargs=0, **kwargs)
+        def __call__(self, parser, namespace, values, option_string=None):
+            if warning is not None:
+                print(warning, file=sys.stderr)
+            raise e
+    if e is None:
+        return default
+    return ErrorAction
+
+def add_coq_lsp_arguments(parser):
+    try:
+        import coq_lsp
+        err = None
+        warning = ''
+    except Exception as e:
+        warning = '  WARNING: This option will not work: ' + str(e)
+        err = e
+    if isinstance(err, ImportError):
+        warning = '  WARNING: This option will not work because you are missing some Python dependencies: ' + str(err)
+    elif isinstance(err, SyntaxError):
+        warning = '  WARNING: This option will not work because your version of Python is not new enough to support the syntax the minimizer uses to interface with coq-lsp: ' + str(err)
+
+    parser.add_argument('--coq-lsp', metavar='COQ_LSP', dest='coq_lsp', default=None, action=ErrorAction(err, warning.strip(), 'store'), type=str,
+                        help=('The path to the coq-lsp program.  Passing this argument instructs the minimizer to use coq-lsp (https://github.com/ejgallego/coq-lsp) rather than coqc when possible.' + warning))
+    parser.add_argument('--passing-coqc-is-coq-lsp', metavar='COQ_LSP', dest='passing_coqc_is_coq_lsp', default=False, action=ErrorAction(err, warning.strip(), 'store'), type=str,
+                        help='The path to the coq-lsp program that should compile the file successfully.  Passing this argument instructs the minimizer to use coq-lsp (https://github.com/ejgallego/coq-lsp) rather than (passing) coqc when possible.' + warning)
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
 class ArgumentParser(argparse.ArgumentParser):

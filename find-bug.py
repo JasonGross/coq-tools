@@ -17,7 +17,7 @@ from import_util import has_dir_binding, deduplicate_trailing_dir_bindings
 from memoize import memoize
 from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_coqc_coqlib, get_coq_accepts_compile
 from coq_running_support import get_ltac_support_snippet
-from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
+from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, add_coq_lsp_arguments, DEFAULT_LOG, LOG_ALWAYS
 from binding_util import process_maybe_list
 from file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from util import yes_no_prompt, PY3
@@ -186,6 +186,7 @@ parser.add_argument('--nonpassing-coqtop-args', metavar='ARG', dest='nonpassing_
                           'NOTE: If you want to pass an argument to both coqc and coqtop, use --nonpassing-arg="-indices-matter", not --coqc-args="-indices-matter"'))
 parser.add_argument('--passing-coqc-is-coqtop', dest='passing_coqc_is_coqtop', default=False, action='store_const', const=True,
                     help="Strip the .v and pass -load-vernac-source to the coqc programs; this allows you to pass `--passing-coqc coqtop'")
+add_coq_lsp_arguments(parser)
 parser.add_argument('--error-log', metavar='ERROR_LOG', dest='error_log', type=argparse.FileType('r'), default=None,
                     help='If given, ensure that the computed error message occurs in this log.')
 parser.add_argument('-y', '--yes', '--assume-yes', dest='yes', action='store_true',
@@ -198,7 +199,6 @@ parser.add_argument('--verbose-include-failure-warning-prefix', dest='verbose_in
                     help=("Prefix for --verbose-include-failure-warning"))
 parser.add_argument('--verbose-include-failure-warning-newline', dest='verbose_include_failure_warning_newline', type=str, default='\n',
                     help=("Replace all newlines in --verbose-include-failure-warning with this string"))
-
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
 add_logging_arguments(parser)
@@ -1329,6 +1329,8 @@ if __name__ == '__main__':
         'temp_file_name': args.temp_file,
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
+        'coq_lsp': args.coq_lsp,
+        'passing_coq_lsp': args.passing_coq_lsp,
         'inline_coqlib': args.inline_coqlib,
         'yes': args.yes,
         'color_on' : args.color_on,
