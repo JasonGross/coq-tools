@@ -1497,28 +1497,20 @@ if __name__ == '__main__':
                         # because this is a bit more robust against
                         # future module inlining (see example test 45)
                         def get_test_output(absolutize_mods=False, first_wrap_then_include=True, without_require=True, insert_at_top=False):
-                            new_req_module = absolutize_and_mangle_libname(req_module, first_wrap_then_include=first_wrap_then_include, **env)
-                            test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
-                            if not absolutize_mods:
-                                cur_rep = rep
-                            else:
-                                cur_rep = '\nRequire %s.\n' % new_req_module
-                            if cur_rep not in '\n' + test_output:
-                                env['log']('\nWarning: I cannot find Require %s.' % new_req_module)
-                                env['log']('in contents:\n' + test_output, level=3)
+                            test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: absolutize_and_mangle_libname(req_module, first_wrap_then_include=first_wrap_then_include)})
                             replacement = '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, without_require=without_require, **env).strip() + '\n'
                             if without_require:
-                                all_imports = get_recursive_require_names(req_module, **env) # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
+                                all_imports = run_recursively_get_imports(req_module, **env) # like get_recursive_require_names, but with better sorting properties, I think, and also automatically strips off the self module
                                 replacement = '\n' + ''.join('Require %s.\n' % i for i in all_imports) + replacement
                             if insert_at_top:
                                 header, test_output = split_leading_comments_and_whitespace(test_output)
                                 return add_admit_tactic((
                                     header +
                                     replacement + '\n' +
-                                    ('\n' + test_output).replace(cur_rep, '\n')).strip() + '\n',
+                                    ('\n' + test_output).replace(rep, '\n')).strip() + '\n',
                                                         **env)
                             else:
-                                return ('\n' + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, '\n').strip() + '\n'
+                                return ('\n' + test_output).replace(rep, replacement, 1).replace(rep, '\n').strip() + '\n'
                         test_output_alts = [
                             (((' without Include' if not first_wrap_then_include else ' via Include')
                               + (', absolutizing mod references' if absolutize_mods else '')
