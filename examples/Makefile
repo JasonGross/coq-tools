@@ -5,17 +5,17 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 00 01 02 03 04 05 07 08 08-2 08-3 09 11 12 14 15 16 17 19 21 22 23 24 25 28 29 30 31 35 36 37 38 39 40 41 42 43 45 47 50 51
-CONDITIONAL_TESTS = 06 10 13 18 20 26 27 32 33 34 44 46 48 49
+DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 039 040 041 042 043 045 047 050 051
+CONDITIONAL_TESTS = 006 010 013 018 020 026 027 032 033 034 044 046 048 049
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
-ONLY_IF_Q_TESTS = 10 26
-ONLY_IF_W_TESTS = 44 # 46 (even more special handling due to version constraints)
-ONLY_IF_FROM_TESTS = 13 27 32 33 34
-ONLY_IF_GT_84 = 20 49
+ONLY_IF_Q_TESTS = 010 026
+ONLY_IF_W_TESTS = 044 # 046 (even more special handling due to version constraints)
+ONLY_IF_FROM_TESTS = 013 027 032 033 034
+ONLY_IF_GT_84 = 020 049
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
-OTHER_RUNS = run-example-08.py
+OTHER_RUNS = run-example-008.py
 IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh memoize.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
@@ -31,8 +31,8 @@ ENABLED_LOGS = $(DEFAULT_LOGS)
 .SECONDEXPANSION:
 
 # Order the builds for 8 so they don't run in parallel
-example_08-2_result.log: | example_08_result.log
-example_08-3_result.log: | example_08-2_result.log
+example_008-2_result.log: | example_008_result.log
+example_008-3_result.log: | example_008-2_result.log
 
 # some makefile magic to make things less noisy unless you do `make V=1`
 Q_0 := @
@@ -141,8 +141,8 @@ endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))
 ifneq (0,$(strip $(COQC_SUPPORTS_W)))
-test-suite: example_46_result.log
-ENABLED_LOGS += example_46_result.log
+test-suite: example_046_result.log
+ENABLED_LOGS += example_046_result.log
 endif
 print-support::
 	@printf "coqc is < 8.15:\t\t\tNo\n"
@@ -152,8 +152,8 @@ print-support::
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11%,$(COQC_VERSION))))
-test-suite: example_48_result.log
-ENABLED_LOGS += example_48_result.log
+test-suite: example_048_result.log
+ENABLED_LOGS += example_048_result.log
 print-support::
 	@printf "coqc is < 8.12:\t\t\tNo\n"
 else
