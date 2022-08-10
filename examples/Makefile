@@ -5,14 +5,26 @@ CAT_ALL_LOGS=0
 
 ####
 
-DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 039 040 041 042 043 045 047 050 051 052 053 054
-CONDITIONAL_TESTS = 006 010 013 018 020 026 027 032 033 034 044 046 048 049
+DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 039 040 041 042 043 045 047 050 051
+CONDITIONAL_TESTS = 006 018
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 010 026
-ONLY_IF_W_TESTS = 044 # 046 (even more special handling due to version constraints)
+ONLY_IF_W_TESTS = 044
+ONLY_IF_W_AND_GE_815_TESTS = 046
 ONLY_IF_FROM_TESTS = 013 027 032 033 034
-ONLY_IF_GT_84 = 020 049
+ONLY_IF_GLOB_IMPORT_TESTS = 052 053 054
+ONLY_IF_GT_84_TESTS = 020 049
+ONLY_IF_GE_812_TESTS = 048
+CONDITIONAL_TESTS += \
+	$(ONLY_IF_Q_TESTS) \
+	$(ONLY_IF_W_TESTS) \
+	$(ONLY_IF_W_AND_GE_815_TESTS) \
+	$(ONLY_IF_FROM_TESTS) \
+	$(ONLY_IF_GLOB_IMPORT_TESTS) \
+	$(ONLY_IF_GT_84_TESTS) \
+	$(ONLY_IF_GE_812_TESTS) \
+	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-008.py
@@ -20,12 +32,18 @@ IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh memoize.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
+BROKEN_LOGS = $(patsubst %,example_%_result.log,$(BROKEN_TESTS))
+ALL_LOGS = $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) $(BROKEN_LOGS)
 ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
+ONLY_IF_W_AND_GE_815_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_GE_815_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
+ONLY_IF_GLOB_IMPORT_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GLOB_IMPORT_TESTS))
 ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
+ONLY_IF_GE_812_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GE_812_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
+DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
 .DEFAULT_GOAL := test-suite
 .SECONDEXPANSION:
@@ -93,72 +111,76 @@ ifneq (0,$(strip $(COQTOP_SUPPORTS_COMPILE)))
 test-suite: $(ONLY_IF_COQTOP_COMPILE_LOGS)
 ENABLED_LOGS += $(ONLY_IF_COQTOP_COMPILE_LOGS)
 print-support::
-	@printf "coqtop supports -compile:\t\tYes\n"
+	@printf "coqtop supports -compile:\t\t\tYes\n"
 else
 print-support::
-	@printf "coqtop supports -compile:\t\tNo\n"
+	@printf "coqtop supports -compile:\t\t\tNo\n"
 endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
 test-suite: $(ONLY_IF_Q_LOGS)
 ENABLED_LOGS += $(ONLY_IF_Q_LOGS)
 print-support::
-	@printf "coqc supports -Q:\t\t\tYes\n"
+	@printf "coqc supports -Q:\t\t\t\tYes\n"
 else
 print-support::
-	@printf "coqc supports -Q:\t\t\tNo\n"
+	@printf "coqc supports -Q:\t\t\t\tNo\n"
 endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_W)))
 test-suite: $(ONLY_IF_W_LOGS)
 ENABLED_LOGS += $(ONLY_IF_W_LOGS)
 print-support::
-	@printf "coqc supports -w:\t\t\tYes\n"
+	@printf "coqc supports -w:\t\t\t\tYes\n"
 else
 print-support::
-	@printf "coqc supports -w:\t\t\tNo\n"
+	@printf "coqc supports -w:\t\t\t\tNo\n"
 endif
 
 ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
 ENABLED_LOGS += $(ONLY_IF_FROM_LOGS)
 print-support::
-	@printf "coqc supports From ... Require ...:\tYes\n"
+	@printf "coqc supports From ... Require ...:\t\tYes\n"
 else
 print-support::
-	@printf "coqc supports From ... Require ...:\tNo\n"
+	@printf "coqc supports From ... Require ...:\t\tNo\n"
+endif
+
+ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))
+ifneq (0,$(strip $(COQC_SUPPORTS_W)))
+test-suite: $(ONLY_IF_W_AND_GE_815_LOGS)
+ENABLED_LOGS += $(ONLY_IF_W_AND_GE_815_LOGS)
+endif
+test-suite: $(ONLY_IF_GLOB_IMPORT_LOGS)
+ENABLED_LOGS += $(ONLY_IF_GLOB_IMPORT_LOGS)
+print-support::
+	@printf "coqc emits globalization info for Imports:\tYes\n"
+	@printf "coqc is < 8.15:\t\t\t\t\tNo\n"
+else
+print-support::
+	@printf "coqc emits globalization info for Imports:\tNo\n"
+	@printf "coqc is < 8.15:\t\t\t\t\tYes\n"
+endif
+
+ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11%,$(COQC_VERSION))))
+test-suite: $(ONLY_IF_GE_812_LOGS)
+ENABLED_LOGS += $(ONLY_IF_GE_812_LOGS)
+print-support::
+	@printf "coqc is < 8.12:\t\t\t\t\tNo\n"
+else
+print-support::
+	@printf "coqc is < 8.12:\t\t\t\t\tYes\n"
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4%,$(COQC_VERSION))))
 test-suite: $(ONLY_IF_GT_84_LOGS)
 ENABLED_LOGS += $(ONLY_IF_GT_84_LOGS)
 print-support::
-	@printf "coqc is 8.3 or 8.4:\t\t\tNo\n"
+	@printf "coqc is 8.3 or 8.4:\t\t\t\tNo\n"
 else
 print-support::
-	@printf "coqc is 8.3 or 8.4:\t\t\tYes\n"
-endif
-
-ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))
-ifneq (0,$(strip $(COQC_SUPPORTS_W)))
-test-suite: example_046_result.log
-ENABLED_LOGS += example_046_result.log
-endif
-print-support::
-	@printf "coqc is < 8.15:\t\t\tNo\n"
-else
-print-support::
-	@printf "coqc is < 8.15:\t\t\tYes\n"
-endif
-
-ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11%,$(COQC_VERSION))))
-test-suite: example_048_result.log
-ENABLED_LOGS += example_048_result.log
-print-support::
-	@printf "coqc is < 8.12:\t\t\tNo\n"
-else
-print-support::
-	@printf "coqc is < 8.12:\t\t\tYes\n"
+	@printf "coqc is 8.3 or 8.4:\t\t\t\tYes\n"
 endif
 
 $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) : example_%_result.log : $$(wildcard example_%/example_%.v) run-example-%.sh
@@ -181,6 +203,7 @@ test-suite-verbose-report::
 
 test-suite-verbose-report test-suite-report::
 	$(Q)ALL="$(sort $(ENABLED_LOGS))";                               \
+	DISABLED="$(sort $(DISABLED_LOGS))";                             \
 	SUCCESS=;                                                        \
 	FAILURE=;                                                        \
 	UNKNOWN=;                                                        \
@@ -214,6 +237,12 @@ test-suite-verbose-report test-suite-report::
 	                echo "$(YELLOW)$$i$(NC)";                        \
 	        done;                                                    \
 	fi;                                                              \
+	if [ ! -z "$$DISABLED" ]; then                                   \
+	        echo "$(BOLD)Disabled tests:$(NORMAL)";                  \
+	        for i in $$DISABLED; do                                  \
+	                echo "$(YELLOW)$$i$(NC)";                        \
+	        done;                                                    \
+	fi;                                                              \
 	if [ ! -z "$$FAILURE" ]; then                                    \
 	        echo "$(RED)$(BOLD)Failing tests:$(NORMAL)$(NC)";        \
 	        for i in $$FAILURE; do                                   \
@@ -240,4 +269,4 @@ has-all-tests::
 endif
 
 clean::
-	rm -f */bug*.v */*.vo */*.v.d */*.glob $(DEFAULT_LOGS) $(CONDITIONAL_LOGS)
+	rm -f */bug*.v */*.vo */*.v.d */*.glob $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) $(BROKEN_LOGS)
