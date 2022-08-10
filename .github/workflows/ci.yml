@@ -63,10 +63,3 @@ jobs:
       if: ${{ matrix.python-version != '2.7' }}
     - name: Test
       run: make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
-
-
-  check-all:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - run: true
