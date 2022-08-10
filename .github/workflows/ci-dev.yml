@@ -39,3 +39,10 @@ jobs:
           eval $(opam env)
           echo '::endgroup::'
           make check PYTHON=python3 CAT_ALL_LOGS=1
+
+
+  check-all-docker:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - run: true
