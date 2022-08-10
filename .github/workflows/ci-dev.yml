@@ -39,3 +39,14 @@ jobs:
           eval $(opam env)
           echo '::endgroup::'
           make check PYTHON=python3 CAT_ALL_LOGS=1
+
+
+  check-all-docker:
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+    - run: echo 'The triggering workflow passed'
+      if: ${{ needs.build.result == 'success' }}
+    - run: echo 'The triggering workflow failed' && false
+      if: ${{ needs.build.result != 'success' }}
