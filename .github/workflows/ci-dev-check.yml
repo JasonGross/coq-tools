@@ -17,6 +17,7 @@ jobs:
         echo 'conclusion     : ${{ github.event.workflow_run.conclusion      }}'
         echo 'head_branch    : ${{ github.event.workflow_run.head_branch     }}'
         echo 'head_sha       : ${{ github.event.workflow_run.head_sha        }}'
+        echo 'url            : ${{ github.event.workflow_run.url             }}'
     - run: echo 'The triggering workflow passed'
       if: ${{ github.event.workflow_run.conclusion == 'success' }}
     - run: echo 'The triggering workflow failed' && false
