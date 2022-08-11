@@ -4,6 +4,7 @@ from memoize import memoize
 from split_file import split_leading_comments_and_whitespace
 from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
 from custom_arguments import DEFAULT_LOG
+from coq_running_support import get_reserved_modnames
 
 __all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file", "absolutize_and_mangle_libname"]
 
@@ -22,6 +23,7 @@ def fill_kwargs(kwargs, for_makefile=True):
         'libnames':DEFAULT_LIBNAMES,
         'non_recursive_libnames':tuple(),
         'coqc':'coqc',
+        'coqtop':'coqtop',
         'absolutize':ALL_ABSOLUTIZE_TUPLE,
         'coq_makefile':'coq_makefile'
     }
@@ -40,8 +42,12 @@ def contents_without_imports(lib, **kwargs):
         print('Warning: There are comments in your Require/Import/Export lines in %s.' % v_file)
     return IMPORT_LINE_REG.sub('', contents)
 
-def escape_lib(lib):
-    return lib.replace('.', '_DOT_').replace('-', '_DASH_')
+def escape_lib(lib, **kwargs):
+    reserved = get_reserved_modnames(kwargs['coqtop'], **kwargs)
+    lib = lib.replace('.', '_DOT_').replace('-', '_DASH_')
+    while lib in reserved:
+        lib = 'AVOID_RESERVED_' + lib
+    return lib
 
 def group_by_first_component(lib_libname_pairs):
     rtn = dict((lib.split('.')[0], []) for lib, libname in lib_libname_pairs)
@@ -57,20 +63,21 @@ def nest_iter_up_to(iterator):
         yield tuple(so_far)
 
 
-def construct_import_list(import_libs, import_all_directories=False):
+def construct_import_list(import_libs, import_all_directories=False, **kwargs):
     '''Takes a list of library names, and returns a list of imports in an order that should have modules representing files at the end.  If import_all_directories is true, then the resulting imports should handle semi-absolute constants, and not just fully absolute or fully relative ones.'''
+    def escape_lib_local(l): return escape_lib(l, **kwargs)
     if import_all_directories:
-        lib_components_list = [(libname, tuple(reversed(list(nest_iter_up_to(map(escape_lib, libname.split('.'))))[:-1])))
+        lib_components_list = [(libname, tuple(reversed(list(nest_iter_up_to(map(escape_lib_local, libname.split('.'))))[:-1])))
                                for libname in import_libs]
-        ret = list(map(escape_lib, import_libs))
+        ret = list(map(escape_lib_local, import_libs))
         lib_components = [(libname, i, max(map(len, lst)) - len(i))
                           for libname, lst in lib_components_list
                           for i in lst]
         for libname, components, components_left in reversed(sorted(lib_components, key=(lambda x: x[2]))):
-            ret.append(escape_lib(libname) + '.' + '.'.join(map(escape_lib, components)))
+            ret.append(escape_lib_local(libname) + '.' + '.'.join(map(escape_lib_local, components)))
         return ret
     else:
-        return map(escape_lib, import_libs)
+        return map(escape_lib_local, import_libs)
 
 def strip_requires(contents):
     reg1 = re.compile(r'^\s*Require\s+((?:Import|Export)\s)', flags=re.MULTILINE)
@@ -84,10 +91,11 @@ def strip_requires(contents):
     return contents
 
 
-def get_module_name_and_lib_parts(lib, first_wrap_then_include=False):
-    module_name = escape_lib(lib)
+def get_module_name_and_lib_parts(lib, first_wrap_then_include=False, **kwargs):
+    def escape_lib_local(libname): return escape_lib(libname, **kwargs)
+    module_name = escape_lib_local(lib)
     mangled_module_name = module_name + '_WRAPPED'
-    lib_parts = list(map(escape_lib, lib.split('.')))
+    lib_parts = list(map(escape_lib_local, lib.split('.')))
     # we could actually return the same thing, that is the string
     # ('%s.%s' % (module_name, '.'.join(lib_parts))), in both cases,
     # but we choose to return the module prior to Include rather than
@@ -100,8 +108,8 @@ def get_module_name_and_lib_parts(lib, first_wrap_then_include=False):
         full_module_name = '%s.%s' % (module_name, '.'.join(lib_parts))
     return module_name, mangled_module_name, lib_parts, full_module_name
 
-def absolutize_and_mangle_libname(lib, first_wrap_then_include=False):
-    module_name, mangled_module_name, lib_parts, full_module_name = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
+def absolutize_and_mangle_libname(lib, first_wrap_then_include=False, **kwargs):
+    module_name, mangled_module_name, lib_parts, full_module_name = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include, **kwargs)
     return full_module_name
 
 def contents_as_module(lib, other_imports, first_wrap_then_include=False, export=False, without_require=True, **kwargs):
@@ -111,18 +119,18 @@ def contents_as_module(lib, other_imports, first_wrap_then_include=False, export
         # that we use to fix
         # https://github.com/JasonGross/coq-tools/issues/67, so we disable it
         first_wrap_then_include = False
-        transform_base = lambda x: (escape_lib(x) + '.' + x if is_local_import(x, **kwargs) else x)
+        transform_base = lambda x: (escape_lib(x, **kwargs) + '.' + x if is_local_import(x, **kwargs) else x)
     else:
         transform_base = lambda x: x
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     contents = get_file(v_name, transform_base=transform_base, **kwargs)
     if without_require: contents = strip_requires(contents)
     kwargs['log'](contents, level=3)
-    module_name, mangled_module_name, lib_parts, _ = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include)
+    module_name, mangled_module_name, lib_parts, _ = get_module_name_and_lib_parts(lib, first_wrap_then_include=first_wrap_then_include, **kwargs)
     # import the top-level wrappers
     if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
-        for imp in reversed(construct_import_list(other_imports, import_all_directories=import_all_directories)):
+        for imp in reversed(construct_import_list(other_imports, import_all_directories=import_all_directories, **kwargs)):
             contents = 'Import %s.\n%s' % (imp, contents)
     # wrap the contents in directory modules
     maybe_export = 'Export ' if export else ''
@@ -218,7 +226,7 @@ Inductive t := a | b.
     for import_name in all_imports:
         try:
             if as_modules:
-                rtn += contents_as_module(import_name, imports_done, log=log, absolutize=absolutize, without_require=True, **kwargs) + '\n'
+                rtn += contents_as_module(import_name, imports_done, log=log, absolutize=absolutize, without_require=True, coqc=coqc, **kwargs) + '\n'
             else:
                 rtn += contents_without_imports(import_name, log=log, absolutize=tuple(), **kwargs) + '\n'
             imports_done.append(import_name)

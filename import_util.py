@@ -1,5 +1,6 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path, tempfile, time
+from collections import OrderedDict
 from functools import cmp_to_key
 from memoize import memoize
 from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_recognized, coq_makefile_supports_arg, group_coq_args
@@ -649,32 +650,37 @@ def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
     return d
 
 def get_recursive_requires(*libnames, **kwargs):
+    reverse = kwargs.get('reverse', True)
     requires = dict((lib, get_require_names(lib, **kwargs)) for lib in libnames)
     transitively_close(requires, make_new_value=(lambda lib: get_require_names(lib, **kwargs)), reflexive=True)
-    return requires
-
-def get_recursive_require_names(libname, **kwargs):
-    return tuple(i for i in get_recursive_requires(libname, **kwargs).keys() if i != libname)
-
-def sort_files_by_dependency(filenames, reverse=True, **kwargs):
-    kwargs = fill_kwargs(kwargs)
-    filenames = map(fix_path, filenames)
-    filenames = [(filename + '.v' if filename[-2:] != '.v' else filename) for filename in filenames]
-    libnames = [lib_of_filename(filename, **kwargs) for filename in filenames]
-    requires = get_recursive_requires(*libnames, **kwargs)
-
-    def fcmp(f1, f2):
-        if f1 == f2: return cmp(f1, f2)
-        l1, l2 = lib_of_filename(f1, **kwargs), lib_of_filename(f2, **kwargs)
-        if l1 == l2: return cmp(f1, f2)
+    def lcmp(l1, l2):
+        l1, l2 = l1[0], l2[0] # strip off value part
+        if l1 == l2: return cmp(l1, l2)
         # this only works correctly if the closure is *reflexive* as
         # well as transitive, because we require that if A requires B,
         # then A must have strictly more requires than B (i.e., it
         # must include itself)
         if len(requires[l1]) != len(requires[l2]): return cmp(len(requires[l1]), len(requires[l2]))
         return cmp(l1, l2)
+    return OrderedDict(sorted(requires.items(), key=cmp_to_key(lcmp), reverse=reverse))
 
-    filenames = sorted(filenames, key=cmp_to_key(fcmp), reverse=reverse)
+def get_recursive_require_names(libname, **kwargs):
+    requires = get_recursive_requires(libname, **kwargs)
+    return tuple(i for i in requires.keys() if i != libname)
+
+def sort_files_by_dependency(filenames, reverse=True, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    filenames = map(fix_path, filenames)
+    filenames = [(filename + '.v' if filename[-2:] != '.v' else filename) for filename in filenames]
+    libname_map = dict((lib_of_filename(filename, **kwargs), filename) for filename in filenames)
+    requires = get_recursive_requires(*sorted(libname_map.keys()), reverse=reverse, **kwargs)
+    # filter the sorted requires by the ones that were in the original
+    # filenames list, and use libname_map to lookup the original
+    # filename.  We could probably just map filename_of_lib over the
+    # requires and keep the ones that are in the original filenames,
+    # but this is more robust if there are edge cases where
+    # filename_of_lib(lib_of_filename(x)) != x
+    filenames = [libname_map[libname] for libname in requires.keys() if libname in libname_map.keys()]
     return filenames
 
 def get_imports(lib, fast=False, **kwargs):
