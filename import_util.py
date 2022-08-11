@@ -673,7 +673,7 @@ def sort_files_by_dependency(filenames, reverse=True, **kwargs):
     filenames = map(fix_path, filenames)
     filenames = [(filename + '.v' if filename[-2:] != '.v' else filename) for filename in filenames]
     libname_map = dict((lib_of_filename(filename, **kwargs), filename) for filename in filenames)
-    requires = get_recursive_requires(*libname_map.keys(), reverse=reverse, **kwargs)
+    requires = get_recursive_requires(*sorted(libname_map.keys()), reverse=reverse, **kwargs)
     # filter the sorted requires by the ones that were in the original
     # filenames list, and use libname_map to lookup the original
     # filename.  We could probably just map filename_of_lib over the
