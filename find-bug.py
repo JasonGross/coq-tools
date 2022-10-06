@@ -1508,7 +1508,7 @@ if __name__ == '__main__':
                                 env['log']('in contents:\n' + test_output, level=3)
                             replacement = '\n' + get_required_contents(req_module, first_wrap_then_include=first_wrap_then_include, without_require=without_require, **env).strip() + '\n'
                             if without_require:
-                                all_imports = get_recursive_require_names(req_module, **env) # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
+                                all_imports = get_recursive_require_names(req_module, reverse=False, **env) # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
                                 replacement = '\n' + ''.join('Require %s.\n' % i for i in all_imports) + replacement
                             if insert_at_top:
                                 header, test_output = split_leading_comments_and_whitespace(test_output)
