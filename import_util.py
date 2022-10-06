@@ -106,11 +106,11 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + '.v')]
     if len(existing_filenames) > 0:
         retval = existing_filenames[0]
-        if len(existing_filenames) == 1:
+        if len(set(existing_filenames)) == 1:
             return retval
         else:
             DEFAULT_LOG('WARNING: Multiple physical paths match logical path %s: %s.  Selecting %s.'
-                        % (lib, ', '.join(existing_filenames), retval),
+                        % (lib, ', '.join(sorted(set(existing_filenames))), retval),
                         level=LOG_ALWAYS)
             return retval
     if len(filenames) != 0:
@@ -128,11 +128,11 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
             return retval
     if len(filenames) > 0:
         retval = filenames[0]
-        if len(filenames) == 1:
+        if len(set(filenames)) == 1:
             return retval
         else:
             DEFAULT_LOG('WARNING: Multiple non-existent physical paths match logical path %s: %s.  Selecting %s.'
-                        % (lib, ', '.join(filenames), retval),
+                        % (lib, ', '.join(sorted(set(filenames))), retval),
                         level=LOG_ALWAYS)
             return retval
     return fix_path(os.path.relpath(os.path.normpath(lib.replace('.', os.sep) + ext), '.'))
