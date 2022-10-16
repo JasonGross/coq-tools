@@ -130,8 +130,8 @@ def make_reg_string(output, strict_whitespace=False):
                            r'Universe\\ [^ ]*\\ is\\ unbound',
                            re_escape(error_string))
     elif re.search(r'Compilation of file /tmp/[^ ]*', error_string):
-        re_string = re.sub(r'Compilation\\ of\\ file\\ /tmp/[^ ]*',
-                           r'Compilation\\ of\\ file\\ /tmp/[^ ]*',
+        re_string = re.sub(r'Compilation\\ of\\ file\\ /tmp/[^ \.]*\\\.',
+                           r'Compilation\\ of\\ file\\ /tmp/[^ \.]*\\.',
                            re_escape(error_string))
     else:
         re_string = re_escape(error_string)
