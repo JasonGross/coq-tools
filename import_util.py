@@ -434,11 +434,7 @@ def make_one_glob_file(v_file, **kwargs):
 def remove_if_local(filename, **kwargs):
     abs_filename = os.path.abspath(filename)
     cwd = os.path.abspath('.')
-    try:
-        common = os.path.commonpath([cwd, abs_filename])
-    except ValueError as e:
-        kwargs['log']("WARNING: Not removing %s (%s) because it shares no common path with the current directory (%s): %s" % (filename, abs_filename, cwd, repr(e)))
-        return
+    common = os.path.commonprefix([cwd, abs_filename])
     if common != cwd:
         kwargs['log']("WARNING: Not removing %s (%s) because it resides in a parent (%s) of the current directory (%s)" % (filename, abs_filename, common, cwd))
         return
