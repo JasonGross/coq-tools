@@ -431,6 +431,19 @@ def make_one_glob_file(v_file, **kwargs):
     finally:
         if os.path.exists(o_file): os.remove(o_file)
 
+def remove_if_local(filename, **kwargs):
+    abs_filename = os.path.abspath(filename)
+    cwd = os.path.abspath('.')
+    try:
+        common = os.path.commonpath([cwd, abs_filename])
+    except ValueError as e:
+        kwargs['log']("WARNING: Not removing %s (%s) because it shares no common path with the current directory (%s): %s" % (filename, abs_filename, cwd, repr(e)))
+        return
+    if common != cwd:
+        kwargs['log']("WARNING: Not removing %s (%s) because it resides in a parent (%s) of the current directory (%s)" % (filename, abs_filename, common, cwd))
+        return
+    os.remove(filename)
+
 def make_globs(logical_names, **kwargs):
     kwargs = fill_kwargs(kwargs)
     existing_logical_names = [i for i in logical_names
@@ -441,7 +454,9 @@ def make_globs(logical_names, **kwargs):
                            if not (os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name))]
     for vo_name, v_name, glob_name in filenames_vo_v_glob:
         if os.path.isfile(glob_name) and not os.path.getmtime(glob_name) > os.path.getmtime(v_name):
-            os.remove(glob_name)
+            if os.path.getmtime(v_name) > time.time():
+                kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (v_name, os.path.getmtime(v_name), time.time()), level=LOG_ALWAYS)
+            remove_if_local(glob_name, **kwargs)
         # if the .vo file already exists and is new enough, we assume
         # that all dependent .vo files also exist, and just run coqc
         # in a way that doesn't update the .vo file.  We use >= rather
