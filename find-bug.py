@@ -121,9 +121,11 @@ parser.add_argument('--no-deps', dest='walk_tree',
                     help=("Don't do dependency analysis on all files in the current " +
                           "file tree."))
 parser.add_argument('--inline-coqlib', dest='inline_coqlib',
-                    metavar='COQLIB', nargs='?', type=str,
-                    help=("Attempt to inline requires from Coq's standard library,\n" +
-                          "passing `-coqlib COQLIB' to coqc"))
+                    action='store_const', const=True, default=False,
+                    help=("Attempt to inline requires from Coq's standard library"))
+parser.add_argument('--inline-prelude', dest='inline_prelude',
+                    action='store_const', const=True, default=False,
+                    help=("Additionally inlines Coq.Init.Prelude by adding -noinit"))
 parser.add_argument('--inline-user-contrib', dest='inline_user_contrib',
                     action='store_const', const=True, default=False,
                     help=("Attempt to inline requires from the user-contrib folder"))
@@ -1250,10 +1252,8 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
 
     return True
 
-def maybe_add_coqlib_import(contents, **env):
-    if env['inline_coqlib']:
-        contents = 'Require Coq.Init.Prelude.\nImport Coq.Init.Prelude.\n' + contents
-    return contents
+def add_coqlib_prelude_import(contents, **env):
+    return 'Require Coq.Init.Prelude.\nImport Coq.Init.Prelude.\n' + contents
 
 if __name__ == '__main__':
     try:
@@ -1329,7 +1329,6 @@ if __name__ == '__main__':
         'temp_file_name': args.temp_file,
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
-        'inline_coqlib': args.inline_coqlib,
         'yes': args.yes,
         'color_on' : args.color_on,
         'inline_failure_libnames': [],
@@ -1384,7 +1383,12 @@ if __name__ == '__main__':
     if args.inline_user_contrib:
         for passing_prefix in ('', 'passing_'):
             if env[passing_prefix + 'coqc']:
-                update_env_with_coqpath_folders(passing_prefix, env, os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], **env), 'user-contrib'))
+                update_env_with_coqpath_folders(passing_prefix, env, os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'user-contrib'))
+
+    if args.inline_coqlib:
+        for passing_prefix in ('', 'passing_'):
+            if env[passing_prefix + 'coqc']:
+                env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories'), 'Coq')])
 
     env['log']('{', level=2)
     for k, v in sorted(list(env.items())):
@@ -1425,13 +1429,13 @@ if __name__ == '__main__':
             env['log']('\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = get_file(bug_file_name, update_globs=True, **env)
             args.bug_file.close()
-            inlined_contents = maybe_add_coqlib_import(inlined_contents, **env)
+            if args.inline_prelude:
+                for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args', 'passing_coqtop_args'):
+                    env[key] = tuple(list(env[key]) + ['-noinit'])
+                inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
             inlined_contents = add_admit_tactic(inlined_contents, **env)
             write_to_file(output_file_name, inlined_contents)
         else:
-            if env['inline_coqlib']:
-                env['log']('\nError: --inline-coqlib is incompatible with --no-minimize-before-inlining;\nthe Coq standard library is not suited for inlining all-at-once.', force_stdout=True, level=LOG_ALWAYS)
-                sys.exit(1)
             env['log']('\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s...' % (bug_file_name, output_file_name))
             inlined_contents = include_imports(bug_file_name, **env)
             args.bug_file.close()
@@ -1444,11 +1448,6 @@ if __name__ == '__main__':
             else:
                 env['log']('Failed to inline inputs.')
                 sys.exit(1)
-
-        if env['inline_coqlib']:
-            for key in ('coqc_args', 'coqtop_args', 'passing_coqc_args', 'passing_coqtop_args'):
-                env[key] = tuple(list(env[key]) + ['-nois', '-coqlib', env['inline_coqlib']])
-            env['libnames'] = tuple(list(env['libnames']) + [(os.path.join(env['inline_coqlib'], 'theories'), 'Coq')])
 
         env['log']('\nNow, I will attempt to coq the file, and find the error...')
         env['error_reg_string'] = get_error_reg_string(output_file_name, **env)

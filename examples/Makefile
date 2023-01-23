@@ -2,7 +2,6 @@
 ERROR_ON_FAILURE=1
 V = 0
 CAT_ALL_LOGS=0
-
 ####
 
 DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 039 040 041 042 043 045 047 050 051
@@ -16,6 +15,8 @@ ONLY_IF_FROM_TESTS = 013 027 032 033 034
 ONLY_IF_GLOB_IMPORT_TESTS = 052 053 054
 ONLY_IF_GT_84_TESTS = 020 049
 ONLY_IF_GE_812_TESTS = 048
+ONLY_IF_SYS_V_FILES_TESTS = 055
+ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS = 056
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_W_TESTS) \
@@ -24,6 +25,8 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_GLOB_IMPORT_TESTS) \
 	$(ONLY_IF_GT_84_TESTS) \
 	$(ONLY_IF_GE_812_TESTS) \
+	$(ONLY_IF_SYS_V_FILES_TESTS) \
+	$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS) \
 	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
@@ -42,6 +45,8 @@ ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 ONLY_IF_GLOB_IMPORT_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GLOB_IMPORT_TESTS))
 ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
 ONLY_IF_GE_812_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GE_812_TESTS))
+ONLY_IF_SYS_V_FILES_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_V_FILES_TESTS))
+ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
@@ -83,6 +88,11 @@ COQC_SUPPORTS_Q:=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQTOP_SUPPORTS_COMPILE:=$(shell coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 COQC_SUPPORTS_W:=$(shell coqtop --help 2>&1 | grep -c -- '-w ')
+COQC_COQLIB:=$(shell coqc -config 2>&1 | grep -o 'COQLIB=.*' | sed s'/^COQLIB=//g')
+COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
+COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
+COQLIB_PRELUDE_V_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.v)
+COQLIB_PRELUDE_GLOB_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.glob)
 
 .PHONY: check
 check::
@@ -145,6 +155,38 @@ print-support::
 else
 print-support::
 	@printf "coqc supports From ... Require ...:\t\tNo\n"
+endif
+
+ifeq (,$(strip $(COQLIB_PRELUDE_V_FILE)))
+print-support::
+	@printf "coqc installs stdlib .v files:\t\t\tNo\n"
+else
+test-suite: $(ONLY_IF_SYS_V_FILES_LOGS)
+ENABLED_LOGS += $(ONLY_IF_SYS_V_FILES_LOGS)
+print-support::
+	@printf "coqc installs stdlib .v files:\t\t\tYes\n"
+
+ifeq (,$(strip $(COQLIB_PRELUDE_GLOB_FILE)))
+print-support::
+	@printf "coqc installs stdlib .glob files:\t\tNo\n"
+else
+print-support::
+	@printf "coqc installs stdlib .glob files:\t\tYes\n"
+
+
+COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell python -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
+ifeq (True,$(strip $(COQLIB_PRELUDE_GLOB_FILE_NEWER)))
+test-suite: $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
+ENABLED_LOGS += $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
+print-support::
+	@printf "coqlib has correctly timestampped .glob files:\tYes\n"
+else
+print-support::
+	@printf "coqlib has correctly timestampped .glob files:\tNo (%s)\n" "$(COQLIB_PRELUDE_GLOB_FILE_NEWER)"
+endif
+
+endif
+
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))

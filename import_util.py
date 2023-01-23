@@ -41,7 +41,6 @@ def fill_kwargs(kwargs, for_makefile=False):
         'coq_makefile'          : 'coq_makefile',
         'walk_tree'             : True,
         'coqc_args'             : tuple(),
-        'inline_coqlib'         : None,
     }
     rtn.update(kwargs)
     if for_makefile:
@@ -432,6 +431,15 @@ def make_one_glob_file(v_file, **kwargs):
     finally:
         if os.path.exists(o_file): os.remove(o_file)
 
+def remove_if_local(filename, **kwargs):
+    abs_filename = os.path.abspath(filename)
+    cwd = os.path.abspath('.')
+    common = os.path.commonprefix([cwd, abs_filename])
+    if common != cwd:
+        kwargs['log']("WARNING: Not removing %s (%s) because it resides in a parent (%s) of the current directory (%s)" % (filename, abs_filename, common, cwd))
+        return
+    os.remove(filename)
+
 def make_globs(logical_names, **kwargs):
     kwargs = fill_kwargs(kwargs)
     existing_logical_names = [i for i in logical_names
@@ -442,7 +450,9 @@ def make_globs(logical_names, **kwargs):
                            if not (os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name))]
     for vo_name, v_name, glob_name in filenames_vo_v_glob:
         if os.path.isfile(glob_name) and not os.path.getmtime(glob_name) > os.path.getmtime(v_name):
-            os.remove(glob_name)
+            if os.path.getmtime(v_name) > time.time():
+                kwargs['log']("WARNING: The file %s comes from the future! (%d > %d)" % (v_name, os.path.getmtime(v_name), time.time()), level=LOG_ALWAYS)
+            remove_if_local(glob_name, **kwargs)
         # if the .vo file already exists and is new enough, we assume
         # that all dependent .vo files also exist, and just run coqc
         # in a way that doesn't update the .vo file.  We use >= rather
@@ -732,17 +742,6 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
-        if kwargs['inline_coqlib'] and 'Coq.Init.Prelude' not in imports:
-            mykwargs = dict(kwargs)
-            coqlib_libname = (os.path.join(kwargs['inline_coqlib'], 'theories'), 'Coq')
-            if coqlib_libname not in mykwargs['libnames']:
-                mykwargs['libnames'] = tuple(list(kwargs['libnames']) + [coqlib_libname])
-            try:
-                coqlib_imports = get_imports('Coq.Init.Prelude', fast=fast, **mykwargs)
-                if imports and not any(i in imports for i in coqlib_imports):
-                    imports = tuple(list(coqlib_imports) + list(imports))
-            except IOError as e:
-                kwargs['log']("WARNING: --inline-coqlib passed, but no Coq.Init.Prelude found on disk.\n  Searched in %s\n  (Error was: %s)\n\n" % (repr(mykwargs['libnames']), repr(e)), level=LOG_ALWAYS)
         if not fast: make_globs(imports, **kwargs)
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
