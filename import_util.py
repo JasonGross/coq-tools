@@ -41,7 +41,6 @@ def fill_kwargs(kwargs, for_makefile=False):
         'coq_makefile'          : 'coq_makefile',
         'walk_tree'             : True,
         'coqc_args'             : tuple(),
-        'inline_coqlib'         : None,
     }
     rtn.update(kwargs)
     if for_makefile:
@@ -732,17 +731,6 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
     v_name = filename_of_lib(lib, ext='.v', **kwargs)
     if os.path.isfile(v_name):
         imports = get_imports(lib, fast=fast, **kwargs)
-        if kwargs['inline_coqlib'] and 'Coq.Init.Prelude' not in imports:
-            mykwargs = dict(kwargs)
-            coqlib_libname = (os.path.join(kwargs['inline_coqlib'], 'theories'), 'Coq')
-            if coqlib_libname not in mykwargs['libnames']:
-                mykwargs['libnames'] = tuple(list(kwargs['libnames']) + [coqlib_libname])
-            try:
-                coqlib_imports = get_imports('Coq.Init.Prelude', fast=fast, **mykwargs)
-                if imports and not any(i in imports for i in coqlib_imports):
-                    imports = tuple(list(coqlib_imports) + list(imports))
-            except IOError as e:
-                kwargs['log']("WARNING: --inline-coqlib passed, but no Coq.Init.Prelude found on disk.\n  Searched in %s\n  (Error was: %s)\n\n" % (repr(mykwargs['libnames']), repr(e)), level=LOG_ALWAYS)
         if not fast: make_globs(imports, **kwargs)
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)

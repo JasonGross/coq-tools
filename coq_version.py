@@ -17,19 +17,6 @@ def get_coqc_version(coqc_prog, **kwargs):
     return get_coqc_version_helper(coqc_prog)
 
 @memoize
-def get_coqc_config_helper(coqc):
-    p = subprocess.Popen([coqc, "-q", "-config"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
-    return util.normalize_newlines(util.s(stdout)).strip()
-
-def get_coqc_config(coqc_prog, **kwargs):
-    kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"]), level=2)
-    return get_coqc_config_helper(coqc_prog)
-
-def get_coqc_coqlib(coqc_prog, **kwargs):
-    return [line[len('COQLIB='):] for line in get_coqc_config(coqc_prog, **kwargs).split('\n') if line.startswith('COQLIB=')][0]
-
-@memoize
 def get_coqc_help_helper(coqc):
     p = subprocess.Popen([coqc, "-q", "--help"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
@@ -156,3 +143,18 @@ def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefi
 def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
     bindings, unrecognized_bindings = group_coq_args_split_recognized(args, coqc_help, topname=topname, is_coq_makefile=is_coq_makefile)
     return bindings + [tuple([v]) for v in unrecognized_bindings]
+
+@memoize
+def get_coqc_config_helper(coqc, coq_args):
+    p = subprocess.Popen([coqc, "-q", "-config"] + list(coq_args), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    return util.normalize_newlines(util.s(stdout)).strip()
+
+def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
+    grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
+    coq_args = [arg for args in grouped_args if args[0] in ('--coqlib', '-coqlib') for arg in args]
+    kwargs['log']('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"] + coq_args), level=2)
+    return get_coqc_config_helper(coqc_prog, tuple(coq_args))
+
+def get_coqc_coqlib(coqc_prog, **kwargs):
+    return [line[len('COQLIB='):] for line in get_coqc_config(coqc_prog, **kwargs).split('\n') if line.startswith('COQLIB=')][0]
