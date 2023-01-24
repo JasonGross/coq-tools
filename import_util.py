@@ -357,7 +357,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
     f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
     mkfile = os.path.basename(f.name)
     f.close()
-    cmds = [kwargs['coq_makefile'], 'COQC', '=', get_maybe_passing_arg(kwargs, 'coqc'), '-o', mkfile]
+    cmds = [kwargs['coq_makefile'], 'COQC', '=', get_maybe_passing_arg(kwargs, 'coqc'), 'COQDEP', '=', kwargs['coqdep'], '-o', mkfile]
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'libnames'):
         cmds += ['-R', physical_name, (logical_name if logical_name not in ("", "''", '""') else '""')]
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, 'non_recursive_libnames'):

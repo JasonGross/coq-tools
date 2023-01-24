@@ -166,6 +166,8 @@ parser.add_argument('--coqtop-args', metavar='ARG', dest='coqtop_args', type=str
                           'NOTE: If you want to pass an argument to both coqc and coqtop, use --arg="-indices-matter", not --coqc-args="-indices-matter"'))
 parser.add_argument('--coq_makefile', metavar='COQ_MAKEFILE', dest='coq_makefile', type=str, default='coq_makefile',
                     help='The path to the coq_makefile program.')
+parser.add_argument('--coqdep', metavar='COQDEP', dest='coqdep', type=str, default='coqdep',
+                    help='The path to the coqdep program.')
 parser.add_argument('--passing-coqc', metavar='COQC', dest='passing_coqc', type=str, default='',
                     help='The path to the coqc program that should compile the file successfully.')
 parser.add_argument('--passing-coqtop', metavar='COQTOP', dest='passing_coqtop', type=str, default='',
@@ -1299,6 +1301,7 @@ if __name__ == '__main__':
                                        + list(process_maybe_list(args.nonpassing_coq_args, log=args.log))
                                        + list(process_maybe_list(args.coq_args, log=args.log)))),
         'coq_makefile': prepend_coqbin(args.coq_makefile),
+        'coqdep': prepend_coqbin(args.coqdep),
         'passing_coqc_args': tuple(i.strip()
                                    for i in (list(process_maybe_list(args.passing_coqc_args, log=args.log))
                                              + list(process_maybe_list(args.passing_coq_args, log=args.log))
