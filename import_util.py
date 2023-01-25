@@ -39,6 +39,7 @@ def fill_kwargs(kwargs, for_makefile=False):
         'log'                   : DEFAULT_LOG,
         'coqc'                  : 'coqc',
         'coq_makefile'          : 'coq_makefile',
+        'coqdep'                : 'coqdep',
         'walk_tree'             : True,
         'coqc_args'             : tuple(),
     }
