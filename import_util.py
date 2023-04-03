@@ -1,5 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path, tempfile, time
+import os, subprocess, re, sys, glob, os.path, tempfile, time, shlex
 from collections import OrderedDict
 from functools import cmp_to_key
 from memoize import memoize
@@ -379,7 +379,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 # coqc
                 if arg in ('-top', '-topfile'): skip_next = True
                 elif skip_next: skip_next = False
-                else: cmds += ['-arg', arg]
+                else: cmds += ['-arg', shlex.quote(arg)]
         else:
             kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
