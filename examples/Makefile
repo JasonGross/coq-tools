@@ -11,6 +11,7 @@ ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 010 026
 ONLY_IF_W_TESTS = 044
 ONLY_IF_W_AND_GE_815_TESTS = 046
+ONLY_IF_W_AND_UNSET_TESTS = 057
 ONLY_IF_FROM_TESTS = 013 027 032 033 034
 ONLY_IF_GLOB_IMPORT_TESTS = 052 053 054
 ONLY_IF_GT_84_TESTS = 020 049
@@ -21,6 +22,7 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_W_TESTS) \
 	$(ONLY_IF_W_AND_GE_815_TESTS) \
+	$(ONLY_IF_W_AND_UNSET_TESTS) \
 	$(ONLY_IF_FROM_TESTS) \
 	$(ONLY_IF_GLOB_IMPORT_TESTS) \
 	$(ONLY_IF_GT_84_TESTS) \
@@ -41,6 +43,7 @@ ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_W_AND_GE_815_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_GE_815_TESTS))
+ONLY_IF_W_AND_UNSET_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_UNSET_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
 ONLY_IF_GLOB_IMPORT_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GLOB_IMPORT_TESTS))
 ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
@@ -88,6 +91,7 @@ COQC_SUPPORTS_Q:=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQTOP_SUPPORTS_COMPILE:=$(shell coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 COQC_SUPPORTS_W:=$(shell coqtop --help 2>&1 | grep -c -- '-w ')
+COQC_SUPPORTS_UNSET:=$(shell coqtop --help 2>&1 | grep -c -- '-unset ')
 COQC_COQLIB:=$(shell coqc -config 2>&1 | grep -o 'COQLIB=.*' | sed s'/^COQLIB=//g')
 COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
 COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
@@ -187,6 +191,18 @@ endif
 
 endif
 
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_UNSET)))
+ifneq (0,$(strip $(COQC_SUPPORTS_W)))
+test-suite: $(ONLY_IF_W_AND_UNSET_LOGS)
+ENABLED_LOGS += $(ONLY_IF_W_AND_UNSET_LOGS)
+endif
+print-support::
+	@printf "coqc supports -unset:\t\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports -unset:\t\t\t\tNo\n"
 endif
 
 ifeq (,$(strip $(filter 8.3% 8.4% 8.5% 8.6% 8.7% 8.8% 8.9% 8.10% 8.11% 8.12% 8.13% 8.14%,$(COQC_VERSION))))

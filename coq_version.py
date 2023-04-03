@@ -108,12 +108,14 @@ def all_help_tags(coqc_help, is_coq_makefile=False):
         return HELP_REG.findall(coqc_help)
 
 def get_single_help_tags(coqc_help, **kwargs):
-    return tuple(i for i in all_help_tags(coqc_help, **kwargs) if ' ' not in i)
+    return tuple(t
+                 for i in all_help_tags(coqc_help, **kwargs) if ' ' not in i.replace(', ', '')
+                 for t in i.split(', ') if len(t) > 0)
 
 def get_multiple_help_tags(coqc_help, **kwargs):
-    return dict((i.split(' ')[0], len(i.split(' ')))
-                for i in all_help_tags(coqc_help, **kwargs)
-                if ' ' in i)
+    return dict((t.split(' ')[0], len(t.split(' ')))
+                for i in all_help_tags(coqc_help, **kwargs) if ' ' in i.replace(', ', '')
+                for t in re.sub(r'"[^"]*"', '""', i).split(', '))
 
 def coq_makefile_supports_arg(coq_makefile_help):
     tags = get_multiple_help_tags(coq_makefile_help, is_coq_makefile=True)
