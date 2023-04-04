@@ -1,5 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path, tempfile, time, shlex
+import os, subprocess, re, sys, glob, os.path, tempfile, time
 from collections import OrderedDict
 from functools import cmp_to_key
 from memoize import memoize
@@ -7,7 +7,7 @@ from coq_version import get_coqc_help, get_coq_accepts_o, group_coq_args_split_r
 from split_file import split_coq_file_contents, get_coq_statement_byte_ranges
 from strip_comments import strip_comments
 from custom_arguments import DEFAULT_LOG, LOG_ALWAYS
-from util import cmp_compat as cmp
+from util import cmp_compat as cmp, shlex_quote
 import util
 
 __all__ = ["filename_of_lib", "lib_of_filename", "has_dir_binding", "deduplicate_trailing_dir_bindings", "get_file_as_bytes", "get_file", "make_globs", "get_imports", "norm_libname", "recursively_get_imports", "IMPORT_ABSOLUTIZE_TUPLE", "ALL_ABSOLUTIZE_TUPLE", "absolutize_has_all_constants", "run_recursively_get_imports", "clear_libimport_cache", "get_byte_references_for", "sort_files_by_dependency", "get_recursive_requires", "get_recursive_require_names", "insert_references", "classify_require_kind", "REQUIRE", "REQUIRE_IMPORT", "REQUIRE_EXPORT", "EXPORT", "IMPORT", "get_references_from_globs", "split_requires_of_statements"]
@@ -379,7 +379,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 # coqc
                 if arg in ('-top', '-topfile'): skip_next = True
                 elif skip_next: skip_next = False
-                else: cmds += ['-arg', shlex.quote(arg)]
+                else: cmds += ['-arg', shlex_quote(arg)]
         else:
             kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))

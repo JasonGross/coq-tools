@@ -1,6 +1,6 @@
 import sys, re
 
-__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes"]
+__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes", "shlex_quote"]
 
 if sys.version_info < (3,):
     PY3 = False
@@ -98,3 +98,10 @@ def color(str, col, on=True):
       return str;
     else:
       return col + str + colors.ENDC;
+
+if sys.version_info < (3, 3):
+    import pipes
+    shlex_quote = pipes.quote
+else:
+    import shlex
+    shlex_quote = shlex.quote
