@@ -352,7 +352,8 @@ def get_keep_error_reversed(mkfile, **kwargs):
 .DELETE_ON_ERROR:
 ''' in get_raw_file(mkfile, **kwargs)
 
-
+# these arguments prevent generation of .glob files
+BAD_ARGS_FOR_MAKE_GLOB = ('-vio', '-vos', '-vok')
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs, for_makefile=True))
     f = tempfile.NamedTemporaryFile(suffix='.coq', prefix='Makefile', dir='.', delete=False)
@@ -379,7 +380,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 # coqc
                 if arg in ('-top', '-topfile'): skip_next = True
                 elif skip_next: skip_next = False
-                else: cmds += ['-arg', shlex_quote(arg)]
+                elif arg not in BAD_ARGS_FOR_MAKE_GLOB: cmds += ['-arg', shlex_quote(arg)]
         else:
             kwargs['log']('WARNING: Unrecognized arguments to coq_makefile: %s' % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))

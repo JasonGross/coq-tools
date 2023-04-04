@@ -101,7 +101,14 @@ def get_coq_accepts_time(coqc_prog, **kwargs):
 HELP_REG = re.compile(r'^  ([^\n]*?)(?:\t|  )', re.MULTILINE)
 HELP_MAKEFILE_REG = re.compile(r'^\[(-[^\n\]]*)\]', re.MULTILINE)
 
+def adjust_help_string(coqc_help):
+    # we need to insert some spaces to make parsing easier
+    for one_arg_option in ('-diffs', '-native-compiler'):
+        coqc_help = re.sub(r'(\n\s*%s\s+[^\s]*)' % one_arg_option, r'\1 ', coqc_help, re.MULTILINE)
+    return coqc_help
+
 def all_help_tags(coqc_help, is_coq_makefile=False):
+    coqc_help = adjust_help_string(coqc_help)
     if is_coq_makefile:
         return HELP_MAKEFILE_REG.findall(coqc_help)
     else:

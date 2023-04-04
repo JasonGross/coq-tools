@@ -15,7 +15,7 @@ from import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZ
 from import_util import split_requires_of_statements, get_file_statements_insert_references
 from import_util import has_dir_binding, deduplicate_trailing_dir_bindings
 from memoize import memoize
-from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, get_coqc_coqlib, get_coq_accepts_compile
+from coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, group_coq_args_split_recognized, get_coqc_coqlib, get_coq_accepts_compile
 from coq_running_support import get_ltac_support_snippet
 from custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
 from binding_util import process_maybe_list
@@ -1427,6 +1427,17 @@ if __name__ == '__main__':
                 if arg[0] == '-R': env.get(passing_prefix + 'libnames', []).append((arg[1], arg[2]))
                 if arg[0] == '-Q': env.get(passing_prefix + 'non_recursive_libnames', []).append((arg[1], arg[2]))
                 if arg[0] == '-I': env.get(passing_prefix + 'ocaml_dirnames', []).append(arg[1])
+
+        for args_name, coqtop_prog, coqc_prog, passing_prefix in (('coqtop_args', env['coqtop'], env['coqc'], ''), ('passing_coqtop_args', env['passing_coqtop'] if env['passing_coqtop'] else env['coqtop'], env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_')):
+            coqc_prog_help = get_coqc_help(coqc_prog, **env)
+            coqtop_prog_help = get_coqc_help(coqtop_prog, **env)
+            # we want to skip any arguments that are recognized by coqc but not coqtop
+            recognized_args, unrecognized_args = group_coq_args_split_recognized(env[args_name], coqtop_prog_help)
+            coqc_but_not_coqtop_args, unrecognized_args = group_coq_args_split_recognized(unrecognized_args, coqc_prog_help)
+            if len(coqc_but_not_coqtop_args) > 0:
+                env['log']('Warning: skipping arguments to coqtop that are only valid for coqc: %s' % repr(coqc_but_not_coqtop_args), level=2)
+            env[args_name] = tuple([arg for group in recognized_args for arg in group]
+                                   + unrecognized_args)
 
         if env['minimize_before_inlining']:
             env['log']('\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s...' % (bug_file_name, output_file_name))
