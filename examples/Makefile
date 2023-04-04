@@ -12,7 +12,8 @@ ONLY_IF_Q_TESTS = 010 026
 ONLY_IF_W_TESTS = 044
 ONLY_IF_W_AND_GE_815_TESTS = 046
 ONLY_IF_W_AND_UNSET_TESTS = 057 058
-ONLY_IF_FROM_TESTS = 013 027 032 033 034 059
+ONLY_IF_FROM_TESTS = 013 027 032 033 034
+ONLY_IF_FROM_AND_VOS_TESTS = 059
 ONLY_IF_GLOB_IMPORT_TESTS = 052 053 054
 ONLY_IF_GT_84_TESTS = 020 049
 ONLY_IF_GE_812_TESTS = 048
@@ -24,6 +25,7 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_W_AND_GE_815_TESTS) \
 	$(ONLY_IF_W_AND_UNSET_TESTS) \
 	$(ONLY_IF_FROM_TESTS) \
+	$(ONLY_IF_FROM_AND_VOS_TESTS) \
 	$(ONLY_IF_GLOB_IMPORT_TESTS) \
 	$(ONLY_IF_GT_84_TESTS) \
 	$(ONLY_IF_GE_812_TESTS) \
@@ -45,6 +47,7 @@ ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_W_AND_GE_815_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_GE_815_TESTS))
 ONLY_IF_W_AND_UNSET_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_UNSET_TESTS))
 ONLY_IF_FROM_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_TESTS))
+ONLY_IF_FROM_AND_VOS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_FROM_AND_VOS_TESTS))
 ONLY_IF_GLOB_IMPORT_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GLOB_IMPORT_TESTS))
 ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
 ONLY_IF_GE_812_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GE_812_TESTS))
@@ -91,6 +94,7 @@ COQC_SUPPORTS_Q:=$(shell coqc --help 2>&1 | grep -c -- -Q)
 COQTOP_SUPPORTS_COMPILE:=$(shell coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | coqtop 2>&1 | grep -c 'Error')
 COQC_SUPPORTS_W:=$(shell coqtop --help 2>&1 | grep -c -- '-w ')
+COQC_SUPPORTS_VOS:=$(shell coqc --help 2>&1 | grep -c -- '-vos ')
 COQC_SUPPORTS_UNSET:=$(shell coqtop --help 2>&1 | grep -c -- '-unset ')
 COQC_COQLIB:=$(shell coqc -config 2>&1 | grep -o 'COQLIB=.*' | sed s'/^COQLIB=//g')
 COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
@@ -160,6 +164,19 @@ else
 print-support::
 	@printf "coqc supports From ... Require ...:\t\tNo\n"
 endif
+
+ifeq (0,$(strip $(COQC_SUPPORTS_VOS)))
+ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
+test-suite: $(ONLY_IF_FROM_AND_VOS_LOGS)
+ENABLED_LOGS += $(ONLY_IF_FROM_AND_VOS_LOGS)
+endif
+print-support::
+	@printf "coqc supports -vos:\t\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports -vos:\t\t\t\tNo\n"
+endif
+
 
 ifeq (,$(strip $(COQLIB_PRELUDE_V_FILE)))
 print-support::
