@@ -63,7 +63,7 @@ jobs:
       run: make doctests PYTHON3=python
       if: ${{ matrix.python-version != '2.7' }}
     - name: Test
-      run: make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
+      run: make print-support && make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
 
 
   check-all:

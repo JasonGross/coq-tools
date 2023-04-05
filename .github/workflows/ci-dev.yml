@@ -39,6 +39,9 @@ jobs:
           sudo apt-get install -y python3
           eval $(opam env)
           echo '::endgroup::'
+          echo '::group::make print-support'
+          make print-support PYTHON=python3
+          echo '::endgroup::'
           make check PYTHON=python3 CAT_ALL_LOGS=1
 
 

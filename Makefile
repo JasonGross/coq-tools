@@ -1,7 +1,7 @@
-has-all-tests check::
+has-all-tests check print-support::
 	$(MAKE) -C examples $@
 
-.PHONY: has-all-tests check
+.PHONY: has-all-tests check print-support
 
 PYTHON3?=python3
 
