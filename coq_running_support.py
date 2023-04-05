@@ -26,12 +26,12 @@ Tactic Notation "admit" := abstract case proof_admitted.
 Goal False. admit. Qed.'''
     errinfo = {}
     native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, **kwargs))
-    for before, after in (('Declare ML Module "coq-core.plugins.ltac".\n', ''),
+    for before, after in (('Require Coq.Init.Ltac.\n', 'Import Coq.Init.Ltac.\n'),
+                          ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n'),
+                          ('Declare ML Module "coq-core.plugins.ltac".\n', ''),
                           ('Declare ML Module "coq-core.plugins.ltac".\n', 'Global Set Default Proof Mode "Classic".\n'),
                           ('Declare ML Module "ltac_plugin".\n', ''),
-                          ('Declare ML Module "ltac_plugin".\n', 'Global Set Default Proof Mode "Classic".\n'),
-                          ('Require Coq.Init.Ltac.\n', 'Import Coq.Init.Ltac.\n'),
-                          ('Require Coq.Init.Notations.\n', 'Import Coq.Init.Notations.\n')):
+                          ('Declare ML Module "ltac_plugin".\n', 'Global Set Default Proof Mode "Classic".\n')):
         contents = '%s\n%s\n%s' % (before, after, test)
         output, cmds, retcode, runtime = get_coq_output(coqc, tuple(['-q', '-nois'] + native_ondemand_args), contents, timeout_val=None, verbose_base=3, is_coqtop=kwargs['coqc_is_coqtop'], **kwargs)
         if retcode == 0:
