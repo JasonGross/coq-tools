@@ -155,7 +155,7 @@ print-support::
 	@printf "coqc supports -w:\t\t\t\tNo\n"
 endif
 
-ifneq (0,$(strip $(COQC_SUPPORTS_FROM)))
+ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_LOGS)
 ENABLED_LOGS += $(ONLY_IF_FROM_LOGS)
 print-support::
@@ -166,7 +166,7 @@ print-support::
 endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_VOS)))
-ifneq (0,$(strip $(COQC_SUPPORTS_FROM)))
+ifeq (0,$(strip $(COQC_SUPPORTS_FROM)))
 test-suite: $(ONLY_IF_FROM_AND_VOS_LOGS)
 ENABLED_LOGS += $(ONLY_IF_FROM_AND_VOS_LOGS)
 endif
