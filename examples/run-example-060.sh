@@ -45,8 +45,9 @@ set -x
 EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters [0-9]*-[0-9]*:
-Error:
-The term "Set" has type "Type" while it is expected to have type[
+Error:[
+ ]\+The term "Set" has type[
+ ]\+"Type" while it is expected to have type[
  ]\+"Set".*
 EOF
 )
