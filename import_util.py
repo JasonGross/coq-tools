@@ -33,15 +33,16 @@ def error(*objs):
 
 def fill_kwargs(kwargs, for_makefile=False):
     rtn = {
-        'libnames'                       : DEFAULT_LIBNAMES,
-        'non_recursive_libnames'         : tuple(),
-        'ocaml_dirnames'                 : tuple(),
-        'log'                            : DEFAULT_LOG,
-        'coqc'                           : 'coqc',
-        'coq_makefile'                   : 'coq_makefile',
-        'coqdep'                         : 'coqdep',
-        'walk_tree_and_use_coq_makefile' : True,
-        'coqc_args'                      : tuple(),
+        'libnames'                  : DEFAULT_LIBNAMES,
+        'non_recursive_libnames'    : tuple(),
+        'ocaml_dirnames'            : tuple(),
+        'log'                       : DEFAULT_LOG,
+        'coqc'                      : 'coqc',
+        'coq_makefile'              : 'coq_makefile',
+        'coqdep'                    : 'coqdep',
+        'use_coq_makefile_for_deps' : True,
+        'walk_tree'                 : True,
+        'coqc_args'                 : tuple(),
     }
     rtn.update(kwargs)
     if for_makefile:
@@ -471,10 +472,10 @@ def make_globs(logical_names, **kwargs):
     filenames_v    = [v_name    for vo_name, v_name, glob_name in filenames_vo_v_glob]
     filenames_glob = [glob_name for vo_name, v_name, glob_name in filenames_vo_v_glob]
     if len(filenames_vo_v_glob) == 0: return
-    extra_filenames_v = list(get_all_v_files('.', filenames_v) if kwargs['walk_tree_and_use_coq_makefile'] else [])
+    extra_filenames_v = list(get_all_v_files('.', filenames_v) if kwargs['use_coq_makefile_for_deps'] and kwargs['walk_tree'] else [])
     all_filenames_v = filenames_v + extra_filenames_v
 
-    if len(all_filenames_v) <= 1 or not kwargs['walk_tree_and_use_coq_makefile']:
+    if len(all_filenames_v) <= 1 or not kwargs['use_coq_makefile_for_deps']:
         if len(all_filenames_v) > 1:
             kwargs['log']("WARNING: Making globs for %s separately without coq_makefile for dependencies, as requested" % ", ".join(all_filenames_v))
         for v_name in all_filenames_v:

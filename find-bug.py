@@ -116,10 +116,12 @@ parser.add_argument('--strict-whitespace', dest='strict_whitespace',
                           "messages.  By default, locations where there " +
                           "are newlines followed by spaces are interchangable " +
                           "with any amount of spacing."))
-parser.add_argument('--no-deps', dest='walk_tree_and_use_coq_makefile',
+parser.add_argument('--no-deps', dest='use_coq_makefile_for_deps',
                     action='store_const', const=False, default=True,
-                    help=("Don't do dependency analysis on all files in the current " +
-                          "file tree."))
+                    help=("Don't do dependency analysis with coq_makefile."))
+parser.add_argument('--no-pwd-deps', dest='walk_tree',
+                    action='store_const', const=False, default=True,
+                    help=("Don't add all files in the current directory to the dependency analysis."))
 parser.add_argument('--inline-coqlib', dest='inline_coqlib',
                     action='store_const', const=True, default=False,
                     help=("Attempt to inline requires from Coq's standard library"))
@@ -1327,7 +1329,8 @@ if __name__ == '__main__':
         'base_dir': (os.path.abspath(args.base_dir)
                      if args.base_dir != ''
                      else None),
-        'walk_tree_and_use_coq_makefile': args.walk_tree_and_use_coq_makefile,
+        'use_coq_makefile_for_deps': args.use_coq_makefile_for_deps,
+        'walk_tree': args.walk_tree,
         'strict_whitespace': args.strict_whitespace,
         'temp_file_name': args.temp_file,
         'coqc_is_coqtop': args.coqc_is_coqtop,
