@@ -20,7 +20,7 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=argparse.FileType('w
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
-parser.add_argument('--no-deps', dest='walk_tree',
+parser.add_argument('--no-deps', dest='walk_tree_and_use_coq_makefile',
                     action='store_const', const=False, default=True,
                     help=("Don't do dependency analysis on all files in the current " +
                           "file tree."))
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         'as_modules': args.wrap_modules,
         'fast': args.fast_merge_imports,
         'coq_makefile': args.coq_makefile,
-        'walk_tree': args.walk_tree
+        'walk_tree_and_use_coq_makefile': args.walk_tree_and_use_coq_makefile
         }
     update_env_with_libnames(env, args)
     if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], coq_args=env['coqc_args'], **env), 'user-contrib'))
