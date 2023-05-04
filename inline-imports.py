@@ -20,10 +20,12 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=argparse.FileType('w
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
-parser.add_argument('--no-deps', dest='walk_tree',
+parser.add_argument('--no-deps', dest='use_coq_makefile_for_deps',
                     action='store_const', const=False, default=True,
-                    help=("Don't do dependency analysis on all files in the current " +
-                          "file tree."))
+                    help=("Don't do dependency analysis with coq_makefile."))
+parser.add_argument('--no-pwd-deps', dest='walk_tree',
+                    action='store_const', const=False, default=True,
+                    help=("Don't add all files in the current directory to the dependency analysis."))
 parser.add_argument('--no-wrap-modules', dest='wrap_modules',
                     action='store_const', const=False, default=True,
                     help=("Don't wrap imports in Modules.  By default, the " +
@@ -66,7 +68,8 @@ if __name__ == '__main__':
         'as_modules': args.wrap_modules,
         'fast': args.fast_merge_imports,
         'coq_makefile': args.coq_makefile,
-        'walk_tree': args.walk_tree
+        'use_coq_makefile_for_deps': args.use_coq_makefile_for_deps,
+        'walk_tree': args.walk_tree,
         }
     update_env_with_libnames(env, args)
     if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], coq_args=env['coqc_args'], **env), 'user-contrib'))
