@@ -462,7 +462,7 @@ def make_globs(logical_names, **kwargs):
         # than > because we're using .vo being new enough as a proxy
         # for the dependent .vo files existing, so we don't care as
         # much about being perfectly accurate on .vo file timing
-        # (unlike .glob file timing, were we need it to be up to
+        # (unlike .glob file timing, where we need it to be up to
         # date), and it's better to not clobber the .vo file when
         # we're unsure if it's new enough.
         if os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name):
