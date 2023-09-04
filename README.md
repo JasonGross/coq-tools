@@ -54,6 +54,11 @@ failures (see https://github.com/JasonGross/coq-tools/issues/16), and
 global side effects of `Require` can also result in failures (see
 https://github.com/JasonGross/coq-tools/issues/41).
 
+### Publications
+
+- [Jason Gross, Théo Zimmermann, Miraya Poddar-Agrawal, and Adam Chlipala. Automatic test-case reduction in proof assistants: A case study in Coq. ITP 2022](https://jasongross.github.io/publications/#2022-itp-coq-bug-minimizer)
+- [Jason Gross. Coq Bug Minimizer, CoqPL 2015](https://jasongross.github.io/publications/#coqpl-15-coq-bug-minimizer)
+
 minimize-requires
 -----------------
 
