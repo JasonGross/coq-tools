@@ -4,18 +4,43 @@ has-all-tests check print-support::
 .PHONY: has-all-tests check print-support
 
 PYTHON3?=python3
+PYTHON?=python
 
-DOCTEST_FILES := \
-	import_util.py \
+.PHONY: dist
+dist:
+	$(PYTHON) setup.py sdist bdist_wheel
+
+DOCTEST_MODULES := \
+	import_util \
 	#
 
 .PHONY: doctests
-doctests::
-	$(PYTHON3) $(DOCTEST_FILES)
+
+define add_target
+# $(1) main target
+# $(2) intermediate target
+# $(3) recipe
+$(1): $(1)-$(2)
+
+.PHONY: $(1)-$(2)
+$(1)-$(2):
+	$(3)
+endef
+
+$(foreach m,$(DOCTEST_MODULES),$(eval $(call add_target,doctests,$(m),$(PYTHON3) -m coq_tools.$(m))))
+
+MAIN_FILES_SH = git grep --name-only 'def main' 'coq_tools/*.py'
+MAIN_MODULES = $(sort $(patsubst coq_tools/%.py,%,$(shell $(MAIN_FILES_SH))))
+
+.PHONY: update-__init__
+update-__init__:
+	printf "%s\n" '__all__ = [' > coq_tools/__init__.py
+	printf "    '%s',\n" $(MAIN_MODULES) >> coq_tools/__init__.py
+	printf "%s\n" "  ]" >> coq_tools/__init__.py
 
 PYINSTALLER_ADD_DATA := \
-	--add-data coqtop-as-coqc.sh:. \
-	--add-data coqtop.bat:. \
+	--add-data coq_tools/coqtop-as-coqc.sh:coq_tools/ \
+	--add-data coq_tools/coqtop.bat:coq_tools/ \
 	#
 
 .PHONY: standalone-coq-bug-minimizer

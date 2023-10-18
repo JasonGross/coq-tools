@@ -1,12 +1,12 @@
 from __future__ import with_statement, print_function
 import os, sys, tempfile, subprocess, re, time, math, glob, threading, shutil, traceback
-from Popen_noblock import Popen_async, Empty
-from memoize import memoize
-from file_util import clean_v_file
-from util import re_escape
-from custom_arguments import LOG_ALWAYS
-from coq_version import group_coq_args, get_coqc_help
-import util
+from .Popen_noblock import Popen_async, Empty
+from .memoize import memoize
+from .file_util import clean_v_file
+from .util import re_escape
+from .custom_arguments import LOG_ALWAYS
+from .coq_version import group_coq_args, get_coqc_help
+from . import util
 
 __all__ = ["has_error", "get_error_line_number", "get_error_byte_locations", "make_reg_string", "get_coq_output", "get_error_string", "get_timeout", "reset_timeout", "reset_coq_output_cache", "is_timeout"]
 

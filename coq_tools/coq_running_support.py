@@ -1,8 +1,8 @@
 from __future__ import with_statement
 import re
-from diagnose_error import get_coq_output
-from coq_version import get_coq_native_compiler_ondemand_fragment
-from coq_full_grammar import COQ_GRAMMAR_TOKENS
+from .diagnose_error import get_coq_output
+from .coq_version import get_coq_native_compiler_ondemand_fragment
+from .coq_full_grammar import COQ_GRAMMAR_TOKENS
 
 # Like coq_version.py, except for things that use get_coq_output (or
 # perhaps a bit more generally for things that need to run coqc on a

@@ -3,7 +3,7 @@
 import sys
 from subprocess import PIPE, STDOUT
 import subprocess, time
-from threading  import Thread
+from threading import Thread
 
 __all__ = ["Popen_async", "Empty", "PIPE", "STDOUT"]
 

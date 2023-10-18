@@ -1,8 +1,8 @@
 from __future__ import with_statement
 import subprocess, tempfile, re
-from file_util import clean_v_file
-from memoize import memoize
-import util
+from .file_util import clean_v_file
+from .memoize import memoize
+from . import util
 
 __all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_emacs", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
 

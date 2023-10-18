@@ -1,5 +1,5 @@
 from __future__ import division
-from memoize import memoize
+from .memoize import memoize
 
 __all__ = ["run_binary_search"]
 

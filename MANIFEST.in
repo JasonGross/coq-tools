@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+include coq_tools/coqtop-as-coqc.sh
+include coq_tools/coqtop.bat
