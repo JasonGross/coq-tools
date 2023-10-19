@@ -112,7 +112,7 @@ check::
 	@echo -n "$(NC) ($(GREEN)"
 	@bash -c '. init-settings.sh; echo -n "$$(which "$${PYTHON}")"'
 	@echo "$(NC)) (based on $(GREEN)$${PYTHON}$(NC))"
-	@printf "Running with FIND_BUG=%q\n" "$(FIND_BUG)"
+	@printf "Running with FIND_BUG='%s'\n" "$(FIND_BUG)"
 	$(MAKE) -B test-suite
 
 .PHONY: print-support
