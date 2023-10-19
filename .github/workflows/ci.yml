@@ -100,7 +100,7 @@ jobs:
           git config --global --add safe.directory "*"
           startGroup 'install general dependencies'
           sudo apt-get update -y
-          sudo apt-get install -y python3
+          sudo apt-get install -y python3 python3-pip
           eval $(opam env)
           endGroup
           startGroup 'make print-support'
