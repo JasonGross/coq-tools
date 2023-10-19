@@ -21,6 +21,14 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/$EXAMPLE_DIRECTORY"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 
+function find_bug() {
+    if [[ -n "${FIND_BUG}" ]]; then
+        "${FIND_BUG}" "$@"
+    else
+        ${PYTHON} "${FIND_BUG_PY}" "$@"
+    fi
+}
+
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
 
@@ -77,7 +85,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
+find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count

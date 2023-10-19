@@ -7,6 +7,14 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 mkdir -p "$DIR/example_22"
 cd "$DIR/example_22"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
+
+function find_bug() {
+    if [[ -n "${FIND_BUG}" ]]; then
+        "${FIND_BUG}" "$@"
+    else
+        ${PYTHON} "${FIND_BUG_PY}" "$@"
+    fi
+}
 MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 
 # Initialize common settings like the version of python

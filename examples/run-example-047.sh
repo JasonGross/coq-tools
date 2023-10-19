@@ -21,6 +21,14 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/$EXAMPLE_DIRECTORY"
 FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
 
+function find_bug() {
+    if [[ -n "${FIND_BUG}" ]]; then
+        "${FIND_BUG}" "$@"
+    else
+        ${PYTHON} "${FIND_BUG_PY}" "$@"
+    fi
+}
+
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
 
@@ -35,10 +43,10 @@ set -x
 
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/example_$N" \( -name "*.vo" -o -name "*.glob" \) -delete
-echo "y" | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
+echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} "$FIND_BUG_PY" "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
 if echo "${ACTUAL_PRE}" | grep 'Unknown _CoqProject entry:'; then
     echo "There should not be any unknown _CoqProject entries"
