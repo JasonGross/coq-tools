@@ -22,7 +22,7 @@ if __name__ == '__main__':
     cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0], "..")))
     if cmd_subfolder not in sys.path:
         sys.path.insert(0, cmd_subfolder)
-    from replace_imports import normalize_requires, get_required_contents
+    from coq_tools.replace_imports import normalize_requires, get_required_contents
     os.chdir(DIR)
     os.chdir('example_%s' % N)
     for i in glob.glob('*.vo') + glob.glob('*.glob'):

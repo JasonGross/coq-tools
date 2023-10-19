@@ -5,4 +5,4 @@ cd "$DIR/example_${N}"
 . "$DIR/init-settings.sh"
 PS4='$ '
 set -x
-${PYTHON} ../../find-bug.py -f _CoqProject A.v bug.v || exit $?
+find_bug -f _CoqProject A.v bug.v || exit $?

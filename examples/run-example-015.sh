@@ -21,15 +21,6 @@ EXTRA_ARGS=(-R "$SUBDIRECTORY" Top "$@")
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/$EXAMPLE_DIRECTORY"
 
-FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
-
-function find_bug() {
-    if [[ -n "${FIND_BUG}" ]]; then
-        "${FIND_BUG}" "$@"
-    else
-        ${PYTHON} "${FIND_BUG_PY}" "$@"
-    fi
-}
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"

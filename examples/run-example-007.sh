@@ -5,7 +5,7 @@ cd "$DIR/example_${N}"
 . "$DIR/init-settings.sh"
 PS4='$ '
 set -x
-${PYTHON} ../../find-bug.py --no-minimize-before-inlining A-dash.v bug_A.v || exit $?
+find_bug --no-minimize-before-inlining A-dash.v bug_A.v || exit $?
 grep Section bug_A.v
 ERR=$?
 if [ $ERR -ne 0 ]

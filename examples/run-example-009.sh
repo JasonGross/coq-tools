@@ -9,7 +9,7 @@ set -x
 . "$DIR/disable-parallel-make.sh"
 rm -f *.vo *.v.d bug*.v *.glob
 EXPECTED_ERROR="Error: The command has not failed"
-ACTUAL_PRE="$(echo "y" | ${PYTHON} ../../find-bug.py example_${N}.v bug_${N}.v 2>&1)"
+ACTUAL_PRE="$(echo "y" | find_bug example_${N}.v bug_${N}.v 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -21,7 +21,7 @@ then
     echo "$ACTUAL_PRE"
     exit 1
 fi
-${PYTHON} ../../find-bug.py example_${N}.v bug_${N}.v || exit $?
+find_bug example_${N}.v bug_${N}.v || exit $?
 EXPECTED='^(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)$'
 LINES="$(grep -c "$EXPECTED" bug_${N}.v)"
 if [ "$LINES" -ne 1 ]

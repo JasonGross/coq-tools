@@ -58,11 +58,11 @@ EOF
 # ??? sometimes this doesn't create the output file, cf https://gitlab.com/coq/coq/-/jobs/591578724 ????
 # so for now, we emit the output
 echo "DEBUG: INITIAL RUN OUTPUT"
-echo "y" | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" # 2>/dev/null >/dev/null
+echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" # 2>/dev/null >/dev/null
 echo "DEBUG: END INITIAL RUN OUTPUT"
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
 echo "==================== ACTUAL ===================="
 echo "${ACTUAL_PRE}"
 echo "==================== ACTUAL ===================="
@@ -89,7 +89,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-${PYTHON} ../../find-bug.py "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
+find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
