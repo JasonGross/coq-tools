@@ -14,6 +14,7 @@ if [ -z "${FIND_BUG}" ]; then
         ${PYTHON} "${FIND_BUG_PY}" "$@"
     }
 else
+    export FIND_BUG="$(cd "$DIR" && realpath "$(which "${FIND_BUG}")")"
     function find_bug() {
         "${FIND_BUG}" "$@"
     }
@@ -26,6 +27,7 @@ if [ -z "${MINIMIZE_REQUIRES}" ]; then
         ${PYTHON} "${MINIMIZE_REQUIRES_PY}" "$@"
     }
 else
+    export MINIMIZE_REQUIRES="$(cd "$DIR" && realpath "$(which "${MINIMIZE_REQUIRES}")")"
     function minimize_requires() {
         "${MINIMIZE_REQUIRES}" "$@"
     }
@@ -38,6 +40,7 @@ if [ -z "${ABSOLUTIZE_IMPORTS}" ]; then
         ${PYTHON} "${ABSOLUTIZE_IMPORTS_PY}" "$@"
     }
 else
+    export ABSOLUTIZE_IMPORTS="$(cd "$DIR" && realpath "$(which "${ABSOLUTIZE_IMPORTS}")")"
     function absolutize_imports() {
         "${ABSOLUTIZE_IMPORTS}" "$@"
     }

@@ -1,5 +1,12 @@
+FIND_BUG?=
+ifneq (,$(strip $(FIND_BUG)))
+FULL_FIND_BUG:=$(abspath $(shell which '$(FIND_BUG)'))
+else
+FULL_FIND_BUG=$(FIND_BUG)
+endif
+
 has-all-tests check print-support::
-	$(MAKE) -C examples $@
+	$(MAKE) -C examples $@ FIND_BUG='$(FULL_FIND_BUG)'
 
 .PHONY: has-all-tests check print-support
 
