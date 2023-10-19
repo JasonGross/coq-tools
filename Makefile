@@ -12,3 +12,23 @@ DOCTEST_FILES := \
 .PHONY: doctests
 doctests::
 	$(PYTHON3) $(DOCTEST_FILES)
+
+PYINSTALLER_ADD_DATA := \
+	--add-data coq_tools/coqtop-as-coqc.sh:coq_tools/ \
+	--add-data coq_tools/coqtop.bat:coq_tools/ \
+	#
+
+.PHONY: standalone-coq-bug-minimizer
+standalone-coq-bug-minimizer:
+	pyinstaller find-bug.py -n coq-bug-minimizer $(PYINSTALLER_ADD_DATA)
+
+.PHONY: standalone-coq-require-minimizer
+standalone-coq-require-minimizer:
+	pyinstaller minimize-requires.py -n coq-require-minimizer $(PYINSTALLER_ADD_DATA)
+
+.PHONY: standalone-coq-import-inliner
+standalone-coq-import-inliner:
+	pyinstaller inline-imports.py -n coq-import-inliner $(PYINSTALLER_ADD_DATA)
+
+.PHONY: standalone
+standalone: standalone-coq-bug-minimizer standalone-coq-require-minimizer standalone-coq-import-inliner
