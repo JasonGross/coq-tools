@@ -5,5 +5,5 @@ cd "$DIR/example_${N}"
 . "$DIR/init-settings.sh"
 PS4='$ '
 set -x
-${PYTHON} ../../absolutize-imports.py A.v -R . Example4 "$@" > A_abs.v || exit $?
-${PYTHON} ../../absolutize-imports.py B.v -R . Example4 "$@" > B_abs.v || exit $?
+absolutize_imports A.v -R . Example4 "$@" > A_abs.v || exit $?
+absolutize_imports B.v -R . Example4 "$@" > B_abs.v || exit $?

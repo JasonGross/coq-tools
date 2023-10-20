@@ -19,6 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8, 3.11]
+        test-location: ['installed', 'local']
         env:
         - { COQ_VERSION: "8.15.0", COQ_PACKAGE: "coq-8.14.0", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-20.04" }
         - { COQ_VERSION: "8.14.1", COQ_PACKAGE: "coq-8.14.1", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-20.04" }
@@ -30,7 +31,7 @@ jobs:
     env: ${{ matrix.env }}
     runs-on: ${{ matrix.env.os }}
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.env.COQ_VERSION }}-${{ matrix.python-version }}-${{ github.head_ref || github.run_id }}
+      group: ${{ github.workflow }}-${{ matrix.env.COQ_VERSION }}-${{ matrix.python-version }}-${{ matrix.test-location }}-${{ github.head_ref || github.run_id }}
       cancel-in-progress: true
 
     steps:
@@ -57,8 +58,22 @@ jobs:
     - name: make doctests
       run: make doctests PYTHON3=python
       if: ${{ matrix.python-version != '2.7' }}
-    - name: Test
+    - name: install package building deps
+      run: |
+        python -m pip install setuptools wheel twine
+      if: ${{ matrix.test-location == 'installed' }}
+    - name: Build package
+      run: make dist
+      if: ${{ matrix.test-location == 'installed' }}
+    - name: Test install
+      run: python -m pip install .
+      if: ${{ matrix.test-location == 'installed' }}
+    - name: Test (local)
       run: make print-support && make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
+      if: ${{ matrix.test-location != 'installed' }}
+    - name: Test (installed)
+      run: make print-support && make has-all-tests && make check PYTHON=python FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
+      if: ${{ matrix.test-location == 'installed' }}
 
   docker-build:
     strategy:
@@ -66,10 +81,11 @@ jobs:
       matrix:
         coq-version: ['dev', '8.18', '8.17', '8.16', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
         ocaml-version: ['default']
+        test-location: ['installed', 'local']
 
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ matrix.ocaml-version }}-${{ github.head_ref || github.run_id }}
+      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ matrix.ocaml-version }}-docker-${{ matrix.test-location }}-${{ github.head_ref || github.run_id }}
       cancel-in-progress: true
 
     steps:
@@ -84,13 +100,26 @@ jobs:
           git config --global --add safe.directory "*"
           startGroup 'install general dependencies'
           sudo apt-get update -y
-          sudo apt-get install -y python3
+          sudo apt-get install -y python3 python3-pip
           eval $(opam env)
           endGroup
           startGroup 'make print-support'
           make print-support PYTHON=python3
           endGroup
-          make check PYTHON=python3 CAT_ALL_LOGS=1
+          if [ "${{ matrix.test-location }}" == "installed" ]; then
+            startGroup 'install package building deps'
+            python3 -m pip install setuptools wheel twine
+            endGroup
+            startGroup 'Build package'
+            make dist PYTHON=python3
+            endGroup
+            startGroup 'Test install'
+            python3 -m pip install .
+            endGroup
+            make check PYTHON=python3 FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
+          else
+            make check PYTHON=python3 CAT_ALL_LOGS=1
+          fi
 
   check-all:
     runs-on: ubuntu-latest

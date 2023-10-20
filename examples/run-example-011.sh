@@ -7,7 +7,7 @@ PS4='$ '
 set -x
 # check that the regex doesn't split the unicode characters in φ
 EXPECTED_ERROR="Error:\\ The\\ reference\\ \\φ\\ was\\ not\\ found\\ in\\ the\\ current\\ environment\\."
-ACTUAL_PRE="$((echo "y"; echo "y") | ${PYTHON} ../../find-bug.py example_${N}.v bug_${N}.v 2>&1)"
+ACTUAL_PRE="$((echo "y"; echo "y") | find_bug example_${N}.v bug_${N}.v 2>&1)"
 if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -20,4 +20,4 @@ then
     exit 1
 fi
 
-${PYTHON} ../../find-bug.py example_${N}.v bug_${N}.v || exit $?
+find_bug example_${N}.v bug_${N}.v || exit $?

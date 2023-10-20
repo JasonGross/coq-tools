@@ -1,10 +1,10 @@
 from __future__ import with_statement, print_function
 import os, subprocess, re, sys, glob, os.path
-from memoize import memoize
-from split_file import split_leading_comments_and_whitespace
-from import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
-from custom_arguments import DEFAULT_LOG
-from coq_running_support import get_reserved_modnames
+from .memoize import memoize
+from .split_file import split_leading_comments_and_whitespace
+from .import_util import filename_of_lib, lib_of_filename, get_file, run_recursively_get_imports, recursively_get_imports, absolutize_has_all_constants, is_local_import, ALL_ABSOLUTIZE_TUPLE, IMPORT_ABSOLUTIZE_TUPLE
+from .custom_arguments import DEFAULT_LOG
+from .coq_running_support import get_reserved_modnames
 
 __all__ = ["include_imports", "normalize_requires", "get_required_contents", "recursively_get_requires_from_file", "absolutize_and_mangle_libname"]
 

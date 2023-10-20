@@ -1,6 +1,6 @@
 import os, time
-from memoize import memoize
-import util
+from .memoize import memoize
+from . import util
 
 __all__ = ["clean_v_file", "clean_extra_coq_files", "write_bytes_to_file", "read_bytes_from_file", "write_to_file", "read_from_file", "restore_file"]
 

@@ -1,10 +1,15 @@
 from __future__ import with_statement
-import subprocess, tempfile, re
-from file_util import clean_v_file
-from memoize import memoize
-import util
+import subprocess, tempfile, re, os
+from .file_util import clean_v_file
+from .memoize import memoize
+from . import util
 
-__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_emacs", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg"]
+__all__ = ["get_coqc_version", "get_coqtop_version", "get_coqc_help", "get_coqc_coqlib", "get_coq_accepts_top", "get_coq_accepts_time", "get_coq_accepts_emacs", "get_coq_accepts_o", "get_coq_accepts_compile", "get_coq_native_compiler_ondemand_fragment", "group_coq_args_split_recognized", "group_coq_args", "coq_makefile_supports_arg", "DEFAULT_COQTOP"]
+
+# {Windows,Python,coqtop} is terrible; we fail to write to (or read
+# from?) coqtop.  But we can wrap it in a batch script, and it works
+# fine.
+DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else util.resource_path('coqtop.bat')
 
 @memoize
 def get_coqc_version_helper(coqc):

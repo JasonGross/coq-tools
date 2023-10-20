@@ -1,5 +1,5 @@
 import re, time
-from Popen_noblock import Popen_async, PIPE, STDOUT, Empty
+from .Popen_noblock import Popen_async, PIPE, STDOUT, Empty
 
 __all__ = ["join_definitions", "split_statements_to_definitions"]
 

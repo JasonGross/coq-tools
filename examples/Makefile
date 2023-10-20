@@ -101,6 +101,9 @@ COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
 COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
 COQLIB_PRELUDE_V_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.v)
 COQLIB_PRELUDE_GLOB_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.glob)
+FIND_BUG?=
+
+export FIND_BUG
 
 .PHONY: check
 check::
@@ -109,6 +112,7 @@ check::
 	@echo -n "$(NC) ($(GREEN)"
 	@bash -c '. init-settings.sh; echo -n "$$(which "$${PYTHON}")"'
 	@echo "$(NC)) (based on $(GREEN)$${PYTHON}$(NC))"
+	@printf "Running with FIND_BUG='%s'\n" "$(FIND_BUG)"
 	$(MAKE) -B test-suite
 
 .PHONY: print-support

@@ -6,8 +6,6 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 mkdir -p "$DIR/example_22"
 cd "$DIR/example_22"
-FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
-MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
@@ -16,8 +14,8 @@ MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 PS4='$ '
 set -x
 
-${PYTHON} ${MINIMIZE_REQUIRES_PY} -h || exit $?
+minimize_requires -h || exit $?
 touch ex22.v
-${PYTHON} ${MINIMIZE_REQUIRES_PY} --arg=-nois ex22.v || exit $?
+minimize_requires --arg=-nois ex22.v || exit $?
 rm -f ex22.v
 exit 0

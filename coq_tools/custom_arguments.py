@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sys, os
-from argparse_compat import argparse
-from util import PY3
+from .argparse_compat import argparse
+from .util import PY3
 
 __all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS"]
 

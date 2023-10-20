@@ -6,4 +6,4 @@ cd "$DIR/example_${N}"
 PS4='$ '
 set -x
 # --fast-merge-imports
-${PYTHON} ../../find-bug.py --no-minimize-before-inlining example.v example_${N}_output.v "$@" -l - example_${N}_log.log || exit $?
+find_bug --no-minimize-before-inlining example.v example_${N}_output.v "$@" -l - example_${N}_log.log || exit $?

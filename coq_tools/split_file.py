@@ -1,11 +1,10 @@
-from strip_comments import strip_comments
-from custom_arguments import DEFAULT_LOG
-from coq_version import get_coq_accepts_time
-import subprocess
-import re
-import util
-from util import PY3
-if PY3: from util import raw_input
+import subprocess, re
+from .strip_comments import strip_comments
+from .custom_arguments import DEFAULT_LOG
+from .coq_version import get_coq_accepts_time
+from . import util
+from .util import PY3
+if PY3: from .util import raw_input
 
 __all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_byte_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term", "split_leading_comments_and_whitespace"]
 

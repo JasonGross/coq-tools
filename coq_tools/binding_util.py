@@ -1,4 +1,4 @@
-from custom_arguments import DEFAULT_LOG
+from .custom_arguments import DEFAULT_LOG
 
 __all__ = ["process_maybe_list"]
 

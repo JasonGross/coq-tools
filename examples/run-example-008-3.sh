@@ -7,7 +7,7 @@ set -x
 # Disable parallel make in subcalls to the bug minimizer because it screws with things
 . "$DIR/disable-parallel-make.sh"
 rm -f *.vo *.glob *.d .*.d
-${PYTHON} ../../find-bug.py example_008.v bug_008_3.v --coqc-is-coqtop "$@" || exit $?
+find_bug example_008.v bug_008_3.v --coqc-is-coqtop "$@" || exit $?
 LINES="$(cat bug_008_3.v | grep -v '^$' | wc -l)"
 if [ "$LINES" -ne 11 ]
 then
