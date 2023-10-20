@@ -7,8 +7,6 @@ from .file_util import write_to_file
 
 __all__ = ['main']
 
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-
 parser = argparse.ArgumentParser(description='Absolutize the imports of Coq files')
 parser.add_argument('input_files', metavar='INFILE', nargs='*', type=argparse.FileType('r'),
                     help='.v files to update')

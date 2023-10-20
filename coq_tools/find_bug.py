@@ -15,7 +15,7 @@ from .import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTI
 from .import_util import split_requires_of_statements, get_file_statements_insert_references
 from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings
 from .memoize import memoize
-from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, group_coq_args_split_recognized, get_coqc_coqlib, get_coq_accepts_compile
+from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, group_coq_args_split_recognized, get_coqc_coqlib, get_coq_accepts_compile, DEFAULT_COQTOP
 from .coq_running_support import get_ltac_support_snippet
 from .custom_arguments import add_libname_arguments, add_passing_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
 from .binding_util import process_maybe_list
@@ -26,12 +26,6 @@ if PY3: raw_input = util.raw_input
 from . import diagnose_error
 
 __all__ = ['main']
-
-# {Windows,Python,coqtop} is terrible; we fail to write to (or read
-# from?) coqtop.  But we can wrap it in a batch scrip, and it works
-# fine.
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
 parser = custom_arguments.ArgumentParser(description='Attempt to create a small file which reproduces a bug found in a large development.')
 parser.add_argument('bug_file', metavar='BUGGY_FILE', type=argparse.FileType('r'),
@@ -1368,7 +1362,7 @@ def main():
         env['remove_temp_file'] = True
 
     def make_make_coqc(coqc_prog, **kwargs):
-        if get_coq_accepts_compile(coqc_prog): return os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + coqc_prog
+        if get_coq_accepts_compile(coqc_prog): return util.resource_path('coqtop-as-coqc.sh') + ' ' + coqc_prog
         if 'coqtop' in coqc_prog: return coqc_prog.replace('coqtop', 'coqc')
         return 'coqc'
 

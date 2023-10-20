@@ -5,8 +5,6 @@ from .argparse_compat import argparse
 
 __all__ = ['main']
 
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-
 parser = argparse.ArgumentParser(description='Move the [Require] statements up to the top of a file')
 parser.add_argument('input_files', metavar='INFILE', nargs='+', type=str,
                     help='.v files to update')

@@ -11,8 +11,6 @@ if PY3: from .util import raw_input
 
 __all__ = ['main']
 
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-
 parser = argparse.ArgumentParser(description='Move various statements out of proof blocks')
 parser.add_argument('input_files', metavar='INFILE', nargs='+', type=str,
                     help='.v files to update')

@@ -1,6 +1,8 @@
-import sys, re
+import os, sys, re
 
-__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes", "shlex_quote"]
+__all__ = ["prompt", "yes_no_prompt", "b", "s", "cmp_compat", "PY3", "raw_input", "re_escape", "slice_string_at_bytes", "len_in_bytes", "shlex_quote", "resource_path"]
+
+SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 if sys.version_info < (3,):
     PY3 = False
@@ -105,3 +107,15 @@ if sys.version_info < (3, 3):
 else:
     import shlex
     shlex_quote = shlex.quote
+
+def resource_path(path):
+    if os.path.exists(os.path.join(SCRIPT_DIRECTORY, path)):
+        return os.path.join(SCRIPT_DIRECTORY, path)
+    if sys.version_info < (3, 7):
+        import pkg_resources
+
+        return pkg_resources.resource_filename('coq_tools', path)
+    else:
+        import importlib.resources
+
+        return importlib.resources.path('coq_tools', path)

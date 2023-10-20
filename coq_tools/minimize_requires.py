@@ -7,16 +7,11 @@ from .import_util import get_file_statements_insert_references, sort_files_by_de
 from .file_util import write_to_file
 from .memoize import memoize
 from .minimizer_drivers import run_binary_search
+from .coq_version import DEFAULT_COQTOP
 from . import diagnose_error
 from . import util
 
 __all__ = ['main']
-
-# {Windows,Python,coqtop} is terrible; we fail to write to (or read
-# from?) coqtop.  But we can wrap it in a batch scrip, and it works
-# fine.
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
 parser = argparse.ArgumentParser(description='Remove useless Requires in a file')
 parser.add_argument('input_files', metavar='INFILE', nargs='*', type=argparse.FileType('r'),

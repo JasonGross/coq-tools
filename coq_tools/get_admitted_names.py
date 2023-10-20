@@ -7,21 +7,16 @@ from .diagnose_error import get_coq_output
 from .import_util import lib_of_filename, norm_libname
 from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings
 from .memoize import memoize
-from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args
+from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, DEFAULT_COQTOP
 from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
 from .binding_util import process_maybe_list
 from .file_util import clean_v_file, read_from_file, write_to_file, restore_file
+from . import util
 from .util import PY3
 if PY3: from .util import raw_input
 from . import diagnose_error
 
 __all__ = ['main']
-
-# {Windows,Python,coqtop} is terrible; we fail to write to (or read
-# from?) coqtop.  But we can wrap it in a batch scrip, and it works
-# fine.
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_COQTOP = 'coqtop' if os.name != 'nt' else os.path.join(SCRIPT_DIRECTORY, 'coqtop.bat')
 
 parser = custom_arguments.ArgumentParser(description='List all identifiers which are not closed under the global context')
 parser.add_argument('--coqbin', metavar='COQBIN', dest='coqbin', type=str, default='',
@@ -115,7 +110,7 @@ def main():
 
     if env['coqc_is_coqtop']:
         if env['coqc'] == 'coqc': env['coqc'] = env['coqtop']
-        env['make_coqc'] = os.path.join(SCRIPT_DIRECTORY, 'coqtop-as-coqc.sh') + ' ' + env['coqc']
+        env['make_coqc'] = util.resource_path('coqtop-as-coqc.sh') + ' ' + env['coqc']
 
     coqc_help = get_coqc_help(env['coqc'], **env)
     coqc_version = get_coqc_version(env['coqc'], **env)
