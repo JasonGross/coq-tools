@@ -53,11 +53,11 @@ jobs:
     - name: Upload standalone
       uses: actions/upload-artifact@v3
       with:
-        name: standalone
+        name: standalone-${{ matrix.python-version }}-${{ matrix.os }}
         path: |
-          dist/coq-bug-minimizer/coq-bug-minimizer
-          dist/coq-import-inliner/coq-import-inliner
-          dist/coq-require-minimizer/coq-require-minimizer
+          dist/coq-bug-minimizer/coq-bug-minimizer*
+          dist/coq-import-inliner/coq-import-inliner*
+          dist/coq-require-minimizer/coq-require-minimizer*
     - run: dist/coq-bug-minimizer/coq-bug-minimizer -h
     - run: dist/coq-import-inliner/coq-import-inliner -h
     - run: dist/coq-require-minimizer/coq-require-minimizer -h
