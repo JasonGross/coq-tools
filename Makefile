@@ -14,8 +14,8 @@ doctests::
 	$(PYTHON3) $(DOCTEST_FILES)
 
 PYINSTALLER_ADD_DATA := \
-	--add-data coq_tools/coqtop-as-coqc.sh:coq_tools/ \
-	--add-data coq_tools/coqtop.bat:coq_tools/ \
+	--add-data coqtop-as-coqc.sh:. \
+	--add-data coqtop.bat:. \
 	#
 
 .PHONY: standalone-coq-bug-minimizer
