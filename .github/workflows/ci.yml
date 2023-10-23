@@ -129,6 +129,7 @@ jobs:
             make check PYTHON=python3 FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
           elif [ "${{ matrix.test-location }}" == "standalone" ]; then
             startGroup 'install package building deps'
+            python3 -m pip install --upgrade pip
             python3 -m pip install pyinstaller
             endGroup
             startGroup 'Build package'
