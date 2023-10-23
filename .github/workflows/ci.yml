@@ -92,6 +92,9 @@ jobs:
         coq-version: ['dev', '8.18', '8.17', '8.16', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
         ocaml-version: ['default']
         test-location: ['installed', 'local', 'standalone']
+        exclude: # work around https://github.com/coq-community/docker-coq/issues/59
+        - coq-version: '8.5'
+          test-location: 'standalone'
 
     runs-on: ubuntu-latest
     concurrency:
