@@ -101,9 +101,6 @@ COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
 COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
 COQLIB_PRELUDE_V_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.v)
 COQLIB_PRELUDE_GLOB_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.glob)
-FIND_BUG?=
-
-export FIND_BUG
 
 .PHONY: check
 check::

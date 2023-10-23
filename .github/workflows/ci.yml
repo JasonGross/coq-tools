@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8, 3.11]
-        test-location: ['installed', 'local']
+        test-location: ['installed', 'local', 'standalone']
         env:
         - { COQ_VERSION: "8.15.0", COQ_PACKAGE: "coq-8.14.0", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-20.04" }
         - { COQ_VERSION: "8.14.1", COQ_PACKAGE: "coq-8.14.1", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-20.04" }
@@ -58,22 +58,32 @@ jobs:
     - name: make doctests
       run: make doctests PYTHON3=python
       if: ${{ matrix.python-version != '2.7' }}
-    - name: install package building deps
+    - name: install package building deps (pip)
       run: |
         python -m pip install setuptools wheel twine
       if: ${{ matrix.test-location == 'installed' }}
-    - name: Build package
+    - name: install package building deps (standalone)
+      run: |
+        python -m pip install pyinstaller
+      if: ${{ matrix.test-location == 'standalone' }}
+    - name: Build package (dist)
       run: make dist
       if: ${{ matrix.test-location == 'installed' }}
+    - name: Build package (standalone)
+      run: make standalone
+      if: ${{ matrix.test-location == 'standalone' }}
     - name: Test install
       run: python -m pip install .
       if: ${{ matrix.test-location == 'installed' }}
     - name: Test (local)
       run: make print-support && make has-all-tests && make check PYTHON=python CAT_ALL_LOGS=1
-      if: ${{ matrix.test-location != 'installed' }}
+      if: ${{ matrix.test-location == 'local' }}
     - name: Test (installed)
       run: make print-support && make has-all-tests && make check PYTHON=python FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'installed' }}
+    - name: Test (standalone)
+      run: make print-support && make has-all-tests && make check PYTHON=python FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
+      if: ${{ matrix.test-location == 'standalone' }}
 
   docker-build:
     strategy:
@@ -81,7 +91,10 @@ jobs:
       matrix:
         coq-version: ['dev', '8.18', '8.17', '8.16', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
         ocaml-version: ['default']
-        test-location: ['installed', 'local']
+        test-location: ['installed', 'local', 'standalone']
+        exclude: # work around https://github.com/coq-community/docker-coq/issues/59
+        - coq-version: '8.5'
+          test-location: 'standalone'
 
     runs-on: ubuntu-latest
     concurrency:
@@ -117,6 +130,14 @@ jobs:
             python3 -m pip install .
             endGroup
             make check PYTHON=python3 FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
+          elif [ "${{ matrix.test-location }}" == "standalone" ]; then
+            startGroup 'install package building deps'
+            python3 -m pip install pyinstaller
+            endGroup
+            startGroup 'Build package'
+            make standalone PYTHON=python3
+            endGroup
+            make check PYTHON=python3 FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
           else
             make check PYTHON=python3 CAT_ALL_LOGS=1
           fi
