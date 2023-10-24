@@ -212,9 +212,11 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: python-standalone
-        path: standalone.tar.gz
+        path: .
     - name: Unpack standalone
       run: tar -xzvf standalone.tar.gz
+    - run: find dist
+    - run: ls -la dist
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v2.1.0
       with:
