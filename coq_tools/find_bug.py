@@ -1018,8 +1018,12 @@ def try_split_requires(output_file_name, **kwargs):
         kwargs['log']('\nNon-fatal error: Failed to get references for %s' % output_file_name, level=LOG_ALWAYS)
         return False
 
-    annotated_contents = split_requires_of_statements(annotated_contents, **kwargs)
-    new_contents = ''.join(v[0].decode('utf-8') for v in annotated_contents)
+    try:
+        annotated_contents = split_requires_of_statements(annotated_contents, **kwargs)
+        new_contents = ''.join(v[0].decode('utf-8') for v in annotated_contents)
+    except UnicodeDecodeError as e:
+        kwargs['log']('\nNon-fatal error: Invalid non-UTF-8 (maybe an outdated .glob file for %s?): %s' % (output_file_name, str(e)), level=LOG_ALWAYS)
+        return False
 
     return check_change_and_write_to_file(old_contents, new_contents, output_file_name,
                                           unchanged_message='No Requires to split.',
