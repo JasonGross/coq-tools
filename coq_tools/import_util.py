@@ -612,7 +612,7 @@ def split_requires_of_statements(annotated_contents, types=('lib',), appends=('<
             yield (statement, references)
             continue
         rkind = classify_require_kind(statement, references)
-        if rkind not in (REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT) or len(references) == 1 and rkind == REQUIRE:
+        if rkind not in (REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT) or (len(references) == 1 and rkind == REQUIRE):
             yield (statement, references)
             continue
         remaining_references = []
