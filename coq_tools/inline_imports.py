@@ -2,7 +2,7 @@
 import shutil, os, os.path, sys
 from .argparse_compat import argparse
 from .import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from .custom_arguments import add_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments
+from .custom_arguments import add_libname_arguments, update_env_with_libnames, update_env_with_coqpath_folders, add_logging_arguments, process_logging_arguments, get_parser_name_mapping
 from .coq_version import get_coqc_coqlib, DEFAULT_COQTOP
 from .replace_imports import include_imports
 
@@ -66,6 +66,7 @@ def main():
         'coq_makefile': args.coq_makefile,
         'use_coq_makefile_for_deps': args.use_coq_makefile_for_deps,
         'walk_tree': args.walk_tree,
+        'cli_mapping': get_parser_name_mapping(parser),
         }
     update_env_with_libnames(env, args)
     if args.inline_user_contrib: update_env_with_coqpath_folders(env, os.path.join(get_coqc_coqlib(env['coqc'], coq_args=env['coqc_args'], **env), 'user-contrib'))

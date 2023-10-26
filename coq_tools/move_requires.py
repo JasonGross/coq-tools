@@ -2,6 +2,7 @@
 from __future__ import with_statement
 import os, sys, shutil, re
 from .argparse_compat import argparse
+from .custom_arguments import get_parser_name_mapping
 
 __all__ = ['main']
 
@@ -82,6 +83,7 @@ def main():
         'log': log,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
+        'cli_mapping': get_parser_name_mapping(parser),
         }
 
     for f in args.input_files:

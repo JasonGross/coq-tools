@@ -8,7 +8,7 @@ from .import_util import lib_of_filename, norm_libname
 from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings
 from .memoize import memoize
 from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, group_coq_args, DEFAULT_COQTOP
-from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, DEFAULT_LOG, LOG_ALWAYS
+from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, get_parser_name_mapping, DEFAULT_LOG, LOG_ALWAYS
 from .binding_util import process_maybe_list
 from .file_util import clean_v_file, read_from_file, write_to_file, restore_file
 from . import util
@@ -99,6 +99,7 @@ def main():
                            for i in process_maybe_list(args.coq_args, log=args.log)),
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'temp_file_name': '',
+        'cli_mapping': get_parser_name_mapping(parser),
     }
 
     env['remove_temp_file'] = False

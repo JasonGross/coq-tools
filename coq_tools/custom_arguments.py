@@ -3,7 +3,7 @@ import sys, os
 from .argparse_compat import argparse
 from .util import PY3
 
-__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS"]
+__all__ = ["add_libname_arguments", "add_passing_libname_arguments", "ArgumentParser", "update_env_with_libnames", "add_logging_arguments", "process_logging_arguments", "update_env_with_coqpath_folders", "DEFAULT_LOG", "DEFAULT_VERBOSITY", "LOG_ALWAYS", "get_parser_name_mapping"]
 
 # grumble, grumble, we want to support multiple -R arguments like coqc
 class CoqLibnameAction(argparse.Action):
@@ -260,3 +260,15 @@ class ArgumentParser(argparse.ArgumentParser):
             exc.reraise = reraise
             raise exc
         reraise()
+
+# returns a mapping from constant names to values to lists of command-line flags
+def get_parser_name_mapping(parser):
+    mapping = {}
+    for action in parser._actions:
+        if hasattr(action, 'const') and action.const is not None and len(action.option_strings) > 0:
+            dest = action.dest
+            const = action.const
+            if dest not in mapping: mapping[dest] = {}
+            if const not in mapping[dest]: mapping[dest][const] = []
+            mapping[dest][const] += action.option_strings
+    return mapping

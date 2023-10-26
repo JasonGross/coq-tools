@@ -4,7 +4,7 @@ import os, sys, shutil, re
 from .argparse_compat import argparse
 from .split_file import split_coq_file_contents_with_comments
 from .strip_comments import strip_comments
-from .custom_arguments import add_logging_arguments, process_logging_arguments, LOG_ALWAYS
+from .custom_arguments import add_logging_arguments, process_logging_arguments, get_parser_name_mapping, LOG_ALWAYS
 from .file_util import write_to_file
 from .util import PY3
 if PY3: from .util import raw_input
@@ -201,6 +201,7 @@ def main():
         'log': args.log,
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
+        'cli_mapping': get_parser_name_mapping(parser),
         }
 
     for f in args.input_files:

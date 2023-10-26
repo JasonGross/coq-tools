@@ -2,7 +2,7 @@
 import shutil, os, os.path, sys
 from .argparse_compat import argparse
 from .import_util import get_file, sort_files_by_dependency, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments
+from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, get_parser_name_mapping
 from .file_util import write_to_file
 
 __all__ = ['main']
@@ -52,6 +52,7 @@ def main():
         'absolutize': args.absolutize,
         'coq_makefile': prepend_coqbin(args.coq_makefile),
         'input_files': tuple(f.name for f in args.input_files),
+        'cli_mapping': get_parser_name_mapping(parser),
         }
     update_env_with_libnames(env, args)
 
