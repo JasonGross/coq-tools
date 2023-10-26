@@ -405,8 +405,9 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
     make_cmds = ['make', '-k', '-f', mkfile] + keep_error_fragment + targets
     kwargs['log'](' '.join(make_cmds))
     try:
-        p_make = subprocess.Popen(make_cmds, stdin=subprocess.PIPE, stdout=sys.stderr) #, stdout=subprocess.PIPE)
-        return p_make.communicate()
+        p_make = subprocess.Popen(make_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        p_make_stdout, p_make_stderr = p_make.communicate()
+        return p_make_stdout
     finally:
         for filename in (mkfile, mkfile + '.conf', mkfile + '.d', '.%s.d' % mkfile, '.coqdeps.d'):
             if os.path.exists(filename):
@@ -484,7 +485,9 @@ def make_globs(logical_names, **kwargs):
         for v_name in all_filenames_v:
             make_one_glob_file(v_name, **kwargs)
     else:
-        (stdout_make, stderr_make) = run_coq_makefile_and_make(tuple(sorted(filenames_v + extra_filenames_v)), filenames_glob, **kwargs)
+        stdouterr_make = run_coq_makefile_and_make(tuple(sorted(filenames_v + extra_filenames_v)), filenames_glob, **kwargs)
+        if 'Argument list too long' in stdouterr_make and re.search(r"No rule to make target '.*\.glob'", stdouterr_make):
+            kwargs['log']("WARNING: Making globs may not have succeeded, consider passing " + kwargs['cli_mapping']['use_coq_makefile_for_deps'][False][0])
 
 def get_glob_file_for(filename, update_globs=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
