@@ -43,6 +43,9 @@ def fill_kwargs(kwargs, for_makefile=False):
         'use_coq_makefile_for_deps' : True,
         'walk_tree'                 : True,
         'coqc_args'                 : tuple(),
+        'cli_mapping'               : {
+            'use_coq_makefile_for_deps' : { False: ['--no-deps'] },
+        },
     }
     rtn.update(kwargs)
     if for_makefile:

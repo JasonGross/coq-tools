@@ -2,7 +2,7 @@
 from __future__ import with_statement
 import os, sys, re
 from .argparse_compat import argparse
-from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS
+from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, get_parser_name_mapping, LOG_ALWAYS
 from .memoize import memoize
 from .file_util import read_from_file, write_to_file
 
@@ -234,7 +234,8 @@ def main():
     env = {
         'lib_to_dir': lib_to_dir_map(args.libnames + args.non_recursive_libnames),
         'log': args.log,
-        'hide_reg': args.hide_reg
+        'hide_reg': args.hide_reg,
+        'cli_mapping': get_parser_name_mapping(parser),
         }
     update_env_with_libnames(env, args)
     for theorem_id, suggestions in REG_PROOF_USING.findall('\n'.join(source)):

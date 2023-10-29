@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 import shutil, os, os.path, sys, re
 from .argparse_compat import argparse
-from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, LOG_ALWAYS, DEFAULT_VERBOSITY
+from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, get_parser_name_mapping, LOG_ALWAYS, DEFAULT_VERBOSITY
 from .split_file import UnsupportedCoqVersionError
 from .import_util import get_file_statements_insert_references, sort_files_by_dependency, classify_require_kind, EXPORT, REQUIRE_EXPORT
 from .file_util import write_to_file
@@ -157,6 +157,7 @@ def main():
         'inplace': args.suffix != '', # it's None if they passed no argument, and '' if they didn't pass -i
         'suffix': args.suffix,
         'input_files': tuple(f.name for f in args.input_files),
+        'cli_mapping': get_parser_name_mapping(parser),
         }
     update_env_with_libnames(env, args)
 
