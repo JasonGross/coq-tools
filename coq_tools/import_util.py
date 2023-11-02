@@ -405,9 +405,9 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
     make_cmds = ['make', '-k', '-f', mkfile] + keep_error_fragment + targets
     kwargs['log'](' '.join(make_cmds))
     try:
-        p_make = subprocess.Popen(make_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        p_make = subprocess.Popen(make_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         p_make_stdout, p_make_stderr = p_make.communicate()
-        return p_make_stdout
+        return p_make_stdout.decode('utf-8')
     finally:
         for filename in (mkfile, mkfile + '.conf', mkfile + '.d', '.%s.d' % mkfile, '.coqdeps.d'):
             if os.path.exists(filename):
