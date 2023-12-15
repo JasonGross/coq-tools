@@ -36,7 +36,7 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: make dist PYTHON=python3
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
@@ -63,7 +63,7 @@ jobs:
     - name: Build a standalone executable
       run: make standalone
     - name: Store the standalone packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-standalone-${{ matrix.os }}
         path: dist/
@@ -118,7 +118,7 @@ jobs:
         ls -la dist/
         tar -czvf standalone.tar.gz dist/
     - name: Store the standalone ⛏️ packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-standalone
         path: standalone.tar.gz
