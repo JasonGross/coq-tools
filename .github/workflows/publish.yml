@@ -218,7 +218,7 @@ jobs:
     - run: find dist
     - run: ls -la dist
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v2.1.0
+      uses: sigstore/gh-action-sigstore-python@v2.1.1
       with:
         inputs: >-
           ./dist/*
