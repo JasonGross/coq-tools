@@ -34,7 +34,7 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=str,
                     help='a .v file which will hold intermediate results, as well as the final reduced file')
 parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, default='',
                     help='a .v file which will be used to build up intermediate files while they are being tested')
-parser.add_argument('--temp-file-log', metavar='TEMP_FILE_LOG', dest='temp_file_log', nargs='?' type=str, default='',
+parser.add_argument('--temp-file-log', metavar='TEMP_FILE_LOG', dest='temp_file_log', nargs='?', type=str, default='',
                     help='a .log file which will contain the log from coqc from the last temp_file that failed')
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
