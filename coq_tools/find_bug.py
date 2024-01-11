@@ -440,16 +440,13 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
     elif change_result == CHANGE_FAILURE:
         kwargs['log']('\nNon-fatal error: Failed to %s and preserve the error.  %s' % (failure_description, error_desc), level=verbose_base)
         for lvl, msg in error_desc_verbose_list: kwargs['log'](msg, level=lvl)
-        if write_to_temp_file and not kwargs['remove_temp_file']:
-            kwargs['log']('Writing %s to %s.' % (changed_description.lower(), kwargs['temp_file_name']), level=verbose_base)
-            if not kwargs['remove_temp_file_log']: kwargs['log']('Writing log to %s.' % kwargs['temp_file_log_name'], level=verbose_base)
+        if write_to_temp_file and not kwargs['remove_temp_file']: kwargs['log']('Writing %s to %s (log in %s).' % (changed_description.lower(), kwargs['temp_file_name'], kwargs['temp_file_log_name']), level=verbose_base)
         kwargs['log']('The new error was:', level=verbose_base)
         kwargs['log'](outputs[output_i], level=verbose_base)
         kwargs['log']('All Outputs:\n%s' % '\n'.join(outputs), level=verbose_base+2)
         if write_to_temp_file and not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
-            if not kwargs['remove_temp_file_log']:
-                write_to_file(kwargs['temp_file_log_name'], outputs[output_i])
+            write_to_file(kwargs['temp_file_log_name'], outputs[output_i])
         else:
             kwargs['log'](util.color('%s not saved.' % changed_description, util.colors.WARNING, kwargs['color_on']), level=verbose_base)
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
@@ -1373,10 +1370,7 @@ def main():
         temp_file.close()
         env['remove_temp_file'] = True
     if env['temp_file_log_name'] == '':
-        temp_file_log = tempfile.NamedTemporaryFile(suffix='.log', dir='.', delete=False)
-        env['temp_file_log_name'] = temp_file_log.name
-        temp_file_log.close()
-        env['remove_temp_file_log'] = True
+        env['temp_file_log_name'] = env['temp_file_name'] + '.log'
 
     def make_make_coqc(coqc_prog, **kwargs):
         if get_coq_accepts_compile(coqc_prog): return util.resource_path('coqtop-as-coqc.sh') + ' ' + coqc_prog
@@ -1635,7 +1629,6 @@ def main():
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
-        if env['remove_temp_file_log'] and os.path.exists(env['temp_file_log_name']):
             os.remove(env['temp_file_log_name'])
 
 
