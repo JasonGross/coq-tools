@@ -34,6 +34,8 @@ parser.add_argument('output_file', metavar='OUT_FILE', type=str,
                     help='a .v file which will hold intermediate results, as well as the final reduced file')
 parser.add_argument('temp_file', metavar='TEMP_FILE', nargs='?', type=str, default='',
                     help='a .v file which will be used to build up intermediate files while they are being tested')
+parser.add_argument('--temp-file-log', metavar='TEMP_FILE_LOG', dest='temp_file_log', nargs='?' type=str, default='',
+                    help='a .log file which will contain the log from coqc from the last temp_file that failed')
 parser.add_argument('--fast-merge-imports', dest='fast_merge_imports',
                     action='store_const', const=True, default=False,
                     help='Use a faster method for combining imports')
@@ -438,12 +440,16 @@ def check_change_and_write_to_file(old_contents, new_contents, output_file_name,
     elif change_result == CHANGE_FAILURE:
         kwargs['log']('\nNon-fatal error: Failed to %s and preserve the error.  %s' % (failure_description, error_desc), level=verbose_base)
         for lvl, msg in error_desc_verbose_list: kwargs['log'](msg, level=lvl)
-        if write_to_temp_file and not kwargs['remove_temp_file']: kwargs['log']('Writing %s to %s.' % (changed_description.lower(), kwargs['temp_file_name']), level=verbose_base)
+        if write_to_temp_file and not kwargs['remove_temp_file']:
+            kwargs['log']('Writing %s to %s.' % (changed_description.lower(), kwargs['temp_file_name']), level=verbose_base)
+            if not kwargs['remove_temp_file_log']: kwargs['log']('Writing log to %s.' % kwargs['temp_file_log_name'], level=verbose_base)
         kwargs['log']('The new error was:', level=verbose_base)
         kwargs['log'](outputs[output_i], level=verbose_base)
         kwargs['log']('All Outputs:\n%s' % '\n'.join(outputs), level=verbose_base+2)
         if write_to_temp_file and not kwargs['remove_temp_file']:
             write_to_file(kwargs['temp_file_name'], contents)
+            if not kwargs['remove_temp_file_log']:
+                write_to_file(kwargs['temp_file_log_name'], outputs[output_i])
         else:
             kwargs['log'](util.color('%s not saved.' % changed_description, util.colors.WARNING, kwargs['color_on']), level=verbose_base)
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
@@ -1333,6 +1339,7 @@ def main():
         'walk_tree': args.walk_tree,
         'strict_whitespace': args.strict_whitespace,
         'temp_file_name': args.temp_file,
+        'temp_file_log_name': args.temp_file_log,
         'coqc_is_coqtop': args.coqc_is_coqtop,
         'passing_coqc_is_coqtop': args.passing_coqc_is_coqtop,
         'yes': args.yes,
@@ -1365,6 +1372,11 @@ def main():
         env['temp_file_name'] = temp_file.name
         temp_file.close()
         env['remove_temp_file'] = True
+    if env['temp_file_log_name'] == '':
+        temp_file_log = tempfile.NamedTemporaryFile(suffix='.log', dir='.', delete=False)
+        env['temp_file_log_name'] = temp_file_log.name
+        temp_file_log.close()
+        env['remove_temp_file_log'] = True
 
     def make_make_coqc(coqc_prog, **kwargs):
         if get_coq_accepts_compile(coqc_prog): return util.resource_path('coqtop-as-coqc.sh') + ' ' + coqc_prog
@@ -1623,6 +1635,9 @@ def main():
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
+        if env['remove_temp_file_log'] and os.path.exists(env['temp_file_log_name']):
+            os.remove(env['temp_file_log_name'])
+
 
 if __name__ == '__main__':
     main()
