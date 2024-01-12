@@ -1629,7 +1629,7 @@ def main():
     finally:
         if env['remove_temp_file']:
             clean_v_file(env['temp_file_name'])
-            os.remove(env['temp_file_log_name'])
+            if os.path.exists(env['temp_file_log_name']): os.remove(env['temp_file_log_name'])
 
 
 if __name__ == '__main__':
