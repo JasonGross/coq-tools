@@ -256,7 +256,7 @@ jobs:
         git checkout -b temp
         git branch -D master || true
         git checkout -b master publisher/master
-        git add pyproject.toml
+        git add pyproject.toml setup.py
         timestamp=$(date -u)
         git commit -m "Automated Package Version Bump: ${timestamp} ${GITHUB_SHA}"
         git push publisher master
