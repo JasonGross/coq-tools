@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import shutil, os, os.path, sys, re
 from .argparse_compat import argparse
 from .custom_arguments import add_libname_arguments, update_env_with_libnames, add_logging_arguments, process_logging_arguments, get_parser_name_mapping, LOG_ALWAYS, DEFAULT_VERBOSITY
