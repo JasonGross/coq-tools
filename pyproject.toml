@@ -1,16 +1,14 @@
 [project]
 name = "coq-tools"
 version = "0.0.5"
-authors = [
-  { name="Jason Gross", email="jgross@mit.edu" },
-]
+authors = [{ name = "Jason Gross", email = "jgross@mit.edu" }]
 description = "Some scripts to help manipulate Coq developments and minimize error-producing Coq code"
 readme = "README.md"
 requires-python = ">=3.5"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 
 [project.urls]
@@ -20,3 +18,6 @@ classifiers = [
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 120
