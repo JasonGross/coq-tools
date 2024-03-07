@@ -4,7 +4,7 @@ from .util import group_by
 __all__ = ["strip_comments", "strip_trailing_comments"]
 
 
-def annotate_with_is_comment(tokens: list[str]) -> Iterable[Tuple[bool, str]]:
+def annotate_with_is_comment(tokens):
     """
     Annotates each token in the given list with a boolean value indicating whether it is a comment or not.
 
@@ -34,7 +34,7 @@ def annotate_with_is_comment(tokens: list[str]) -> Iterable[Tuple[bool, str]]:
         yield is_comment, token
 
 
-def split_comments(contents: str) -> list[str]:
+def split_comments(contents: str):
     """
     Splits the given string into a list of blocks, each of which is either a comment or is entirely comment-free
     """
