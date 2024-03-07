@@ -13,6 +13,7 @@ __all__ = [
     "len_in_bytes",
     "shlex_quote",
     "resource_path",
+    "group_by",
 ]
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -176,3 +177,60 @@ def resource_path(path):
         import importlib.resources
 
         return importlib.resources.path("coq_tools", path)
+
+
+def group_by_iter(ls, f):
+    """
+    Groups elements in a list based on a given condition.
+
+    Args:
+        ls (iterable): The list of elements to be grouped.
+        f (function): The condition function used for grouping.
+
+    Returns:
+        iterable: A list of lists, where each inner list represents a group of elements.
+    """
+    it = iter(ls)
+    prev = next(it)
+    cur = [prev]
+    for token in it:
+        if f(prev, token):
+            cur.append(token)
+        else:
+            yield cur
+            cur = [token]
+        prev = token
+    yield cur
+
+
+def group_by(ls, f):
+    """
+    Groups elements in a list based on a given condition.
+
+    Args:
+        ls (list): The list of elements to be grouped.
+        f (function): The condition function used for grouping.
+
+    Returns:
+        list: A list of lists, where each inner list represents a group of elements.
+
+    Example:
+        >>> group_by([1, 2, 3, 4, 5, 7, 8, 10], lambda x, y: x + 1 == y)
+        [[1, 2, 3, 4, 5], [7, 8], [10]]
+    """
+    return list(group_by_iter(ls, f))
+
+
+if __name__ == "__main__":
+    # if we're working in Python 3.3, we can test this file
+    try:
+        import doctest
+
+        success = True
+    except ImportError:
+        print(
+            "This is not the main file to use.\nOnly run it if you have doctest (Python 3.3+) and are testing things."
+        )
+        success = False
+    if success:
+        doctest.testmod()

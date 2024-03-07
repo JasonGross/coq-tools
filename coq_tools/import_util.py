@@ -11,7 +11,7 @@ from .coq_version import (
     group_coq_args,
 )
 from .split_file import split_coq_file_contents, get_coq_statement_byte_ranges
-from .strip_comments import strip_comments
+from .strip_comments import strip_comments, strip_trailing_comments
 from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from .util import cmp_compat as cmp, shlex_quote
 from . import util
@@ -404,6 +404,43 @@ def move_space(before, after):
     return move_strings(before, after, "\n\t\r ")
 
 
+# before, after are both strings
+def move_comments_and_space(before, after):
+    # TODO: this method is pretty inefficient, because it parses the entire string
+    whitespace = "\n\t\r "
+    before_without_trailing_comments_and_space = strip_trailing_comments(
+        before, whitespace
+    ).rstrip(whitespace)
+    i = len(before_without_trailing_comments_and_space)
+    return before[:i], before[i:] + after
+
+
+# before, after are both strings
+def move_comments_and_space_and_import_categories(before, after):
+    # TODO: this method is very inefficient, because it repeatedly parses the entire prefix to move comments and space
+    before, after = move_comments_and_space(before, after)
+    if len(before) == 0 or before[-1] != ")":  # no import category
+        return before, after
+    before, after = before[:-1], before[-1] + after
+    level = 1
+    while level > 0:
+        if len(before) == 0:
+            return None, None
+        before, after = move_comments_and_space(before, after)
+        if len(before) == 0:
+            return None, None
+        if before[-1] == ")":
+            level += 1
+        elif before[-1] == "(":
+            level -= 1
+        before, after = before[:-1], before[-1] + after
+    before, after = move_comments_and_space(before, after)
+    # optional negation of import categories
+    before, after = move_strings_once(before, after, ("-",), relaxed=True)
+    before, after = move_comments_and_space(before, after)
+    return before, after
+
+
 # uses byte locations
 def remove_from_require_before(contents, location):
     """removes "From ... " from things like "From ... Require ..." """
@@ -411,19 +448,21 @@ def remove_from_require_before(contents, location):
     before, after = contents[:location].decode("utf-8"), contents[location:].decode(
         "utf-8"
     )
-    before, after = move_space(before, after)
+    before, after = move_comments_and_space_and_import_categories(before, after)
+    if before is None or after is None:
+        return contents
     before, after = move_strings_once(before, after, ("Import", "Export"), relaxed=True)
-    before, after = move_space(before, after)
+    before, after = move_comments_and_space(before, after)
     before, after = move_strings_once(before, after, ("Require",), relaxed=False)
     if before is None or after is None:
         return contents
-    before, _ = move_space(before, after)
+    before, _ = move_comments_and_space(before, after)
     before, _ = move_function(
         before, after, (lambda b: 1 if b[-1] not in " \t\r\n" else None)
     )
     if before is None:
         return contents
-    before, _ = move_space(before, after)
+    before, _ = move_comments_and_space(before, after)
     before, _ = move_strings_once(before, after, ("From",), relaxed=False)
     if before is None:
         return contents
