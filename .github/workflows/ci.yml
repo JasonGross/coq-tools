@@ -116,6 +116,7 @@ jobs:
           startGroup 'make print-support'
           make print-support PYTHON=python3
           endGroup
+          echo '::remove-matcher owner=coq-problem-matcher::'
           if [ "${{ matrix.test-location }}" == "installed" ]; then
             startGroup 'install package building deps'
             python3 -m pip install setuptools wheel twine
