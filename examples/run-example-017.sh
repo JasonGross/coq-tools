@@ -44,7 +44,7 @@ EOF
 )
 # pre-build the files to normalize the output for the run we're testing
 cd "PLACEHOLDER/PLACEHOLDER"
-coqc -nois -R ../.. Foo ../../A.v
+${COQBIN}coqc -nois -R ../.. Foo ../../A.v
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
