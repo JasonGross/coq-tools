@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.11]
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.11, 3.12]
         test-location: ['installed', 'local', 'standalone']
         env:
         - { COQ_VERSION: "8.15.0", COQ_PACKAGE: "coq-8.14.0", PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08", os: "ubuntu-20.04" }
