@@ -21,15 +21,15 @@ jobs:
           - os: windows-latest  # build fails
             python-version: '3.7'
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-20.04 # version does not exist on later versions of Ubuntu
             python-version: '3.6'
-          - os: ubuntu-20.04
+          - os: ubuntu-20.04 # version does not exist on later versions of Ubuntu
             python-version: '3.5'
-          - os: macos-latest-large
+          - os: macos-13 # version does not exist on later versions of Mac
             python-version: '3.7'
-          - os: macos-latest-large
+          - os: macos-13 # version does not exist on later versions of Mac
             python-version: '3.6'
-          - os: macos-latest-large
+          - os: macos-13 # version does not exist on later versions of Mac
             python-version: '3.5'
 
     runs-on: ${{ matrix.os }}
