@@ -45,20 +45,6 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-getting example_[0-9]\+\.v (${ABS_PATH}/example_[0-9]\+\.v)
-getting example_[0-9]\+\.glob (${ABS_PATH}/example_[0-9]\+\.glob)
-
-First, I will attempt to absolutize relevant \[Require\]s in example_[0-9]\+\.v, and store the result in bug_[0-9]\+\.v\.\.\.
-
-Now, I will attempt to coq the file, and find the error\.\.\.
-
-Coqing the file (bug_[0-9]\+\.v)\.\.\.
-
-Running command: "coqc"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\?\( "-native-compiler" "ondemand"\)\? "-nois" "-R" "\." "Top"\( "-top" "Top\.example_[0-9]\+"\)\?\( "-R" "/tmp/tmp[A-Za-z0-9_]\+" ""\)\? "/tmp/tmp[A-Za-z0-9_/]\+\.v" "-q"
-
-The timeout for coqc has been set to: 3
-
-This file produces the following output when Coq'ed:
 Set
      : Type
 File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-15:

@@ -41,7 +41,6 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-This file produces the following output when Coq'ed:
 File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 2-61:
 Error: Tactic failure: Universe {TestSuite.issues.issue7.110} is unbound\.
 

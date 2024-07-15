@@ -45,7 +45,6 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-This file produces the following output when Coq'ed:
 Set
      : Type
 File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(3\|4\), characters 0-15:
