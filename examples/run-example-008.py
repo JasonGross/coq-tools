@@ -4,7 +4,10 @@ import os, sys, inspect, glob
 DIR = os.path.dirname(os.path.realpath(__file__))
 N = __file__[__file__.rindex('-')+1:__file__.rindex('.')]
 
-NORM_EXPECT='Require Coq.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n'
+NORM_EXPECT = (
+    'Require Coq.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n',
+    'Require Stdlib.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n',
+)
 
 GET_EXPECT = {
     'Coq.Arith.Arith': None,
@@ -28,8 +31,8 @@ if __name__ == '__main__':
     for i in glob.glob('*.vo') + glob.glob('*.glob'):
         os.remove(i)
     NORM_FOUND = normalize_requires("example_%s.v" % N)
-    print('if %s != %s:' % (repr(NORM_FOUND), repr(NORM_EXPECT)))
-    if NORM_FOUND != NORM_EXPECT:
+    print('if %s not in %s:' % (repr(NORM_FOUND), repr(NORM_EXPECT)))
+    if NORM_FOUND not in NORM_EXPECT:
         print('sys.exit(1)')
         sys.exit(1)
     for libname, expect in GET_EXPECT.items():
@@ -38,8 +41,9 @@ if __name__ == '__main__':
             got = get_required_contents(libname)
         except IOError:
             got = None
-        print('if %s != %s:' % (repr(got), repr(expect)))
-        if got != expect:
+        expect_opts = (expect, expect.replace('Coq.', 'Stdlib.')) if expect is not None else (None,)
+        print('if %s not in %s:' % (repr(got), repr(expect_opts)))
+        if got not in expect_opts:
             print('sys.exit(1)')
             sys.exit(1)
     print('sys.exit(0)')
