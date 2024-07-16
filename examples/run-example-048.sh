@@ -90,7 +90,7 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Require Coq\.Init\.Ltac\.
+Require \(Coq\|Stdlib\)\.Init\.Ltac\.
 
 Inductive False : Prop := \.
 Axiom proof_admitted : False\.
@@ -101,7 +101,7 @@ Global Set Universe Polymorphism\.
 Definition foo@{i} := Type@{i}\.
 
 End Foo\.
-\(Import Coq\.Init\.Ltac\.
+\(Import \(Coq\|Stdlib\)\.Init\.Ltac\.
 \)\?Monomorphic Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : eq x x\.
 Arguments eq_refl {A x} , \[A\] x\.
 Definition foo@{} : Set\.
