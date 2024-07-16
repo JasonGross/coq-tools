@@ -30,11 +30,12 @@ if sys.version_info < (3,):
 else:
     PY3 = True
 
-    def b(x):
+    def b(x) -> bytes:
         if x is not None:
             return x.encode()
+        return x
 
-    def s(x):
+    def s(x) -> str:
         # Sometimes we get str rather than bytes??? cf https://gitlab.com/coq/coq/-/jobs/544269051
         if hasattr(x, "decode"):
             return x.decode("utf-8", "ignore")
@@ -125,7 +126,7 @@ def len_in_bytes(string):
     return len(b(string))
 
 
-def normalize_newlines(string):
+def normalize_newlines(string: str) -> str:
     return string.replace("\r\n", "\n").replace("\r", "\n")
 
 
