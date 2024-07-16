@@ -120,7 +120,7 @@ parser.add_argument('--no-deps', dest='use_coq_makefile_for_deps',
 parser.add_argument('--no-pwd-deps', dest='walk_tree',
                     action='store_const', const=False, default=True,
                     help=("Don't add all files in the current directory to the dependency analysis."))
-parser.add_argument('--inline-coqlib', dest='inline_coqlib',
+parser.add_argument('--inline-coqlib', '--inline-stdlib', dest='inline_coqlib',
                     action='store_const', const=True, default=False,
                     help=("Attempt to inline requires from Coq's standard library"))
 parser.add_argument('--inline-prelude', dest='inline_prelude',
