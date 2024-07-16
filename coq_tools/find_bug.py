@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import tempfile, sys, os, re
+import tempfile, sys, os, re, os.path
 import traceback
 from . import custom_arguments
 from .argparse_compat import argparse
@@ -120,7 +120,7 @@ parser.add_argument('--no-deps', dest='use_coq_makefile_for_deps',
 parser.add_argument('--no-pwd-deps', dest='walk_tree',
                     action='store_const', const=False, default=True,
                     help=("Don't add all files in the current directory to the dependency analysis."))
-parser.add_argument('--inline-coqlib', dest='inline_coqlib',
+parser.add_argument('--inline-coqlib', '--inline-stdlib', dest='inline_coqlib',
                     action='store_const', const=True, default=False,
                     help=("Attempt to inline requires from Coq's standard library"))
 parser.add_argument('--inline-prelude', dest='inline_prelude',
@@ -1401,7 +1401,9 @@ def main():
     if args.inline_coqlib:
         for passing_prefix in ('', 'passing_'):
             if env[passing_prefix + 'coqc']:
-                env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories'), 'Coq')])
+                coq_theories = os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories')
+                env[passing_prefix + 'libnames'] = \
+                    tuple(list(env[passing_prefix + 'libnames']) + [(coq_theories, 'Coq'), (coq_theories, 'Stdlib')])
 
     env['log']('{', level=2)
     for k, v in sorted(list(env.items())):
