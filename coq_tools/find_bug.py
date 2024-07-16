@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import tempfile, sys, os, re
+import tempfile, sys, os, re, os.path
 import traceback
 from . import custom_arguments
 from .argparse_compat import argparse
