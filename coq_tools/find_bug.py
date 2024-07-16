@@ -120,9 +120,12 @@ parser.add_argument('--no-deps', dest='use_coq_makefile_for_deps',
 parser.add_argument('--no-pwd-deps', dest='walk_tree',
                     action='store_const', const=False, default=True,
                     help=("Don't add all files in the current directory to the dependency analysis."))
-parser.add_argument('--inline-coqlib', '--inline-stdlib', dest='inline_coqlib',
+parser.add_argument('--inline-coqlib', dest='inline_coqlib',
                     action='store_const', const=True, default=False,
                     help=("Attempt to inline requires from Coq's standard library"))
+parser.add_argument('--inline-stdlib', dest='inline_stdlib',
+                    action='store_const', const=True, default=False,
+                    help=("Attempt to inline requires from Coq's standard library under the Stdlib namespace"))
 parser.add_argument('--inline-prelude', dest='inline_prelude',
                     action='store_const', const=True, default=False,
                     help=("Additionally inlines Coq.Init.Prelude by adding -noinit"))
@@ -1398,10 +1401,14 @@ def main():
             if env[passing_prefix + 'coqc']:
                 update_env_with_coqpath_folders(passing_prefix, env, os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'user-contrib'))
 
-    if args.inline_coqlib:
+    if args.inline_coqlib or args.inline_stdlib:
         for passing_prefix in ('', 'passing_'):
             if env[passing_prefix + 'coqc']:
-                env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories'), 'Coq')])
+                coq_theories_path = os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories')
+                if args.inline_coqlib:
+                    env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_theories_path, 'Coq')])
+                if args.inline_stdlib:
+                    env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_theories_path, 'Stdlib')])
 
     env['log']('{', level=2)
     for k, v in sorted(list(env.items())):
