@@ -186,6 +186,17 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     filenames = list(
         filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext)
     )
+    # kludge for https://github.com/coq/coq/pull/19310
+    if lib.startswith("Stdlib.") and not filenames:
+        filenames = list(
+            filenames_of_lib_helper("Coq." + lib[len("Stdlib."):], libnames, non_recursive_libnames, ext)
+        )
+        if filenames:
+            DEFAULT_LOG(
+                "WARNING: Using Coq in place of Stdlib when resolving %s to %s."
+                % (lib, ", ".join(sorted(set(filenames)))),
+                level=LOG_ALWAYS,
+            )
     local_filenames = list(
         local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext)
     )
