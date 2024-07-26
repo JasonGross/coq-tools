@@ -1,2 +1,2 @@
-Require Export ZArith.ZArith.
-From Coq Require Export ZArith.ZArith.
+Require Export PArith.PArith.
+From Coq Require Export PArith.PArith.
