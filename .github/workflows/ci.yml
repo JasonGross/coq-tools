@@ -110,35 +110,39 @@ jobs:
           git config --global --add safe.directory "*"
           startGroup 'install general dependencies'
           sudo apt-get update -y
-          sudo apt-get install -y python3 python3-pip
+          sudo apt-get install -y python3 python3-pip python-is-python3 python3-venv
           eval $(opam env)
           endGroup
           startGroup 'make print-support'
-          make print-support PYTHON=python3
+          make print-support
+          endGroup
+          startGroup 'setup venv'
+          python -m venv .venv
+          . .venv/bin/activate
           endGroup
           echo '::remove-matcher owner=coq-problem-matcher::'
           if [ "${{ matrix.test-location }}" == "installed" ]; then
             startGroup 'install package building deps'
-            python3 -m pip install setuptools wheel twine
+            python -m pip install setuptools wheel twine
             endGroup
             startGroup 'Build package'
-            make dist PYTHON=python3
+            make dist
             endGroup
             startGroup 'Test install'
-            python3 -m pip install .
+            python -m pip install .
             endGroup
             make check PYTHON=python3 FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
           elif [ "${{ matrix.test-location }}" == "standalone" ]; then
             startGroup 'install package building deps'
-            python3 -m pip install --upgrade pip
-            python3 -m pip install pyinstaller
+            python -m pip install --upgrade pip
+            python -m pip install pyinstaller
             endGroup
             startGroup 'Build package'
-            make standalone PYTHON=python3
+            make standalone
             endGroup
-            make check PYTHON=python3 FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
+            make check FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
           else
-            make check PYTHON=python3 CAT_ALL_LOGS=1
+            make check CAT_ALL_LOGS=1
           fi
 
   check-all:
