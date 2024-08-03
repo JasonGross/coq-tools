@@ -19,7 +19,8 @@ ONLY_IF_GLOB_IMPORT_TESTS = 052 053 054
 ONLY_IF_GT_84_TESTS = 020 049
 ONLY_IF_GE_812_TESTS = 048
 ONLY_IF_SYS_V_FILES_TESTS = 055
-ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS = 056
+ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS =
+ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_W_TESTS) \
@@ -33,6 +34,7 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_GE_812_TESTS) \
 	$(ONLY_IF_SYS_V_FILES_TESTS) \
 	$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS) \
+	$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS) \
 	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
@@ -56,6 +58,7 @@ ONLY_IF_GT_84_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GT_84_TESTS))
 ONLY_IF_GE_812_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GE_812_TESTS))
 ONLY_IF_SYS_V_FILES_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_V_FILES_TESTS))
 ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS))
+ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
@@ -213,12 +216,28 @@ print-support::
 	@printf "coqc installs stdlib .glob files:\t\tYes\n"
 
 
-COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell python -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
+COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell . init-settings.sh; $${PYTHON} -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
 ifeq (True,$(strip $(COQLIB_PRELUDE_GLOB_FILE_NEWER)))
 test-suite: $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
 ENABLED_LOGS += $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
 print-support::
 	@printf "coqlib has correctly timestampped .glob files:\tYes\n"
+
+ifeq (,$(strip $(filter 8.5% 8.6% 8.10%,$(COQC_VERSION))))
+test-suite: $(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS)
+ENABLED_LOGS += $(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS)
+print-support::
+	@printf "can inline Coq.Init.Logic:\t\t\tYes\n"
+else
+ifneq (,$(strip $(filter 8.5% 8.6%,$(COQC_VERSION))))
+print-support::
+	@printf "can inline Coq.Init.Logic:\t\t\tNo (Coq 8.5, 8.6 (%s) errors with a message about replace)\n" '$(COQC_VERSION)'
+else
+print-support::
+	@printf "can inline Coq.Init.Logic:\t\t\tNo (Coq 8.10 (%s) errors with missing eq_sind elim)\n" '$(COQC_VERSION)'
+endif
+endif
+
 else
 print-support::
 	@printf "coqlib has correctly timestampped .glob files:\tNo (%s)\n" "$(COQLIB_PRELUDE_GLOB_FILE_NEWER)"
