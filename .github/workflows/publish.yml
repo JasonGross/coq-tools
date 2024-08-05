@@ -148,7 +148,7 @@ jobs:
   publish-to-testpypi:
     name: >-
       TestPyPI: Publish Python 🐍 distribution 📦
-    if: ${{ ! ( startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' ) }} # only publish to TestPyPI on non-tag pushes
+    if: ${{ ( ! ( startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' ) ) && ( ! ( github.event.pull_request.head.repo.fork ) ) }} # only publish to TestPyPI on non-tag pushes to non-forks (forks don't have permission)
     needs:
     - build-distribution
     runs-on: ubuntu-latest
