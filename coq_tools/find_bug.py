@@ -1060,8 +1060,10 @@ def try_strip_extra_lines(output_file_name, line_num, **kwargs):
     statements = split_coq_file_contents(contents)
     cur_line_num = 0
     new_statements = statements
+    kwargs['log'](f'Trimming file to line {line_num}...', level=4)
     for statement_num, statement in enumerate(statements):
         cur_line_num += statement.count('\n') + 1 # +1 for the extra newline between each statement
+        kwargs['log'](f'Line {cur_line_num}: {statement!r}', level=4)
         if cur_line_num >= line_num:
             new_statements = statements[:statement_num + 1]
             break
