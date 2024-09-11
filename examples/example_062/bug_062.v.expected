@@ -1,0 +1,14 @@
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-w" "-deprecated-native-compiler-option,-native-compiler-disabled" "-native-compiler" "ondemand" "-R" "." "Top" "-top" "Top.example_062") -*- *)
+(* File reduced by coq-bug-minimizer from original input, then from 25 lines to 9 lines, then from 14 lines to 10 lines *)
+(* coqc version 8.19.2 compiled with OCaml 4.14.1
+   coqtop version 8.19.2
+   Expected coqc runtime on this file: 0.075 sec *)
+
+Goal True.
+Proof.
+idtac.
+idtac.
+idtac.
+idtac.
+fail 0 "custom failure".
+
