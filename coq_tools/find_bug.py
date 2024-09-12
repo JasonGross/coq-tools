@@ -1055,9 +1055,7 @@ def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailin
                                    **kwargs)
 
 
-def try_strip_extra_lines(output_file_name, line_num, **kwargs):
-    contents = read_from_file(output_file_name)
-    statements = split_coq_file_contents(contents)
+def try_strip_extra_lines(output_file_name, statements, line_num, **kwargs):
     cur_line_num = 0
     new_statements = statements
     kwargs['log'](f'Trimming file to line {line_num}...', level=4)
@@ -1182,7 +1180,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     env['log']('\nI will now attempt to remove any lines after the line which generates the error.')
     output, cmds, retcode, runtime = diagnose_error.get_coq_output(env['coqc'], env['coqc_args'], '\n'.join(statements), env['timeout'], is_coqtop=env['coqc_is_coqtop'], verbose_base=2, **env)
     line_num = diagnose_error.get_error_line_number(output, env['error_reg_string'])
-    try_strip_extra_lines(output_file_name, line_num, **env)
+    try_strip_extra_lines(output_file_name, statements, line_num, **env)
 
 
     env['log']('\nIn order to efficiently manipulate the file, I have to break it into definitions.  I will now attempt to do this.')
