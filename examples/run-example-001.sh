@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 N="${0##*-}"; N="${N%.sh}"
-cd "$DIR"
-cd "example_${N}"
+cd "$DIR" || exit $?
+cd "example_${N}" || exit $?
 . "$DIR/init-settings.sh"
 PS4='$ '
 set -x

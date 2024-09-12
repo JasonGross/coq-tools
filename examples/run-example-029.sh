@@ -18,7 +18,7 @@ EXTRA_ARGS=(--nonpassing-R Foo1 Foo --passing-R Foo2 Foo -R A Top --passing-coqc
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/$EXAMPLE_DIRECTORY"
+cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"

@@ -18,7 +18,7 @@ EXTRA_ARGS=(--passing-coqc="${COQBIN}coqc" --coqc="${COQBIN}coqc" -R input Top -
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/$EXAMPLE_DIRECTORY"
+cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"

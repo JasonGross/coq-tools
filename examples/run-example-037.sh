@@ -18,7 +18,7 @@ EXTRA_ARGS=("$@")
 
 # Get the directory name of this script, and `cd` to that directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/$EXAMPLE_DIRECTORY"
+cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 
 # set up the file with relevant line endings
 printf '(* *)\r\nRequire Import Prelude.\r\nRequire Import Prelude.\r\nRequire Import Prelude.\r\nRequire Import Prelude.\r\nFail Check Set.\r\n' > "${EXAMPLE_INPUT}"
