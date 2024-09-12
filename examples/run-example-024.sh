@@ -3,7 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 N="${0##*-}"; N="${N%.sh}"
 cd "$DIR/example_${N}" || exit $?
 . "$DIR/init-settings.sh"
-ABS_PATH="$(${PYTHON} -c 'import os.path; print(os.path.abspath("."))')"
+
 PS4='$ '
 set -x
 rm -rf outputs

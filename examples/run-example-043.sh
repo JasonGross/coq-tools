@@ -19,7 +19,7 @@ cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
 
-ABS_PATH="$(${PYTHON} -c 'import os.path; print(os.path.abspath("."))')"
+
 
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
