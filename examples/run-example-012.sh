@@ -61,7 +61,7 @@ echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" # 2>/dev/null >/dev/null
 echo "DEBUG: END INITIAL RUN OUTPUT"
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
-ACTUAL_PRE="$((echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
+ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" 2>&1)"
 echo "==================== ACTUAL ===================="
 echo "${ACTUAL_PRE}"
 echo "==================== ACTUAL ===================="
