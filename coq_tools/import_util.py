@@ -21,6 +21,7 @@ __all__ = [
     "lib_of_filename",
     "has_dir_binding",
     "deduplicate_trailing_dir_bindings",
+    "deduplicate_trailing_dir_bindings_get_topname",
     "get_file_as_bytes",
     "get_file",
     "make_globs",
@@ -297,16 +298,27 @@ def has_dir_binding(args, coqc_help, file_name=None):
     return any(i[0] in ("-R", "-Q") for i in group_coq_args(args, coqc_help))
 
 
-def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_name=None):
+def deduplicate_trailing_dir_bindings_get_topname(args, coqc_help, coq_accepts_top, file_name=None, topname=None):
     kwargs = dict()
+    if topname is None:
+        topname = DUMMY_TOPNAME
     if file_name is not None:
-        kwargs["topname"] = DUMMY_TOPNAME
+        kwargs["topname"] = topname
     bindings = group_coq_args(args, coqc_help, **kwargs)
     ret = []
     for binding in adjust_dummy_topname_binding(file_name, bindings):
+        if binding[0] == "-top":
+            topname = binding[1]
         if coq_accepts_top or binding[0] != "-top":
             ret.extend(binding)
-    return tuple(ret)
+    return tuple(ret), topname
+
+
+def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_name=None, topname=None):
+    ret, _topname = deduplicate_trailing_dir_bindings_get_topname(
+        args, coqc_help, coq_accepts_top, file_name=file_name, topname=topname
+    )
+    return ret
 
 
 def is_local_import(libname, **kwargs):

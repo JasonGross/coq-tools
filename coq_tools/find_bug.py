@@ -13,7 +13,7 @@ from .split_definitions import split_statements_to_definitions, join_definitions
 from .admit_abstract import transform_abstract_to_admit
 from .import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from .import_util import split_requires_of_statements, get_file_statements_insert_references
-from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings
+from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings_get_topname
 from .memoize import memoize
 from .coq_version import get_coqc_version, get_coqtop_version, get_coqc_help, get_coq_accepts_top, get_coq_native_compiler_ondemand_fragment, group_coq_args, group_coq_args_split_recognized, get_coqc_coqlib, get_coq_accepts_compile, DEFAULT_COQTOP
 from .coq_running_support import get_ltac_support_snippet
@@ -1430,6 +1430,8 @@ def main():
         env['log']('\nCoq version: %s\n' % coqc_version)
 
         extra_args = get_coq_prog_args(get_file(bug_file_name, **env)) if args.use_coq_prog_args else []
+        # persist topname so that when we get it from failing coqc, we can use it for passing coqc
+        topname = None
         for args_name, coq_prog, passing_prefix in (('coqc_args', env['coqc'], ''), ('coqtop_args', env['coqtop'], ''), ('passing_coqc_args', env['passing_coqc'] if env['passing_coqc'] else env['coqc'], 'passing_'), ('passing_coqtop_args', env['passing_coqtop'] if env['passing_coqtop'] else env['coqtop'], 'passing_')):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + 'libnames', []):
@@ -1438,7 +1440,7 @@ def main():
                 env[args_name] = tuple(list(env[args_name]) + ['-Q', dirname, libname])
             for dirname in env.get(passing_prefix + 'ocaml_dirnames', []):
                 env[args_name] = tuple(list(env[args_name]) + ['-I', dirname])
-            env[args_name] = deduplicate_trailing_dir_bindings(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog))
+            env[args_name], topname = deduplicate_trailing_dir_bindings_get_topname(env[args_name], coqc_help=coqc_help, file_name=bug_file_name, coq_accepts_top=get_coq_accepts_top(coq_prog), topname=topname)
         for arg in group_coq_args(extra_args, coqc_help):
             for passing_prefix in ('passing_', ''):
                 if arg[0] == '-R': env.get(passing_prefix + 'libnames', []).append((arg[1], arg[2]))
