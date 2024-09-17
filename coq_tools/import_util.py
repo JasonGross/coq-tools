@@ -109,13 +109,9 @@ def fill_kwargs(kwargs, for_makefile=False):
     }
     rtn.update(kwargs)
     if for_makefile:
-        if (
-            "make_coqc" in rtn.keys()
-        ):  # handle the case where coqc for the makefile is different
+        if "make_coqc" in rtn.keys():  # handle the case where coqc for the makefile is different
             rtn["coqc"] = rtn["make_coqc"]
-        if (
-            "passing_make_coqc" in rtn.keys()
-        ):  # handle the case where coqc for the makefile is different
+        if "passing_make_coqc" in rtn.keys():  # handle the case where coqc for the makefile is different
             rtn["passing_coqc"] = rtn["passing_make_coqc"]
     return rtn
 
@@ -152,9 +148,7 @@ def clear_libimport_cache(libname):
 
 @memoize
 def os_walk(top, topdown=True, onerror=None, followlinks=False):
-    return tuple(
-        os.walk(top, topdown=topdown, onerror=onerror, followlinks=followlinks)
-    )
+    return tuple(os.walk(top, topdown=topdown, onerror=onerror, followlinks=followlinks))
 
 
 @memoize
@@ -174,37 +168,25 @@ def local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
     # is this the right thing to do?
     lib = lib.replace(".", os.sep)
     for dirpath, dirname, filenames in os_walk(".", followlinks=True):
-        filename = os.path.relpath(
-            os.path.normpath(os.path.join(dirpath, lib + ext)), "."
-        )
+        filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), ".")
         if os_path_isfile(filename):
             yield fix_path(filename)
 
 
 @memoize
 def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
-    filenames = list(
-        filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext)
-    )
+    filenames = list(filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
     # kludge for https://github.com/coq/coq/pull/19310
     if lib.startswith("Stdlib.") and not filenames:
-        filenames = list(
-            filenames_of_lib_helper("Coq." + lib[len("Stdlib."):], libnames, non_recursive_libnames, ext)
-        )
+        filenames = list(filenames_of_lib_helper("Coq." + lib[len("Stdlib.") :], libnames, non_recursive_libnames, ext))
         if filenames:
             DEFAULT_LOG(
                 "WARNING: Using Coq in place of Stdlib when resolving %s to %s."
                 % (lib, ", ".join(sorted(set(filenames)))),
                 level=LOG_ALWAYS,
             )
-    local_filenames = list(
-        local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext)
-    )
-    existing_filenames = [
-        f
-        for f in filenames
-        if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + ".v")
-    ]
+    local_filenames = list(local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
+    existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + ".v")]
     if len(existing_filenames) > 0:
         retval = existing_filenames[0]
         if len(set(existing_filenames)) == 1:
@@ -244,9 +226,7 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
                 level=LOG_ALWAYS,
             )
             return retval
-    return fix_path(
-        os.path.relpath(os.path.normpath(lib.replace(".", os.sep) + ext), ".")
-    )
+    return fix_path(os.path.relpath(os.path.normpath(lib.replace(".", os.sep) + ext), "."))
 
 
 def filename_of_lib(lib, ext=".v", **kwargs):
@@ -271,9 +251,7 @@ def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
         for phys, logical in list(libnames) + list(non_recursive_libnames)
     ):
         filename_rel = os.path.relpath(filename, physical_name)
-        if not filename_rel.startswith(".." + os.sep) and not os.path.isabs(
-            filename_rel
-        ):
+        if not filename_rel.startswith(".." + os.sep) and not os.path.isabs(filename_rel):
             return (filename, logical_name + filename_rel.replace(os.sep, "."))
     if filename.startswith(".." + os.sep) and not os.path.isabs(filename):
         filename = os.path.abspath(filename)
@@ -312,9 +290,7 @@ def adjust_dummy_topname_binding(filename, bindings, dummy_topname=DUMMY_TOPNAME
     if topname.startswith("."):  # absolute path, will give other errors
         topname = os.path.splitext(os.path.basename(filename))[0]
     topname = topname.replace("-", "_DASH_")
-    return tuple(
-        (("-top", topname) if i == ("-top", dummy_topname) else i) for i in bindings
-    )
+    return tuple((("-top", topname) if i == ("-top", dummy_topname) else i) for i in bindings)
 
 
 def has_dir_binding(args, coqc_help, file_name=None):
@@ -340,9 +316,7 @@ def is_local_import(libname, **kwargs):
 
 def get_raw_file_as_bytes(filename, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    filename_extra = (
-        "" if os.path.isabs(filename) else " (%s)" % os.path.abspath(filename)
-    )
+    filename_extra = "" if os.path.isabs(filename) else " (%s)" % os.path.abspath(filename)
     kwargs["log"]("getting %s%s" % (filename, filename_extra))
     with open(filename, "rb") as f:
         contents = f.read()
@@ -355,9 +329,7 @@ def get_raw_file_as_bytes(filename, **kwargs):
 
 
 def get_raw_file(*args, **kwargs):
-    return util.normalize_newlines(
-        get_raw_file_as_bytes(*args, **kwargs).decode("utf-8")
-    )
+    return util.normalize_newlines(get_raw_file_as_bytes(*args, **kwargs).decode("utf-8"))
 
 
 def list_endswith(ls, suffix):
@@ -419,9 +391,7 @@ def move_space(before, after):
 def move_comments_and_space(before, after):
     # TODO: this method is pretty inefficient, because it parses the entire string
     whitespace = "\n\t\r "
-    before_without_trailing_comments_and_space = strip_trailing_comments(
-        before, whitespace
-    ).rstrip(whitespace)
+    before_without_trailing_comments_and_space = strip_trailing_comments(before, whitespace).rstrip(whitespace)
     i = len(before_without_trailing_comments_and_space)
     return before[:i], before[i:] + after
 
@@ -456,9 +426,7 @@ def move_comments_and_space_and_import_categories(before, after):
 def remove_from_require_before(contents, location):
     """removes "From ... " from things like "From ... Require ..." """
     assert contents is bytes(contents)
-    before, after = contents[:location].decode("utf-8"), contents[location:].decode(
-        "utf-8"
-    )
+    before, after = contents[:location].decode("utf-8"), contents[location:].decode("utf-8")
     before, after = move_comments_and_space_and_import_categories(before, after)
     if before is None or after is None:
         return contents
@@ -468,9 +436,7 @@ def remove_from_require_before(contents, location):
     if before is None or after is None:
         return contents
     before, _ = move_comments_and_space(before, after)
-    before, _ = move_function(
-        before, after, (lambda b: 1 if b[-1] not in " \t\r\n" else None)
-    )
+    before, _ = move_function(before, after, (lambda b: 1 if b[-1] not in " \t\r\n" else None))
     if before is None:
         return contents
     before, _ = move_comments_and_space(before, after)
@@ -510,9 +476,7 @@ def is_absolutizable_mod_reference(contents, reference):
 # coqc on the file.
 #
 # contents should be bytes; globs should be string
-def update_one_with_glob(
-    contents, ref, absolutize, libname, transform_base=(lambda x: x), **kwargs
-):
+def update_one_with_glob(contents, ref, absolutize, libname, transform_base=(lambda x: x), **kwargs):
     assert contents is bytes(contents)
     kwargs = fill_kwargs(kwargs)
     start, end, loc, append, ty = ref
@@ -521,15 +485,13 @@ def update_one_with_glob(
     rep_orig = loc + ("." + append if append != "<>" else "")
     if ty not in absolutize or loc == libname:
         kwargs["log"](
-            "Skipping %s at %d:%d (%s), location %s %s"
-            % (ty, start, end, cur_code, loc, append),
+            "Skipping %s at %d:%d (%s), location %s %s" % (ty, start, end, cur_code, loc, append),
             level=2,
         )
     # sanity check for correct replacement, to skip things like record builder notation
     elif append != "<>" and not constr_name_endswith(cur_code, append):
         kwargs["log"](
-            "Skipping invalid %s at %d:%d (%s), location %s %s"
-            % (ty, start, end, cur_code, loc, append),
+            "Skipping invalid %s at %d:%d (%s), location %s %s" % (ty, start, end, cur_code, loc, append),
             level=2,
         )
     elif ty == "mod" and not is_absolutizable_mod_reference(contents, ref):
@@ -545,12 +507,9 @@ def update_one_with_glob(
             level=2,
         )
     else:  # ty in absolutize and loc != libname
+        kwargs["log"]("Qualifying %s %s to %s" % (ty, cur_code, rep), level=2, max_level=3)
         kwargs["log"](
-            "Qualifying %s %s to %s" % (ty, cur_code, rep), level=2, max_level=3
-        )
-        kwargs["log"](
-            "Qualifying %s %s to %s from R%s:%s %s <> %s %s"
-            % (ty, cur_code, rep, start, end, loc, append, ty),
+            "Qualifying %s %s to %s from R%s:%s %s <> %s %s" % (ty, cur_code, rep, start, end, loc, append, ty),
             level=3,
         )
         contents = contents[:start] + rep.encode("utf-8") + contents[end:]
@@ -609,9 +568,7 @@ BAD_ARGS_FOR_MAKE_GLOB = ("-vio", "-vos", "-vok")
 
 def run_coq_makefile_and_make(v_files, targets, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs, for_makefile=True))
-    f = tempfile.NamedTemporaryFile(
-        suffix=".coq", prefix="Makefile", dir=".", delete=False
-    )
+    f = tempfile.NamedTemporaryFile(suffix=".coq", prefix="Makefile", dir=".", delete=False)
     mkfile = os.path.basename(f.name)
     f.close()
     cmds = [
@@ -631,9 +588,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
             physical_name,
             (logical_name if logical_name not in ("", "''", '""') else '""'),
         ]
-    for physical_name, logical_name in get_maybe_passing_arg(
-        kwargs, "non_recursive_libnames"
-    ):
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, "non_recursive_libnames"):
         cmds += [
             "-Q",
             physical_name,
@@ -664,10 +619,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 elif arg not in BAD_ARGS_FOR_MAKE_GLOB:
                     cmds += ["-arg", shlex_quote(arg)]
         else:
-            kwargs["log"](
-                "WARNING: Unrecognized arguments to coq_makefile: %s"
-                % repr(unrecognized_args)
-            )
+            kwargs["log"]("WARNING: Unrecognized arguments to coq_makefile: %s" % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
     kwargs["log"](" ".join(cmds))
     try:
@@ -681,9 +633,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get .glob files, to work around this.")
         sys.exit(1)
-    keep_error_fragment = (
-        [] if get_keep_error_reversed(mkfile, **kwargs) else ["KEEP_ERROR=1"]
-    )
+    keep_error_fragment = [] if get_keep_error_reversed(mkfile, **kwargs) else ["KEEP_ERROR=1"]
     make_cmds = ["make", "-k", "-f", mkfile] + keep_error_fragment + targets
     kwargs["log"](" ".join(make_cmds))
     try:
@@ -717,9 +667,7 @@ def make_one_glob_file(v_file, **kwargs):
             physical_name,
             (logical_name if logical_name not in ("", "''", '""') else '""'),
         ]
-    for physical_name, logical_name in get_maybe_passing_arg(
-        kwargs, "non_recursive_libnames"
-    ):
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, "non_recursive_libnames"):
         cmds += [
             "-Q",
             physical_name,
@@ -762,11 +710,7 @@ def remove_if_local(filename, **kwargs):
 
 def make_globs(logical_names, **kwargs):
     kwargs = fill_kwargs(kwargs)
-    existing_logical_names = [
-        i
-        for i in logical_names
-        if os.path.isfile(filename_of_lib(i, ext=".v", **kwargs))
-    ]
+    existing_logical_names = [i for i in logical_names if os.path.isfile(filename_of_lib(i, ext=".v", **kwargs))]
     if len(existing_logical_names) == 0:
         return
     filenames_vo_v_glob = [
@@ -780,15 +724,10 @@ def make_globs(logical_names, **kwargs):
     filenames_vo_v_glob = [
         (vo_name, v_name, glob_name)
         for vo_name, v_name, glob_name in filenames_vo_v_glob
-        if not (
-            os.path.isfile(glob_name)
-            and os.path.getmtime(glob_name) > os.path.getmtime(v_name)
-        )
+        if not (os.path.isfile(glob_name) and os.path.getmtime(glob_name) > os.path.getmtime(v_name))
     ]
     for vo_name, v_name, glob_name in filenames_vo_v_glob:
-        if os.path.isfile(glob_name) and not os.path.getmtime(
-            glob_name
-        ) > os.path.getmtime(v_name):
+        if os.path.isfile(glob_name) and not os.path.getmtime(glob_name) > os.path.getmtime(v_name):
             if os.path.getmtime(v_name) > time.time():
                 kwargs["log"](
                     "WARNING: The file %s comes from the future! (%d > %d)"
@@ -805,26 +744,19 @@ def make_globs(logical_names, **kwargs):
         # (unlike .glob file timing, where we need it to be up to
         # date), and it's better to not clobber the .vo file when
         # we're unsure if it's new enough.
-        if os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(
-            v_name
-        ):
+        if os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name):
             make_one_glob_file(v_name, **kwargs)
     filenames_vo_v_glob = [
         (vo_name, v_name, glob_name)
         for vo_name, v_name, glob_name in filenames_vo_v_glob
-        if not (
-            os.path.exists(vo_name)
-            and os.path.getmtime(vo_name) >= os.path.getmtime(v_name)
-        )
+        if not (os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name))
     ]
     filenames_v = [v_name for vo_name, v_name, glob_name in filenames_vo_v_glob]
     filenames_glob = [glob_name for vo_name, v_name, glob_name in filenames_vo_v_glob]
     if len(filenames_vo_v_glob) == 0:
         return
     extra_filenames_v = list(
-        get_all_v_files(".", filenames_v)
-        if kwargs["use_coq_makefile_for_deps"] and kwargs["walk_tree"]
-        else []
+        get_all_v_files(".", filenames_v) if kwargs["use_coq_makefile_for_deps"] and kwargs["walk_tree"] else []
     )
     all_filenames_v = filenames_v + extra_filenames_v
 
@@ -858,10 +790,7 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
     globname = filename[:-2] + ".glob"
     if not os.path.exists(filename):
         return None
-    if (
-        filename not in raw_file_contents.keys()
-        or file_mtimes[filename] < os.stat(filename).st_mtime
-    ):
+    if filename not in raw_file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         raw_file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
         file_contents[filename] = {}
         file_mtimes[filename] = os.stat(filename).st_mtime
@@ -912,12 +841,7 @@ def get_byte_references_for(filename, types=None, appends=None, **kwargs):
 
 
 def get_file_as_bytes(
-    filename,
-    absolutize=("lib",),
-    update_globs=False,
-    mod_remap=dict(),
-    transform_base=(lambda x: x),
-    **kwargs
+    filename, absolutize=("lib",), update_globs=False, mod_remap=dict(), transform_base=(lambda x: x), **kwargs
 ):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
@@ -925,10 +849,7 @@ def get_file_as_bytes(
         filename += ".v"
     libname = lib_of_filename(filename, **kwargs)
     globname = filename[:-2] + ".glob"
-    if (
-        filename not in raw_file_contents.keys()
-        or file_mtimes[filename] < os.stat(filename).st_mtime
-    ):
+    if filename not in raw_file_contents.keys() or file_mtimes[filename] < os.stat(filename).st_mtime:
         raw_file_contents[filename] = get_raw_file_as_bytes(filename, **kwargs)
         file_contents[filename] = {}
         file_mtimes[filename] = os.stat(filename).st_mtime
@@ -956,9 +877,7 @@ def get_file(*args, **kwargs):
 
 
 # this is used to mark which statements are tied to which requires
-def insert_references(
-    contents, ranges, references, types=("lib",), appends=("<>",), **kwargs
-):
+def insert_references(contents, ranges, references, types=("lib",), appends=("<>",), **kwargs):
     assert contents is bytes(contents)
     ret = []
     prev = 0
@@ -970,10 +889,7 @@ def insert_references(
     if bad:
         kwargs["log"](
             "Invalid glob entries: %s"
-            % "\n".join(
-                "R%d:%d %s <> %s %s" % (start, end, loc, append, ty)
-                for start, end, loc, append, ty in bad
-            )
+            % "\n".join("R%d:%d %s <> %s %s" % (start, end, loc, append, ty) for start, end, loc, append, ty in bad)
         )
     for start, finish in ranges:
         if prev < start:
@@ -982,11 +898,7 @@ def insert_references(
             (rstart, rend, loc, append, ty)
             for rstart, rend, loc, append, ty in references
             if (start <= rstart or rend <= finish)
-            and not (
-                (start <= rstart and rend <= finish)
-                or finish <= rstart
-                or rend <= start
-            )
+            and not ((start <= rstart and rend <= finish) or finish <= rstart or rend <= start)
         ]
         if bad:
             kwargs["log"](
@@ -995,8 +907,7 @@ def insert_references(
                     start,
                     finish,
                     "\n".join(
-                        "R%d:%d %s <> %s %s" % (start, end, loc, append, ty)
-                        for start, end, loc, append, ty in bad
+                        "R%d:%d %s <> %s %s" % (start, end, loc, append, ty) for start, end, loc, append, ty in bad
                     ),
                 )
             )
@@ -1064,9 +975,7 @@ def classify_require_kind(text_as_bytes, ranges):
     return REQUIRE if is_require else None
 
 
-def split_requires_of_statements(
-    annotated_contents, types=("lib",), appends=("<>",), **kwargs
-):
+def split_requires_of_statements(annotated_contents, types=("lib",), appends=("<>",), **kwargs):
     already_required = set()
     prefix, postfix = "\nRequire ", "."
     for statement, references in annotated_contents:
@@ -1075,9 +984,7 @@ def split_requires_of_statements(
             yield (statement, references)
             continue
         rkind = classify_require_kind(statement, references)
-        if rkind not in (REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT) or (
-            len(references) == 1 and rkind == REQUIRE
-        ):
+        if rkind not in (REQUIRE, REQUIRE_IMPORT, REQUIRE_EXPORT) or (len(references) == 1 and rkind == REQUIRE):
             yield (statement, references)
             continue
         remaining_references = []
@@ -1092,9 +999,7 @@ def split_requires_of_statements(
                         (len(prefix), len(prefix) - start + end, loc, append, ty),
                     )
             else:
-                remaining_references.append(
-                    (start - len("Require "), end - len("Require "), loc, append, ty)
-                )
+                remaining_references.append((start - len("Require "), end - len("Require "), loc, append, ty))
         if rkind == REQUIRE:
             continue
         statement_str = re.sub(r"Require\s", "", statement_str, count=1)
@@ -1108,9 +1013,7 @@ def get_require_dict(lib, update_globs=True, **kwargs):
     lib = norm_libname(lib, **kwargs)
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     if lib not in lib_imports_slow.keys():
-        globs = get_byte_references_for(
-            v_name, types=("lib",), appends=("<>",), update_globs=update_globs, **kwargs
-        )
+        globs = get_byte_references_for(v_name, types=("lib",), appends=("<>",), update_globs=update_globs, **kwargs)
         if globs is not None:
             lib_imports_slow[lib] = {}
             for start, end, name, append, ty in reversed(globs):
@@ -1128,13 +1031,7 @@ def get_require_names(lib, **kwargs):
 
 
 def get_require_locations(lib, **kwargs):
-    return sorted(
-        set(
-            loc
-            for name, locs in get_require_dict(lib, **kwargs).items()
-            for loc in locs
-        )
-    )
+    return sorted(set(loc for name, locs in get_require_dict(lib, **kwargs).items() for loc in locs))
 
 
 def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
@@ -1187,27 +1084,16 @@ def get_recursive_require_names(libname, **kwargs):
 def sort_files_by_dependency(filenames, reverse=True, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filenames = map(fix_path, filenames)
-    filenames = [
-        (filename + ".v" if filename[-2:] != ".v" else filename)
-        for filename in filenames
-    ]
-    libname_map = dict(
-        (lib_of_filename(filename, **kwargs), filename) for filename in filenames
-    )
-    requires = get_recursive_requires(
-        *sorted(libname_map.keys()), reverse=reverse, **kwargs
-    )
+    filenames = [(filename + ".v" if filename[-2:] != ".v" else filename) for filename in filenames]
+    libname_map = dict((lib_of_filename(filename, **kwargs), filename) for filename in filenames)
+    requires = get_recursive_requires(*sorted(libname_map.keys()), reverse=reverse, **kwargs)
     # filter the sorted requires by the ones that were in the original
     # filenames list, and use libname_map to lookup the original
     # filename.  We could probably just map filename_of_lib over the
     # requires and keep the ones that are in the original filenames,
     # but this is more robust if there are edge cases where
     # filename_of_lib(lib_of_filename(x)) != x
-    filenames = [
-        libname_map[libname]
-        for libname in requires.keys()
-        if libname in libname_map.keys()
-    ]
+    filenames = [libname_map[libname] for libname in requires.keys() if libname in libname_map.keys()]
     return filenames
 
 
@@ -1219,26 +1105,13 @@ def get_imports(lib, fast=False, **kwargs):
     if not fast:
         get_require_dict(lib, **kwargs)
         if lib in lib_imports_slow.keys():
-            return tuple(
-                k
-                for k, v in sorted(
-                    lib_imports_slow[lib].items(), key=(lambda kv: kv[1])
-                )
-            )
+            return tuple(k for k, v in sorted(lib_imports_slow[lib].items(), key=(lambda kv: kv[1])))
     # making globs failed, or we want the fast way, fall back to regexp
     if lib not in lib_imports_fast.keys():
         contents = get_file(v_name, **kwargs)
-        imports_string = re.sub(
-            "\\s+", " ", " ".join(IMPORT_LINE_REG.findall(contents))
-        ).strip()
+        imports_string = re.sub("\\s+", " ", " ".join(IMPORT_LINE_REG.findall(contents))).strip()
         lib_imports_fast[lib] = tuple(
-            sorted(
-                set(
-                    norm_libname(i, **kwargs)
-                    for i in imports_string.split(" ")
-                    if i != ""
-                )
-            )
+            sorted(set(norm_libname(i, **kwargs) for i in imports_string.split(" ") if i != ""))
         )
     return lib_imports_fast[lib]
 
@@ -1265,18 +1138,14 @@ def merge_imports(imports, **kwargs):
 # This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
 @memoize
 def internal_recursively_get_imports(lib, **kwargs):
-    return run_recursively_get_imports(
-        lib, recur=internal_recursively_get_imports, **kwargs
-    )
+    return run_recursively_get_imports(lib, recur=internal_recursively_get_imports, **kwargs)
 
 
 def recursively_get_imports(lib, **kwargs):
     return internal_recursively_get_imports(lib, **safe_kwargs(kwargs))
 
 
-def run_recursively_get_imports(
-    lib, recur=recursively_get_imports, fast=False, **kwargs
-):
+def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, **kwargs):
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, ext=".glob", **kwargs)
