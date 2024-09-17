@@ -12,13 +12,15 @@ try:
 except ImportError:
     from queue import Queue, Empty  # python 3.x
 
-ON_POSIX = 'posix' in sys.builtin_module_names
+ON_POSIX = "posix" in sys.builtin_module_names
+
 
 def enqueue_output(out, queue):
-    for line in iter((lambda : out.read(1)), b''):
+    for line in iter((lambda: out.read(1)), b""):
         # print('0: %s' % line)
         queue.put(line)
     out.close()
+
 
 class Popen_async(object):
     """Allows non-blocking reading from a Popen, by
@@ -29,13 +31,14 @@ class Popen_async(object):
         print('no output yet')
     else: # got line
     """
+
     def __init__(self, *args, **kwargs):
         self._p = subprocess.Popen(*args, bufsize=1, close_fds=ON_POSIX, **kwargs)
         self.stdout = Queue()
         self.stderr = Queue()
         self._tout = Thread(target=enqueue_output, args=(self._p.stdout, self.stdout))
         # self._terr = Thread(target=enqueue_output, args=(self._p.stderr, self.stderr))
-        self._tout.daemon = True # thread dies with the program
+        self._tout.daemon = True  # thread dies with the program
         # self._terr.daemon = True # thread dies with the program
         self._tout.start()
         # self._terr.start()

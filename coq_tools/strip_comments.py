@@ -67,11 +67,7 @@ def strip_comments(contents):
     Note that we take some extra care to leave *) untouched when it
     does not terminate a comment.
     """
-    return "".join(
-        block
-        for block in split_comments(contents)
-        if not (block.startswith("(*") and block.endswith("*)"))
-    )
+    return "".join(block for block in split_comments(contents) if not (block.startswith("(*") and block.endswith("*)")))
 
 
 def strip_trailing_comments(contents, strip_chars=None):

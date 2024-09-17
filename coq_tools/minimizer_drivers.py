@@ -3,18 +3,23 @@ from .memoize import memoize
 
 __all__ = ["run_binary_search"]
 
+
 @memoize
 def apply_as_many_times_as_possible(f, x):
-    if x is None: return None
+    if x is None:
+        return None
     fx = apply_as_many_times_as_possible(f, f(x))
-    if fx is None: return x
+    if fx is None:
+        return x
     return fx
+
 
 def make_states(init, step):
     init = step(init)
     while init != None:
         yield init
         init = step(init)
+
 
 def binary_search(f, ls):
     start, end = 0, len(ls)
@@ -29,8 +34,8 @@ def binary_search(f, ls):
         mid = (start + end) // 2
     return start - 1
 
-def run_binary_search(initial_state, check_state, step_state, save_good_state, valid_nondefault_actions):
 
+def run_binary_search(initial_state, check_state, step_state, save_good_state, valid_nondefault_actions):
     """
     Runs a binary search on initial_state to find the best final state.
 

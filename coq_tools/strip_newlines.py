@@ -1,6 +1,7 @@
 import re
 
-__all__ = ['strip_newlines']
+__all__ = ["strip_newlines"]
+
 
 def strip_newlines(contents, max_consecutive_newlines):
     """Removes consecutive newlines in excess of max_consecutive_newlines.
@@ -18,7 +19,7 @@ def strip_newlines(contents, max_consecutive_newlines):
     if max_consecutive_newlines < 0:
         return contents
     elif max_consecutive_newlines == 0:
-        return re.sub(r'\n+', ' ', contents)
+        return re.sub(r"\n+", " ", contents)
     else:
-        newlines = r'\n' * max_consecutive_newlines
-        return re.sub(newlines + '+', newlines, contents)
+        newlines = r"\n" * max_consecutive_newlines
+        return re.sub(newlines + "+", newlines, contents)

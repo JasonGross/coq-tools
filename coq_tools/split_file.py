@@ -4,23 +4,35 @@ from .custom_arguments import DEFAULT_LOG
 from .coq_version import get_coq_accepts_time
 from . import util
 from .util import PY3
-if PY3: from .util import raw_input
 
-__all__ = ["split_coq_file_contents", "split_coq_file_contents_with_comments", "get_coq_statement_byte_ranges", "UnsupportedCoqVersionError", "postprocess_split_proof_term", "split_leading_comments_and_whitespace"]
+if PY3:
+    from .util import raw_input
+
+__all__ = [
+    "split_coq_file_contents",
+    "split_coq_file_contents_with_comments",
+    "get_coq_statement_byte_ranges",
+    "UnsupportedCoqVersionError",
+    "postprocess_split_proof_term",
+    "split_leading_comments_and_whitespace",
+]
+
 
 def fill_kwargs(kwargs):
     ret = {
-        'log'                   : DEFAULT_LOG,
-        'coqc'                  : 'coqc',
-        'coqc_args'             : tuple(),
+        "log": DEFAULT_LOG,
+        "coqc": "coqc",
+        "coqc_args": tuple(),
     }
     ret.update(kwargs)
     return ret
 
+
 class UnsupportedCoqVersionError(Exception):
     pass
 
-def merge_quotations(statements, sp=' '):
+
+def merge_quotations(statements, sp=" "):
     """If there are an odd number of "s in a statement, assume that we
     broke the middle of a string.  We recombine that string."""
 
@@ -37,69 +49,77 @@ def merge_quotations(statements, sp=' '):
         else:
             cur += sp + i
 
-BRACES = '{}-*+'
+
+BRACES = "{}-*+"
+
 
 def split_leading_braces(statement):
     while statement.strip() and statement.strip()[0] in BRACES:
         idx = statement.index(statement.strip()[0]) + 1
         first, rest = statement[:idx], statement[idx:]
-        #if 'not_reachable_iff' in statement or 'not_reachable_iff' in first:
+        # if 'not_reachable_iff' in statement or 'not_reachable_iff' in first:
         #    print((first, rest))
         yield first
         statement = rest
     if statement:
         yield statement
 
+
 def split_leading_comments_and_whitespace(text):
     comment_level = 0
     in_str = False
     skip = False
-    for i, (ch, next_ch) in enumerate(zip(text, text[1:] + '\0')):
+    for i, (ch, next_ch) in enumerate(zip(text, text[1:] + "\0")):
         if skip:
             skip = False
         elif in_str:
-            if ch in '"': in_str = False
-        elif ch == '(' and next_ch == '*':
+            if ch in '"':
+                in_str = False
+        elif ch == "(" and next_ch == "*":
             comment_level += 1
             skip = True
-        elif ch == '*' and next_ch == ')':
+        elif ch == "*" and next_ch == ")":
             comment_level -= 1
             skip = True
         elif comment_level > 0:
-            if ch in '"': in_str = True
+            if ch in '"':
+                in_str = True
         elif ch.isspace():
             pass
         else:
             return text[:i], text[i:]
-    return text, ''
+    return text, ""
+
 
 def split_merge_comments(statements):
     """Find open and close comments."""
 
     def is_genuine_ending(cur):
-        return ((cur.strip()[:2] == '(*' and cur.strip()[-2:] == '*)') # cur is just a comment
-                or cur.strip()[-1:] in '.}'
-                or cur.strip() in BRACES)
+        return (
+            (cur.strip()[:2] == "(*" and cur.strip()[-2:] == "*)")  # cur is just a comment
+            or cur.strip()[-1:] in ".}"
+            or cur.strip() in BRACES
+        )
 
     cur = None
     comment_level = 0
     for stmt in statements:
         str_count = 0
-        for i in re.split(r'(?<=\*\)) ', stmt.replace('*)', '*) ')):
+        for i in re.split(r"(?<=\*\)) ", stmt.replace("*)", "*) ")):
             if str_count % 2 == 0:
-                i2 = re.sub('"[^"]*"|"[^"]*$', '', i)
+                i2 = re.sub('"[^"]*"|"[^"]*$', "", i)
             else:
-                i2 = re.sub('^[^"]*"|"[^"]*"', '', i)
+                i2 = re.sub('^[^"]*"|"[^"]*"', "", i)
             str_count += i.count('"')
-            #print((repr(i), comment_level, repr(i2)))
-            if '(*' not in i2 and '*)' not in i2:
+            # print((repr(i), comment_level, repr(i2)))
+            if "(*" not in i2 and "*)" not in i2:
                 if comment_level < 0:
                     if cur is not None:
                         for ret in split_leading_braces(cur + i):
                             yield ret
                         cur = None
                     else:
-                        raw_input('UNEXPECTED COMMENT: %s' % i)
+                        raw_input("UNEXPECTED COMMENT: %s" % i)
                         yield i
                     comment_level = 0
                 elif comment_level == 0:
@@ -113,7 +133,7 @@ def split_merge_comments(statements):
                 else:
                     cur += i
             else:
-                comment_level += i2.count('(*') - i2.count('*)')
+                comment_level += i2.count("(*") - i2.count("*)")
                 if cur is None:
                     cur = i
                 else:
@@ -122,12 +142,14 @@ def split_merge_comments(statements):
                 curs = list(split_leading_braces(cur))
                 while curs and curs[0].strip() in BRACES:
                     yield curs.pop(0)
-                cur = ''.join(curs) if curs else None
-            if cur is not None and is_genuine_ending(cur) and comment_level == 0: # clear out cur, if we're done with it
+                cur = "".join(curs) if curs else None
+            if (
+                cur is not None and is_genuine_ending(cur) and comment_level == 0
+            ):  # clear out cur, if we're done with it
                 yield cur
                 cur = None
     if cur is not None:
-        print('Unterminated comment')
+        print("Unterminated comment")
         yield cur
 
 
@@ -139,22 +161,27 @@ def split_coq_file_contents(contents):
     the one that ProofGeneral and CoqIDE use.
 
     We additionally merge lines inside of quotations."""
-    return list(merge_quotations(re.split('(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s', strip_comments(contents))))
+    return list(merge_quotations(re.split("(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s", strip_comments(contents))))
+
 
 def split_coq_file_contents_with_comments(contents):
-    statements = re.split(r'(?<=[^\.]\.\.\.) |(?<=[^\.]\.) ',
-                          re.sub(r'((?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s)', r' \1', contents))
-    #if contents != ''.join(statements):
+    statements = re.split(
+        r"(?<=[^\.]\.\.\.) |(?<=[^\.]\.) ", re.sub(r"((?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s)", r" \1", contents)
+    )
+    # if contents != ''.join(statements):
     #    print('Splitting failed (initial split)!')
-    #qstatements = list(merge_quotations(statements, sp=''))
-    #if contents != ''.join(qstatements):
+    # qstatements = list(merge_quotations(statements, sp=''))
+    # if contents != ''.join(qstatements):
     #    print('Splitting failed (quote merge)!')
-    #cstatements = list(split_merge_comments(qstatements))
-    #if contents != ''.join(cstatements):
+    # cstatements = list(split_merge_comments(qstatements))
+    # if contents != ''.join(cstatements):
     #    print('Splitting failed (comment merge)!')
-    return list(split_merge_comments(merge_quotations(statements, sp='')))
+    return list(split_merge_comments(merge_quotations(statements, sp="")))
 
-PROOF_TERM_REG = re.compile(r'(\s*)Proof(\s+)(.*?)\.(\s*)', flags=re.DOTALL | re.MULTILINE)
+
+PROOF_TERM_REG = re.compile(r"(\s*)Proof(\s+)(.*?)\.(\s*)", flags=re.DOTALL | re.MULTILINE)
+
+
 def postprocess_split_proof_term_iter(statements, on_first_example=None):
     """Returns an iterator for the statements passed which changes [Proof
     term.] into [Proof. exact (term). Qed.] unless "term" begins with
@@ -163,36 +190,51 @@ def postprocess_split_proof_term_iter(statements, on_first_example=None):
         match = PROOF_TERM_REG.match(statement)
         if match:
             indent, after_proof_space, proof_term, post_space = match.groups()
-            if re.split(r'\s', proof_term)[0] not in ('using', 'with'): # Proof using ... and Proof with ... are special
+            if re.split(r"\s", proof_term)[0] not in (
+                "using",
+                "with",
+            ):  # Proof using ... and Proof with ... are special
                 if on_first_example:
                     on_first_example(statement_num, statement, proof_term)
                     on_first_example = None
-                yield indent + 'Proof.'
-                yield after_proof_space + 'exact (' + proof_term + ').'
-                yield ' Qed.' + post_space
+                yield indent + "Proof."
+                yield after_proof_space + "exact (" + proof_term + ")."
+                yield " Qed." + post_space
             else:
                 yield statement
         else:
             yield statement
+
+
 def postprocess_split_proof_term(statements, do_warn=True, **kwargs):
     def do_warn_method(statement_num, statement, proof_term):
-        kwargs['log']("""Warning: Your version of Coq suffers from bug #5349 (https://coq.inria.fr/bugs/show_bug.cgi?id=5349)
+        kwargs["log"](
+            """Warning: Your version of Coq suffers from bug #5349 (https://coq.inria.fr/bugs/show_bug.cgi?id=5349)
 and does not support [Proof (term).] with -time.  Falling back to
-replacing [Proof (term).] with [Proof. exact (term). Qed.], which may fail.""")
-    if do_warn and 'log' in kwargs.keys():
+replacing [Proof (term).] with [Proof. exact (term). Qed.], which may fail."""
+        )
+
+    if do_warn and "log" in kwargs.keys():
         do_warn = do_warn_method
     else:
         do_warn = None
     return list(postprocess_split_proof_term_iter(statements, do_warn))
 
-RANGE_REG = re.compile(r'Chars ([0-9]+) - ([0-9]+) [^\s]+', flags=re.DOTALL)
+
+RANGE_REG = re.compile(r"Chars ([0-9]+) - ([0-9]+) [^\s]+", flags=re.DOTALL)
+
 
 def get_coq_statement_byte_ranges(file_name, coqc, **kwargs):
     kwargs = fill_kwargs(kwargs)
     if not get_coq_accepts_time(coqc, **kwargs):
         raise UnsupportedCoqVersionError
 
-    p = subprocess.Popen([coqc, '-q', '-time'] + list(kwargs['coqc_args']) + [file_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    p = subprocess.Popen(
+        [coqc, "-q", "-time"] + list(kwargs["coqc_args"]) + [file_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    )
     (stdout, stderr) = p.communicate()
 
     ranges = tuple((int(start), int(finish)) for start, finish in RANGE_REG.findall(util.s(stdout)))
