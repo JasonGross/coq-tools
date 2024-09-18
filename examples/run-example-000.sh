@@ -56,6 +56,7 @@ I think the error is 'Error: The command has not failed\s\?!
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+The\\\\s+command\\\\s+has\\\\s+not\\\\s+failed.*
 EOF
 )
+
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/example_$N" \( -name "*.vo" -o -name "*.glob" \) -delete
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null

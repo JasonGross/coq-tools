@@ -42,7 +42,7 @@ set -x
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
 Running command: "coqc" "-w" .*"-R" "/tmp" "NONPASSING" "-R" "." "Foo" "-top" "Foo.example_063" .*
-
+.*
 Running command: "coqc" "-w" .*"-R" "/tmp" "YESPASSING" "-top" "Foo.example_063" .*
 EOF
 )
