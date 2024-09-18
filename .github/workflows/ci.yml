@@ -116,6 +116,9 @@ jobs:
           startGroup 'make print-support'
           make print-support
           endGroup
+          startGroup 'coqc --help'
+          coqc --help
+          endGroup
           startGroup 'setup venv'
           python -m venv .venv
           . .venv/bin/activate
