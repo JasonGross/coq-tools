@@ -117,7 +117,8 @@ jobs:
           make print-support
           endGroup
           startGroup 'coqc --help'
-          coqc --help
+          # Coq 8.10 and earlier error on --help, so we do `|| true`
+          coqc --help || true
           endGroup
           startGroup 'setup venv'
           python -m venv .venv
