@@ -7,14 +7,19 @@ N = __file__[__file__.rindex('-')+1:__file__.rindex('.')]
 NORM_EXPECT = (
     'Require Coq.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n',
     'Require Stdlib.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n',
+    'Require Stdlib.Arith.All.Stdlib.Arith.Arith.\nRequire Top.A.\nRequire Top.C.\nRequire Top.B.\nRequire Top.D.\n\nImport Top.D.\n\nFail Check A.mA.axA.\n',
 )
 
 GET_EXPECT = {
     'Coq.Arith.Arith': None,
-    'Top.A': 'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.Arith.Arith.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n',
-    'Top.B': 'Module Export Top_DOT_B.\nModule Export Top.\nModule B.\nImport Top.A.\n\nEnd B.\n\nEnd Top.\n\nEnd Top_DOT_B.\n',
-    'Top.C': 'Module Export Top_DOT_C.\nModule Export Top.\nModule C.\nImport Top.A.\n\nEnd C.\n\nEnd Top.\n\nEnd Top_DOT_C.\n',
-    'Top.D': 'Module Export Top_DOT_D.\nModule Export Top.\nModule D.\nImport Top.C Top.B.\nExport Top.A.\n\nEnd D.\n\nEnd Top.\n\nEnd Top_DOT_D.\n'
+    'Coq.Arith.All.Coq.Arith.Arith': None,
+    'Top.A': [
+        'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.Arith.Arith.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n',
+        'Module Export Top_DOT_A.\nModule Export Top.\nModule A.\nImport Coq.Arith.All.Coq.Arith.Arith.\nModule mA.\n  Section secA.\n    Axiom axA : Set.\n  End secA.\nEnd mA.\n\nModule mA2.\nEnd mA2.\n\nEnd A.\n\nEnd Top.\n\nEnd Top_DOT_A.\n'
+    ],
+    'Top.B': [ 'Module Export Top_DOT_B.\nModule Export Top.\nModule B.\nImport Top.A.\n\nEnd B.\n\nEnd Top.\n\nEnd Top_DOT_B.\n' ],
+    'Top.C': [ 'Module Export Top_DOT_C.\nModule Export Top.\nModule C.\nImport Top.A.\n\nEnd C.\n\nEnd Top.\n\nEnd Top_DOT_C.\n' ],
+    'Top.D': [ 'Module Export Top_DOT_D.\nModule Export Top.\nModule D.\nImport Top.C Top.B.\nExport Top.A.\n\nEnd D.\n\nEnd Top.\n\nEnd Top_DOT_D.\n' ]
 }
 
 def trace(frame, event, arg):
@@ -41,7 +46,7 @@ if __name__ == '__main__':
             got = get_required_contents(libname)
         except IOError:
             got = None
-        expect_opts = (expect, expect.replace('Coq.', 'Stdlib.')) if expect is not None else (None,)
+        expect_opts = expect + [e.replace('Coq.', 'Stdlib.') for e in expect] if expect is not None else [None]
         print('if %s not in %s:' % (repr(got), repr(expect_opts)))
         if got not in expect_opts:
             print('sys.exit(1)')

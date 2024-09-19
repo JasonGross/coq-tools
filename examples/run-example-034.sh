@@ -38,7 +38,7 @@ ${PYTHON} "$DIR/../minimize-requires.py" "$EXAMPLE_INPUT_COPY" -i || exit $?
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED=$(cat <<EOF
-From Coq Require Export ZArith.ZArith.
+From Coq Require Export PArith.PArith.
 EOF
 )
 

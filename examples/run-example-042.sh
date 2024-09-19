@@ -107,7 +107,7 @@ Module Export Foo\.
 Module A\.
 Include Foo_DOT_A_WRAPPED\.A\.
 End A\.
-Require \(Coq\|Stdlib\)\.Logic\.Classical_Prop\.
+Require \(Coq\|Stdlib\)\.\(Logic\|Logic\.Classical\.Stdlib\.Logic\)\.Classical_Prop\.
 
 Lemma npp : forall P, ~~P -> P\.
 Proof\.

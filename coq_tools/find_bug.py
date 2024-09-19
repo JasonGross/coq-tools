@@ -1404,11 +1404,15 @@ def main():
     if args.inline_coqlib or args.inline_stdlib:
         for passing_prefix in ('', 'passing_'):
             if env[passing_prefix + 'coqc']:
-                coq_theories_path = os.path.join(get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env), 'theories')
+                coq_lib_path = get_coqc_coqlib(env[passing_prefix + 'coqc'], coq_args=env[passing_prefix + 'coqc_args'], **env)
+                coq_theories_path = os.path.join(coq_lib_path, 'theories')
+                coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, 'user-contrib'), 'Stdlib')
                 if args.inline_coqlib:
                     env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_theories_path, 'Coq')])
+                    env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_user_contrib_path, 'Coq')])
                 if args.inline_stdlib:
                     env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_theories_path, 'Stdlib')])
+                    env[passing_prefix + 'libnames'] = tuple(list(env[passing_prefix + 'libnames']) + [(coq_user_contrib_path, 'Stdlib')])
 
     env['log']('{', level=2)
     for k, v in sorted(list(env.items())):
