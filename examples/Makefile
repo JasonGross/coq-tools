@@ -101,6 +101,7 @@ NORMAL=$(shell tput sgr0)
 COQC_VERSION:=$(subst version ,,$(shell $(COQBIN)coqc --version 2>&1 | grep -o 'version [^ ]*'))
 COQC_SUPPORTS_Q:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- -Q)
 COQC_SUPPORTS_TOP:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- '-top ')
+COQTOP_SUPPORTS_TOP:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-top ')
 COQTOP_SUPPORTS_COMPILE:=$(shell $(COQBIN)coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_IMPORT_CATEGORIES:=$(shell echo "Require Import (hints) Coq.Init.Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
@@ -157,14 +158,27 @@ print-support::
 	@printf "coqc supports -Q:\t\t\t\tNo\n"
 endif
 
+ifneq (0,$(strip $(COQTOP_SUPPORTS_TOP)))
+print-support::
+	@printf "coqtop supports -top:\t\t\t\tYes\n"
+else
+print-support::
+	@printf "coqtop supports -top:\t\t\t\tNo\n"
+endif
+
 ifneq (0,$(strip $(COQC_SUPPORTS_TOP)))
-test-suite: $(ONLY_IF_TOP_LOGS)
-ENABLED_LOGS += $(ONLY_IF_TOP_LOGS)
 print-support::
 	@printf "coqc supports -top:\t\t\t\tYes\n"
 else
 print-support::
 	@printf "coqc supports -top:\t\t\t\tNo\n"
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_TOP)))
+ifneq (0,$(strip $(COQTOP_SUPPORTS_TOP)))
+test-suite: $(ONLY_IF_TOP_LOGS)
+ENABLED_LOGS += $(ONLY_IF_TOP_LOGS)
+endif
 endif
 
 ifneq (0,$(strip $(COQC_SUPPORTS_W)))

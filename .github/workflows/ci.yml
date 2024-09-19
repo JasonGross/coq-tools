@@ -120,6 +120,10 @@ jobs:
           # Coq 8.10 and earlier error on --help, so we do `|| true`
           coqc --help || true
           endGroup
+          startGroup 'coqtop --help'
+          # Coq 8.10 and earlier error on --help, so we do `|| true`
+          coqtop --help || true
+          endGroup
           startGroup 'setup venv'
           python -m venv .venv
           . .venv/bin/activate
