@@ -41,9 +41,9 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-Running command: "coqc" .*"-R" "/tmp" "NONPASSING" "-R" "." "Foo" "-top" "Foo.example_063" .*
+Running command.*: "coqc" .*"-R" "/tmp" "NONPASSING" "-R" "." "Foo" "-top" "Foo.example_063" .*
 .*
-Running command: "coqc" .*"-R" "/tmp" "YESPASSING" "-top" "Foo.example_063" .*
+Running command.*: "coqc" .*"-R" "/tmp" "YESPASSING" "-top" "Foo.example_063" .*
 EOF
 )
 
