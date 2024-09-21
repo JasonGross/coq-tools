@@ -313,8 +313,9 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
     else:
         cmds.extend([file_name, "-q"])
     cmd_to_print = '"%s%s"' % ('" "'.join(cmds), pseudocmds)
+    extra_cmd = "" if cwd is None else " (in: %s)" % cwd
     kwargs["log"](
-        "\nRunning command: %s" % cmd_to_print,
+        "\nRunning command%s: %s" % (extra_cmd, cmd_to_print),
         level=(
             kwargs["verbose_base"]
             - (1 if sanitize_cmd(cmd_to_print) not in prepare_cmds_for_coq_output_printed_cmd_already else 0)
