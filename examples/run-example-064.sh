@@ -41,8 +41,15 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-File "[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-19:
-Error: Cannot find a physical path bound to logical path foo.
+A
+     : Set
+File "[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 21-34:
+Error: The command has not failed\s\?!
+
+.\?Does this output display the correct error? \[(y)es/(n)o\]\s
+I think the error is 'Error: The command has not failed\s\?!
+.\?'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+The\\\\s+command\\\\s+has\\\\s+not\\\\s+failed.*
 EOF
 )
 
@@ -73,7 +80,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit 0
+find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
