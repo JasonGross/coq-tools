@@ -2185,7 +2185,7 @@ def main():
 
     def make_make_coqc(coqc_prog, **kwargs):
         if get_coq_accepts_compile(coqc_prog):
-            return util.resource_path("coqtop-as-coqc.sh") + " " + coqc_prog
+            return f"{util.resource_path('coqtop-as-coqc.sh')} {coqc_prog}"
         if "coqtop" in coqc_prog:
             return coqc_prog.replace("coqtop", "coqc")
         return "coqc"
