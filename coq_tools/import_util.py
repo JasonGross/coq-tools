@@ -3,6 +3,7 @@ from __future__ import print_function, with_statement
 import glob
 import os
 import os.path
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -21,6 +22,7 @@ from .coq_version import (
     group_coq_args_split_recognized,
 )
 from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
+from .diagnose_error import get_coq_output
 from .memoize import memoize
 from .split_file import get_coq_statement_byte_ranges, split_coq_file_contents
 from .strip_comments import strip_comments, strip_trailing_comments
@@ -145,8 +147,16 @@ def absolutize_has_all_constants(absolutize_tuple):
     return set(ALL_ABSOLUTIZE_TUPLE).issubset(set(absolutize_tuple))
 
 
+def normalize_empty_libname(logical_name):
+    if logical_name in ("", '""', "''", "<>"):
+        return ""
+    else:
+        return logical_name
+
+
 def libname_with_dot(logical_name):
-    if logical_name in ("", '""', "''"):
+    logical_name = normalize_empty_libname(logical_name)
+    if logical_name == "":
         return ""
     else:
         return logical_name + "."
@@ -160,6 +170,11 @@ def clear_libimport_cache(libname):
 
 
 @memoize
+def os_listdir(dirname):
+    return tuple(os.listdir(dirname))
+
+
+@memoize
 def os_walk(top, topdown=True, onerror=None, followlinks=False):
     return tuple(os.walk(top, topdown=topdown, onerror=onerror, followlinks=followlinks))
 
@@ -169,36 +184,64 @@ def os_path_isfile(filename):
     return os.path.isfile(filename)
 
 
-def filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
-    for physical_name, logical_name in list(libnames) + list(non_recursive_libnames):
-        if lib.startswith(libname_with_dot(logical_name)):
-            cur_lib = lib[len(libname_with_dot(logical_name)) :]
-            cur_lib = os.path.join(physical_name, cur_lib.replace(".", os.sep))
+def get_loadpath(coqc, coqc_args, *, coqc_is_coqtop=False, verbose_base=1, base_dir=None, **kwargs):
+    kwargs = fill_kwargs(kwargs)
+    output, cmds, retcode, runtime = get_coq_output(
+        coqc,
+        coqc_args,
+        "Print LoadPath.",
+        timeout_val=None,
+        cwd=base_dir,
+        verbose_base=verbose_base,
+        is_coqtop=coqc_is_coqtop,
+        **kwargs,
+    )
+    if retcode != 0:
+        errinfo = {"output": output, "cmds": cmds, "retcode": retcode, "runtime": runtime}
+        raise RuntimeError(f"Unable to Print Loadpath. Debugging info: {errinfo!r}")
+    if "Logical Path / Physical path:\n" not in output:
+        kwargs["log"](f"Print LoadPath repr: {output!r}", level=3)
+        raise RuntimeError(
+            f"Unexpected output from Print Loadpath not starting with 'Logical Path / Physical path:':\n{output}"
+        )
+    startindex = output.index("Logical Path / Physical path:\n")
+    if not output.startswith("Logical Path / Physical path:\n"):
+        kwargs["log"](
+            f"Print LoadPath does not start with Logical Path / Physical path: {output[:startindex]}", level=3
+        )
+    output = output[startindex:]
+    output = output[len("Logical Path / Physical path:") :]
+    kwargs["log"](f"Print LoadPath output:\n{output}", level=3)
+    kwargs["log"](f"Print LoadPath output:\n{output!r}", level=4)
+    reg = re.compile(r"\n([^ ]+)\n? +([^\n]+)")
+    extra = reg.sub("", output)
+    if extra.strip(" \r\n") != "":
+        kwargs["log"](f"WARNING: Print LoadPath has extra: {extra!r}", level=LOG_ALWAYS)
+    for logical, physical in reg.findall(output):
+        logical = logical.strip(" \r\n")
+        physical = physical.strip(" \r\n")
+        if logical == "<>":
+            logical = ""
+        yield (physical, logical)
+        # kludge for https://github.com/coq/coq/pull/19310
+        if logical.startswith("Coq."):
+            yield (physical, "Stdlib." + logical[len("Coq.") :])
+        elif logical.startswith("Stdlib."):
+            yield (physical, "Coq." + logical[len("Stdlib.") :])
+
+
+def filenames_of_lib_helper(lib, non_recursive_libnames, ext):
+    for physical_name, logical_name in list(non_recursive_libnames):
+        # logical_name = libname_with_dot(logical_name)
+        *libprefix, lib = lib.split(".")
+        if ".".join(libprefix) == logical_name:
+            cur_lib = os.path.join(physical_name, lib)
             yield fix_path(os.path.relpath(os.path.normpath(cur_lib + ext), "."))
 
 
-def local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
-    # is this the right thing to do?
-    lib = lib.replace(".", os.sep)
-    for dirpath, dirname, filenames in os_walk(".", followlinks=True):
-        filename = os.path.relpath(os.path.normpath(os.path.join(dirpath, lib + ext)), ".")
-        if os_path_isfile(filename):
-            yield fix_path(filename)
-
-
 @memoize
-def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
-    filenames = list(filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
-    # kludge for https://github.com/coq/coq/pull/19310
-    if lib.startswith("Stdlib.") and not filenames:
-        filenames = list(filenames_of_lib_helper("Coq." + lib[len("Stdlib.") :], libnames, non_recursive_libnames, ext))
-        if filenames:
-            DEFAULT_LOG(
-                "WARNING: Using Coq in place of Stdlib when resolving %s to %s."
-                % (lib, ", ".join(sorted(set(filenames)))),
-                level=LOG_ALWAYS,
-            )
-    local_filenames = list(local_filenames_of_lib_helper(lib, libnames, non_recursive_libnames, ext))
+def filename_of_lib_helper(lib, non_recursive_libnames, ext):
+    filenames = list(filenames_of_lib_helper(lib, non_recursive_libnames, ext))
     existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + ".v")]
     if len(existing_filenames) > 0:
         retval = existing_filenames[0]
@@ -217,17 +260,6 @@ def filename_of_lib_helper(lib, libnames, non_recursive_libnames, ext):
             % (lib, ", ".join(filenames)),
             level=LOG_ALWAYS,
         )
-    if len(local_filenames) > 0:
-        retval = local_filenames[0]
-        if len(local_filenames) == 1:
-            return retval
-        else:
-            DEFAULT_LOG(
-                "WARNING: Multiple local physical paths match logical path %s: %s.  Selecting %s."
-                % (lib, ", ".join(local_filenames), retval),
-                level=LOG_ALWAYS,
-            )
-            return retval
     if len(filenames) > 0:
         retval = filenames[0]
         if len(set(filenames)) == 1:
@@ -246,29 +278,34 @@ def filename_of_lib(lib, ext=".v", **kwargs):
     kwargs = fill_kwargs(kwargs)
     return filename_of_lib_helper(
         lib,
-        libnames=tuple(kwargs["libnames"]),
-        non_recursive_libnames=tuple(kwargs["non_recursive_libnames"]),
+        non_recursive_libnames=tuple(get_loadpath(**kwargs)),
         ext=ext,
     )
 
 
 @memoize
-def lib_of_filename_helper(filename, libnames, non_recursive_libnames, exts):
-    filename = os.path.relpath(os.path.normpath(filename), ".")
+def lib_of_filename_helper(filename, non_recursive_libnames, exts):
     for ext in exts:
         if filename.endswith(ext):
             filename = filename[: -len(ext)]
             break
-    for physical_name, logical_name in (
-        (os.path.relpath(os.path.normpath(phys), "."), libname_with_dot(logical))
-        for phys, logical in list(libnames) + list(non_recursive_libnames)
-    ):
-        filename_rel = os.path.relpath(filename, physical_name)
-        if not filename_rel.startswith(".." + os.sep) and not os.path.isabs(filename_rel):
-            return (filename, logical_name + filename_rel.replace(os.sep, "."))
-    if filename.startswith(".." + os.sep) and not os.path.isabs(filename):
+    filename_dir = Path(filename).parent.resolve()
+    close_matches = []
+    for physical_name, logical_name in non_recursive_libnames:
+        physical_name = Path(physical_name).resolve()
+        if physical_name == filename_dir:
+            return filename, libname_with_dot(logical_name) + Path(filename).name
+        if filename_dir.as_posix().startswith(physical_name.as_posix() + "/"):
+            close_matches.append((physical_name, logical_name))
+    DEFAULT_LOG(f"WARNING: Could not find logical name for physical name {filename} ({filename_dir})", level=LOG_ALWAYS)
+    if close_matches:
+        DEFAULT_LOG(f"Close matches: {close_matches}", level=LOG_ALWAYS)
+    else:
+        DEFAULT_LOG(f"Looked in {non_recursive_libnames}", level=1)
+    raise Exception
+    if os.path.relpath(os.path.normpath(filename), ".").startswith(".." + os.sep) and not os.path.isabs(filename):
         filename = os.path.abspath(filename)
-    return (filename, filename.replace(os.sep, "."))
+    return filename, filename.replace(os.sep, ".")
 
 
 DEFAULT_LIB_FILENAME_EXTS = (".v", ".glob")
@@ -278,8 +315,7 @@ def lib_of_filename(filename, exts=DEFAULT_LIB_FILENAME_EXTS, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename, libname = lib_of_filename_helper(
         filename,
-        libnames=tuple(kwargs["libnames"]),
-        non_recursive_libnames=tuple(kwargs["non_recursive_libnames"]),
+        non_recursive_libnames=tuple(get_loadpath(**kwargs)),
         exts=exts,
     )
     #    if '.' in filename:
@@ -291,13 +327,28 @@ def lib_of_filename(filename, exts=DEFAULT_LIB_FILENAME_EXTS, **kwargs):
 DUMMY_TOPNAME = "DUMMY TOPNAME"
 
 
-def adjust_dummy_topname_binding(filename, bindings, dummy_topname=DUMMY_TOPNAME):
+def flatten_bindings(bindings):
+    for binding in bindings:
+        yield from binding
+
+
+def adjust_dummy_topname_binding(
+    filename, bindings, *, coqc, coqc_is_coqtop=False, verbose_base=1, base_dir=None, dummy_topname=DUMMY_TOPNAME
+):
     if filename is None:
         return tuple(bindings)
+    non_recursive_libnames = tuple(
+        get_loadpath(
+            coqc,
+            coqc_args=flatten_bindings(bindings),
+            coqc_is_coqtop=coqc_is_coqtop,
+            verbose_base=verbose_base,
+            base_dir=base_dir,
+        )
+    )
     _, topname = lib_of_filename_helper(
         filename,
-        libnames=tuple(tuple(i[1:]) for i in bindings if i[0] == "-R"),
-        non_recursive_libnames=tuple(tuple(i[1:]) for i in bindings if i[0] == "-Q"),
+        non_recursive_libnames=non_recursive_libnames,
         exts=DEFAULT_LIB_FILENAME_EXTS,
     )
     if topname.startswith("."):  # absolute path, will give other errors
@@ -310,7 +361,18 @@ def has_dir_binding(args, coqc_help, file_name=None):
     return any(i[0] in ("-R", "-Q") for i in group_coq_args(args, coqc_help))
 
 
-def deduplicate_trailing_dir_bindings_get_topname(args, coqc_help, coq_accepts_top, file_name=None, topname=None):
+def deduplicate_trailing_dir_bindings_get_topname(
+    args,
+    coqc_help,
+    coq_accepts_top,
+    *,
+    coqc,
+    coqc_is_coqtop=False,
+    verbose_base=1,
+    base_dir=None,
+    file_name=None,
+    topname=None
+):
     kwargs = dict()
     if topname is None:
         topname = DUMMY_TOPNAME
@@ -318,7 +380,9 @@ def deduplicate_trailing_dir_bindings_get_topname(args, coqc_help, coq_accepts_t
         kwargs["topname"] = topname
     bindings = group_coq_args(args, coqc_help, **kwargs)
     ret = []
-    for binding in adjust_dummy_topname_binding(file_name, bindings):
+    for binding in adjust_dummy_topname_binding(
+        file_name, bindings, coqc=coqc, coqc_is_coqtop=coqc_is_coqtop, verbose_base=verbose_base, base_dir=base_dir
+    ):
         if binding[0] == "-top":
             topname = binding[1]
         if coq_accepts_top or binding[0] != "-top":
@@ -326,9 +390,28 @@ def deduplicate_trailing_dir_bindings_get_topname(args, coqc_help, coq_accepts_t
     return tuple(ret), topname
 
 
-def deduplicate_trailing_dir_bindings(args, coqc_help, coq_accepts_top, file_name=None, topname=None):
+def deduplicate_trailing_dir_bindings(
+    args,
+    coqc_help,
+    coq_accepts_top,
+    *,
+    coqc,
+    coqc_is_coqtop=False,
+    verbose_base=1,
+    base_dir=None,
+    file_name=None,
+    topname=None
+):
     ret, _topname = deduplicate_trailing_dir_bindings_get_topname(
-        args, coqc_help, coq_accepts_top, file_name=file_name, topname=topname
+        args,
+        coqc_help,
+        coq_accepts_top,
+        coqc=coqc,
+        coqc_is_coqtop=coqc_is_coqtop,
+        verbose_base=verbose_base,
+        base_dir=base_dir,
+        file_name=file_name,
+        topname=topname,
     )
     return ret
 

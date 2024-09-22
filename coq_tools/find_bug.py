@@ -2837,11 +2837,23 @@ def main():
         extra_args = get_coq_prog_args(get_file(bug_file_name, **env)) if args.use_coq_prog_args else []
         # persist topname so that when we get it from failing coqc, we can use it for passing coqc
         topname = None
-        for args_name, coq_prog, passing_prefix in (
-            ("coqc_args", env["coqc"], ""),
-            ("coqtop_args", env["coqtop"], ""),
-            ("passing_coqc_args", env["passing_coqc"] if env["passing_coqc"] else env["coqc"], "passing_"),
-            ("passing_coqtop_args", env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"], "passing_"),
+        for args_name, coq_prog, coq_prog_is_coqtop, base_dir, passing_prefix in (
+            ("coqc_args", env["coqc"], env["coqc_is_coqtop"], env["base_dir"], ""),
+            ("coqtop_args", env["coqtop"], True, env["base_dir"], ""),
+            (
+                "passing_coqc_args",
+                env["passing_coqc"] if env["passing_coqc"] else env["coqc"],
+                env["passing_coqc_is_coqtop"] if env["passing_coqc"] else env["coqc_is_coqtop"],
+                env["passing_base_dir"] if env["passing_coqc"] else env["base_dir"],
+                "passing_",
+            ),
+            (
+                "passing_coqtop_args",
+                env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"],
+                True,
+                env["passing_base_dir"] if env["passing_coqc"] else env["base_dir"],
+                "passing_",
+            ),
         ):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + "libnames", []):
@@ -2856,6 +2868,9 @@ def main():
                 file_name=bug_file_name,
                 coq_accepts_top=get_coq_accepts_top(coq_prog),
                 topname=topname,
+                coqc=coq_prog,
+                coqc_is_coqtop=coq_prog_is_coqtop,
+                base_dir=base_dir,
             )
         for arg in group_coq_args(extra_args, coqc_help):
             for passing_prefix in ("passing_", ""):
