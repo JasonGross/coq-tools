@@ -648,6 +648,7 @@ def get_error_reg_string(output_file_name, **kwargs):
             kwargs["timeout"],
             is_coqtop=kwargs["coqc_is_coqtop"],
             verbose_base=1,
+            cwd=kwargs["base_dir"],
             **kwargs,
         )
         result = ""
@@ -1937,6 +1938,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         env["timeout"],
         is_coqtop=env["coqc_is_coqtop"],
         verbose_base=2,
+        cwd=env["base_dir"],
         **env,
     )
     line_num = diagnose_error.get_error_line_number(output, env["error_reg_string"])
