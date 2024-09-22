@@ -48,7 +48,7 @@ I think the error is 'Error: The reference foo was not found in the current envi
 EOF
 )
 # pre-build the files to normalize the output for the run we're testing
-find "$DIR/example_$N" \( -name "*.vo" -o -name "*.glob" \) -delete
+find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
 "${COQBIN}coqc" -q -R Passing Foo Passing/A.v
 "${COQBIN}coqc" -q -R NonPassing Foo NonPassing/A.v
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
