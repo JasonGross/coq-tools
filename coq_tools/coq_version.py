@@ -11,6 +11,7 @@ __all__ = [
     "get_coqc_coqlib",
     "get_coq_accepts_top",
     "get_coq_accepts_time",
+    "get_coq_accepts_Q",
     "get_coq_accepts_emacs",
     "get_coq_accepts_o",
     "get_coq_accepts_compile",
@@ -107,6 +108,10 @@ def get_coq_accepts_o(coqc_prog, **kwargs):
 
 def get_coq_accepts_time(coqc_prog, **kwargs):
     return get_coq_accepts_option(coqc_prog, "-time", **kwargs)
+
+
+def get_coq_accepts_Q(coqc_prog, **kwargs):
+    return get_coq_accepts_option(coqc_prog, "-Q", **kwargs)
 
 
 def get_coq_accepts_emacs(coqc_prog, **kwargs):

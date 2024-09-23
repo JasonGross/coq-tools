@@ -5,7 +5,7 @@ from .memoize import memoize
 from .file_util import clean_v_file
 from .util import re_escape
 from .custom_arguments import LOG_ALWAYS
-from .coq_version import group_coq_args, get_coqc_help
+from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
 
 __all__ = [
@@ -297,7 +297,10 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
             with open(file_name, mode="wb") as f:
                 f.write(contents.encode("utf-8"))
             cleaner = lambda: shutil.rmtree(temp_dir_name, onerror=make_rmtree_onerror(file_name))
-            cmds.extend(["-R", temp_dir_name, ""])  # make sure we bind the entire tree; use -R for compat with 8.4
+            if get_coq_accepts_Q(coqc_prog, **kwargs):
+                cmds.extend(["-Q", temp_dir_name, ""])
+            else:
+                cmds.extend(["-R", temp_dir_name, ""])  # make sure we bind the entire tree; use -R for compat with 8.4
 
     file_name_root = os.path.splitext(file_name)[0]
 
