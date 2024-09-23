@@ -67,7 +67,7 @@ raw_file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
-DEFAULT_LIBNAMES = ((".", "Top"),)
+DEFAULT_LIBNAMES = ()  # ((".", "Top"),)
 
 IMPORT_ABSOLUTIZE_TUPLE = ("lib", "mod")
 ALL_ABSOLUTIZE_TUPLE = (
