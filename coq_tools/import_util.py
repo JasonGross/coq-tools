@@ -236,11 +236,12 @@ def filenames_of_lib_helper(lib, non_recursive_libnames, ext):
         *libprefix, lib = lib.split(".")
         if ".".join(libprefix) == logical_name:
             cur_lib = os.path.join(physical_name, lib)
+            # TODO HERE USE pathlib
             yield fix_path(os.path.relpath(os.path.normpath(cur_lib + ext), "."))
 
 
 @memoize
-def filename_of_lib_helper(lib, non_recursive_libnames, ext):
+def filename_of_lib_helper(lib, non_recursive_libnames, ext, base_dir):
     filenames = list(filenames_of_lib_helper(lib, non_recursive_libnames, ext))
     existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + ".v")]
     if len(existing_filenames) > 0:
@@ -271,7 +272,7 @@ def filename_of_lib_helper(lib, non_recursive_libnames, ext):
                 level=LOG_ALWAYS,
             )
             return retval
-    return fix_path(os.path.relpath(os.path.normpath(lib.replace(".", os.sep) + ext), "."))
+    return fix_path(os.path.relpath(os.path.normpath(lib.replace(".", os.sep) + ext), base_dir))
 
 
 def filename_of_lib(lib, ext=".v", **kwargs):
@@ -284,7 +285,7 @@ def filename_of_lib(lib, ext=".v", **kwargs):
 
 
 @memoize
-def lib_of_filename_helper(filename, non_recursive_libnames, exts):
+def lib_of_filename_helper(filename, non_recursive_libnames, exts, base_dir):
     for ext in exts:
         if filename.endswith(ext):
             filename = filename[: -len(ext)]
@@ -301,10 +302,12 @@ def lib_of_filename_helper(filename, non_recursive_libnames, exts):
     if close_matches:
         DEFAULT_LOG(f"Close matches: {close_matches}", level=LOG_ALWAYS)
     else:
-        DEFAULT_LOG(f"Looked in {non_recursive_libnames}", level=1)
-    raise Exception
-    if os.path.relpath(os.path.normpath(filename), ".").startswith(".." + os.sep) and not os.path.isabs(filename):
+        DEFAULT_LOG(f"Looked in {non_recursive_libnames}", level=3)
+    # if not allow_nomatch:
+    #     raise RuntimeError(f"Could not find logical name for physical name {filename}")
+    if os.path.relpath(os.path.normpath(filename), base_dir).startswith(".." + os.sep) and not os.path.isabs(filename):
         filename = os.path.abspath(filename)
+    DEFAULT_LOG(f"Returning {filename.replace(os.sep, '.')}", level=LOG_ALWAYS)
     return filename, filename.replace(os.sep, ".")
 
 
