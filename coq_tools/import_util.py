@@ -12,6 +12,7 @@ import tempfile
 import time
 from collections import OrderedDict
 from functools import cmp_to_key
+from typing import Iterable, Optional, Tuple, Union
 
 from . import util
 from .coq_version import (
@@ -184,7 +185,20 @@ def os_path_isfile(filename):
     return os.path.isfile(filename)
 
 
-def get_loadpath(coqc, coqc_args, *, coqc_is_coqtop=False, verbose_base=1, base_dir=None, **kwargs):
+@memoize
+def Path_isfile(filename: Path) -> bool:
+    return filename.is_file()
+
+
+def get_loadpath(
+    coqc,
+    coqc_args,
+    *,
+    coqc_is_coqtop: bool = False,
+    verbose_base: int = 1,
+    base_dir: Optional[Union[str, Path]] = None,
+    **kwargs
+) -> Iterable[Tuple[Path, str]]:
     kwargs = fill_kwargs(kwargs)
     output, cmds, retcode, runtime = get_coq_output(
         coqc,
@@ -219,7 +233,7 @@ def get_loadpath(coqc, coqc_args, *, coqc_is_coqtop=False, verbose_base=1, base_
         kwargs["log"](f"WARNING: Print LoadPath has extra: {extra!r}", level=LOG_ALWAYS)
     for logical, physical in reg.findall(output):
         logical = logical.strip(" \r\n")
-        physical = physical.strip(" \r\n")
+        physical = Path(physical.strip(" \r\n"))
         if logical == "<>":
             logical = ""
         yield (physical, logical)
@@ -230,35 +244,34 @@ def get_loadpath(coqc, coqc_args, *, coqc_is_coqtop=False, verbose_base=1, base_
             yield (physical, "Coq." + logical[len("Stdlib.") :])
 
 
-def filenames_of_lib_helper(lib, non_recursive_libnames, ext):
+def filenames_of_lib_helper(lib: str, non_recursive_libnames: Iterable[Tuple[Path, str]], ext: str):
     for physical_name, logical_name in list(non_recursive_libnames):
         # logical_name = libname_with_dot(logical_name)
         *libprefix, lib = lib.split(".")
         if ".".join(libprefix) == logical_name:
-            cur_lib = os.path.join(physical_name, lib)
-            # TODO HERE USE pathlib
-            yield fix_path(os.path.relpath(os.path.normpath(cur_lib + ext), "."))
+            cur_lib = physical_name / lib
+            yield cur_lib.with_suffix(ext)
 
 
 @memoize
-def filename_of_lib_helper(lib, non_recursive_libnames, ext, base_dir):
+def filename_of_lib_helper(
+    lib: str, non_recursive_libnames: Iterable[Tuple[Path, str]], ext: str, base_dir: Optional[Union[Path, str]]
+):
     filenames = list(filenames_of_lib_helper(lib, non_recursive_libnames, ext))
-    existing_filenames = [f for f in filenames if os_path_isfile(f) or os_path_isfile(os.path.splitext(f)[0] + ".v")]
+    existing_filenames = [f for f in filenames if Path_isfile(f) or Path_isfile(f.with_suffix(".v"))]
     if len(existing_filenames) > 0:
         retval = existing_filenames[0]
         if len(set(existing_filenames)) == 1:
             return retval
         else:
             DEFAULT_LOG(
-                "WARNING: Multiple physical paths match logical path %s: %s.  Selecting %s."
-                % (lib, ", ".join(sorted(set(existing_filenames))), retval),
+                f"WARNING: Multiple physical paths match logical path {lib}: {', '.join(sorted(set(existing_filenames)))}.  Selecting {retval}.",
                 level=LOG_ALWAYS,
             )
             return retval
     if len(filenames) != 0:
         DEFAULT_LOG(
-            "WARNING: One or more physical paths match logical path %s, but none of them exist: %s"
-            % (lib, ", ".join(filenames)),
+            f"WARNING: One or more physical paths match logical path {lib}, but none of them exist: {', '.join(filenames)}.",
             level=LOG_ALWAYS,
         )
     if len(filenames) > 0:
