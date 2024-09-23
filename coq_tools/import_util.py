@@ -1,20 +1,30 @@
-from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path, tempfile, time
+from __future__ import print_function, with_statement
+
+import glob
+import os
+import os.path
+import re
+import subprocess
+import sys
+import tempfile
+import time
 from collections import OrderedDict
 from functools import cmp_to_key
-from .memoize import memoize
-from .coq_version import (
-    get_coqc_help,
-    get_coq_accepts_o,
-    group_coq_args_split_recognized,
-    coq_makefile_supports_arg,
-    group_coq_args,
-)
-from .split_file import split_coq_file_contents, get_coq_statement_byte_ranges
-from .strip_comments import strip_comments, strip_trailing_comments
-from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
-from .util import cmp_compat as cmp, shlex_quote
+
 from . import util
+from .coq_version import (
+    coq_makefile_supports_arg,
+    get_coq_accepts_o,
+    get_coqc_help,
+    group_coq_args,
+    group_coq_args_split_recognized,
+)
+from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
+from .memoize import memoize
+from .split_file import get_coq_statement_byte_ranges, split_coq_file_contents
+from .strip_comments import strip_comments, strip_trailing_comments
+from .util import cmp_compat as cmp
+from .util import shlex_quote
 
 __all__ = [
     "filename_of_lib",
