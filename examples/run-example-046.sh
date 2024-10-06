@@ -47,7 +47,7 @@ set -x
 EXPECTED_ERROR=$(cat <<EOF
 A -> Baz.B
      : Set
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 2[0-9], characters 0-30:
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 2[0-9], characters 0-30:
 Error: The command has not failed\s\?!
 EOF
 )

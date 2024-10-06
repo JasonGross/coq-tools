@@ -39,7 +39,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line [0-9]\+, characters 6-\(13\|41\):
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line [0-9]\+, characters 6-\(13\|41\):
 Error:\(
 \|\s*\)The term "eq_refl" has type "forall x : ?[0-9A-Z]\+, eq x x"
 \s*while it is expected to have type "eq v (forall x : Prop, x)"\.

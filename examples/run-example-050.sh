@@ -43,7 +43,7 @@ set -x
 EXPECTED_ERROR=$(cat <<EOF
 foo
      : nat
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-15:
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-15:
 Error: The command has not failed\s\?!
 EOF
 )
