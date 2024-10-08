@@ -2237,7 +2237,7 @@ def main():
                 )
                 coq_theories_path = os.path.join(coq_lib_path, "theories")
                 coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, "user-contrib"), "Stdlib")
-                coqpath_paths = os.environ.get('COQPATH', '').replace(';', ':').split(':')
+                coqpath_paths = os.environ.get('COQPATH', '').split(os.pathsep)
                 if args.inline_coqlib:
                     env[passing_prefix + "libnames"] = tuple(
                         list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
