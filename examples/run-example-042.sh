@@ -46,7 +46,7 @@ set -x
 # versions of Coq (<= 8.6?)
 # In this file, character 31 is the end character for 8.4
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-\(25\|31\):
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-\(25\|31\):
 Error:[
  ]The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*

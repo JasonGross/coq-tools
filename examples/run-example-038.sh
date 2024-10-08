@@ -43,7 +43,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 EXPECTED_ERROR=$(cat <<EOF
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line \(9\|10\), characters 10-14:
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line \(9\|10\), characters 10-14:
 Error: The reference True was not found in the current environment\.
 EOF
 )

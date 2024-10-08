@@ -47,7 +47,7 @@ set -x
 EXPECTED_ERROR=$(cat <<EOF
 n
      : Set
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-13:
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-13:
 Error: The command has not failed\s\?!
 EOF
 )

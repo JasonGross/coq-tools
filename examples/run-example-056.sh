@@ -48,7 +48,7 @@ EXPECTED_ERROR=$(cat <<EOF
 This file produces the following output when Coq'ed:
      = fun A : Prop => A -> False
      : Prop -> Prop
-File "/tmp/tmp[A-Za-z0-9_/]\+\.v", line 1\(1\|2\), characters 0-28:
+File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1\(1\|2\), characters 0-28:
 Error: The command has not failed\s\?!
 EOF
 )
