@@ -700,6 +700,7 @@ def make_one_glob_file(v_file, **kwargs):
     cmds += list(get_maybe_passing_arg(kwargs, "coqc_args"))
     v_file_root, ext = os.path.splitext(fix_path(v_file))
     o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".vo")
+    glob_file = v_file_root + ".glob"
     if get_coq_accepts_o(coqc_prog, **kwargs):
         cmds += ["-o", o_file]
     else:
@@ -707,7 +708,12 @@ def make_one_glob_file(v_file, **kwargs):
             "WARNING: Clobbering '%s' because coqc does not support -o" % o_file,
             level=LOG_ALWAYS,
         )
-    cmds += ["-dump-glob", v_file_root + ".glob", v_file_root + ext]
+    cmds += ["-dump-glob", glob_file, v_file_root + ext]
+    if os.path.exists(glob_file):
+        kwargs["log"](
+            f"WARNING: Clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) from '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)})",
+            level=LOG_ALWAYS,
+        )
     kwargs["log"](" ".join(cmds))
     try:
         p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
