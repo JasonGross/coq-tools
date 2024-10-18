@@ -711,10 +711,25 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
             level=LOG_ALWAYS,
         )
     cmds += ["-dump-glob", tmp_glob_file, v_file_root + ext]
+    # if the file has user-contrib in it, we may try to its local paths with -R for more robustness
+    extra_cmds = []
+    if "/user-contrib/" in v_file:
+        pre_user_contrib_path, post_user_contrib_path = v_file_root.rsplit("/user-contrib/", 1)
+        user_contrib_path = post_user_contrib_path.split("/")[0]
+        extra_cmds = ["-R", pre_user_contrib_path + "/user-contrib/" + user_contrib_path, user_contrib_path]
     kwargs["log"](" ".join(cmds))
     try:
         p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
         stdout, stderr = p.communicate()
+        if extra_cmds and p.returncode != 0:
+            kwargs["log"](
+                "WARNING: coqc failed on '%s', retrying with extra -R" % v_file_root + ext,
+                level=LOG_ALWAYS,
+            )
+            cmds += extra_cmds
+            kwargs["log"](" ".join(cmds))
+            p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
+            stdout, stderr = p.communicate()
         if os.path.exists(tmp_glob_file) and (
             p.returncode == 0 or not os.path.exists(glob_file) or clobber_glob_on_failure
         ):
