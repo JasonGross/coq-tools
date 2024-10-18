@@ -4,6 +4,7 @@ import glob
 import os
 import os.path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -679,7 +680,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 os.remove(filename)
 
 
-def make_one_glob_file(v_file, **kwargs):
+def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
     coqc_prog = get_maybe_passing_arg(kwargs, "coqc")
     cmds = [coqc_prog, "-q"]
@@ -700,6 +701,7 @@ def make_one_glob_file(v_file, **kwargs):
     cmds += list(get_maybe_passing_arg(kwargs, "coqc_args"))
     v_file_root, ext = os.path.splitext(fix_path(v_file))
     o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".vo")
+    tmp_glob_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".glob")
     glob_file = v_file_root + ".glob"
     if get_coq_accepts_o(coqc_prog, **kwargs):
         cmds += ["-o", o_file]
@@ -708,19 +710,47 @@ def make_one_glob_file(v_file, **kwargs):
             "WARNING: Clobbering '%s' because coqc does not support -o" % o_file,
             level=LOG_ALWAYS,
         )
-    cmds += ["-dump-glob", glob_file, v_file_root + ext]
-    if os.path.exists(glob_file):
-        kwargs["log"](
-            f"WARNING: Clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) from '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)})",
-            level=LOG_ALWAYS,
-        )
+    cmds += ["-dump-glob", tmp_glob_file, v_file_root + ext]
     kwargs["log"](" ".join(cmds))
     try:
         p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
-        return p.communicate()
+        stdout, stderr = p.communicate()
+        if os.path.exists(tmp_glob_file) and (
+            p.returncode == 0 or not os.path.exists(glob_file) or clobber_glob_on_failure
+        ):
+            if os.path.exists(glob_file):
+                extra = " despite failure of coqc" if p.returncode != 0 else " because coqc succeeded"
+                kwargs["log"](
+                    f"WARNING: Clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) from '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)}){extra}",
+                    level=LOG_ALWAYS,
+                )
+            else:
+                kwargs["log"](f"Moving '{tmp_glob_file}' to '{glob_file}'")
+            try:
+                # N.B. We need shutil.move rather than os.rename because the source and destination may be on different filesystems
+                shutil.move(tmp_glob_file, glob_file)
+            except PermissionError as e:
+                kwargs["log"](
+                    f"Failed to move '{tmp_glob_file}' to '{glob_file}' ({e}), assuming that '{glob_file}' is up to date"
+                )
+        elif os.path.exists(tmp_glob_file):
+            kwargs["log"](
+                f"WARNING: Not clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) because coqc failed on '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)})",
+                level=LOG_ALWAYS,
+            )
+        return stdout, stderr
     finally:
         if os.path.exists(o_file):
             os.remove(o_file)
+        if os.path.exists(tmp_glob_file):
+            os.remove(tmp_glob_file)
+
+
+def is_local(filename):
+    abs_filename = os.path.abspath(filename)
+    cwd = os.path.abspath(".")
+    common = os.path.commonprefix([cwd, abs_filename])
+    return common == cwd
 
 
 def remove_if_local(filename, **kwargs):
@@ -772,8 +802,10 @@ def make_globs(logical_names, **kwargs):
         # (unlike .glob file timing, where we need it to be up to
         # date), and it's better to not clobber the .vo file when
         # we're unsure if it's new enough.
+        ambiguous_glob_time = os.path.isfile(glob_name) and os.path.getmtime(glob_name) == os.path.getmtime(v_name)
+        # We also don't want to clobber the .glob file from ambiguous non-local (e.g., installed) files if coqc fails
         if os.path.exists(vo_name) and os.path.getmtime(vo_name) >= os.path.getmtime(v_name):
-            make_one_glob_file(v_name, **kwargs)
+            make_one_glob_file(v_name, clobber_glob_on_failure=is_local(glob_name) or not ambiguous_glob_time, **kwargs)
     filenames_vo_v_glob = [
         (vo_name, v_name, glob_name)
         for vo_name, v_name, glob_name in filenames_vo_v_glob
@@ -795,7 +827,12 @@ def make_globs(logical_names, **kwargs):
                 % ", ".join(all_filenames_v)
             )
         for v_name in all_filenames_v:
-            make_one_glob_file(v_name, **kwargs)
+            v_name_base, _ext = os.path.splitext(v_name)
+            glob_name = v_name_base + ".glob"
+            ambiguous_glob_time = os.path.isfile(glob_name) and os.path.getmtime(glob_name) == os.path.getmtime(v_name)
+            make_one_glob_file(
+                v_name, clobber_glob_on_failure=is_local(glob_name) and not ambiguous_glob_time, **kwargs
+            )
     else:
         stdouterr_make = run_coq_makefile_and_make(
             tuple(sorted(filenames_v + extra_filenames_v)), filenames_glob, **kwargs
@@ -809,7 +846,7 @@ def make_globs(logical_names, **kwargs):
             )
 
 
-def get_glob_file_for(filename, update_globs=False, **kwargs):
+def get_glob_file_for(filename, update_globs=False, allow_ambiguous_glob_files: bool = True, **kwargs):
     kwargs = fill_kwargs(kwargs)
     filename = fix_path(filename)
     if filename[-2:] != ".v":
@@ -841,6 +878,9 @@ def get_glob_file_for(filename, update_globs=False, **kwargs):
         make_globs([libname], **kwargs)
     if os.path.isfile(globname):
         if os.stat(globname).st_mtime > file_mtimes[filename]:
+            return get_raw_file(globname, **kwargs)
+        elif allow_ambiguous_glob_files and os.stat(globname).st_mtime == file_mtimes[filename]:
+            kwargs["log"]("WARNING: Ambiguous .glob file %s for %s (%d)" % (globname, filename, file_mtimes[filename]))
             return get_raw_file(globname, **kwargs)
         else:
             kwargs["log"](
