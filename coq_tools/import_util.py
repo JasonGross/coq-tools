@@ -25,7 +25,7 @@ from .memoize import memoize
 from .split_file import get_coq_statement_byte_ranges, split_coq_file_contents
 from .strip_comments import strip_comments, strip_trailing_comments
 from .util import cmp_compat as cmp
-from .util import shlex_quote
+from .util import shlex_quote, shlex_join
 
 __all__ = [
     "filename_of_lib",
@@ -118,6 +118,7 @@ def fill_kwargs(kwargs, for_makefile=False):
         "cli_mapping": {
             "use_coq_makefile_for_deps": {False: ["--no-deps"]},
         },
+        "coqpath_paths": tuple(),
     }
     rtn.update(kwargs)
     if for_makefile:
@@ -644,7 +645,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         else:
             kwargs["log"]("WARNING: Unrecognized arguments to coq_makefile: %s" % repr(unrecognized_args))
     cmds += list(map(fix_path, v_files))
-    kwargs["log"](" ".join(cmds))
+    kwargs["log"](shlex_join(cmds))
     try:
         p_make_makefile = subprocess.Popen(cmds, stdout=subprocess.PIPE)
         (stdout, stderr) = p_make_makefile.communicate()
@@ -652,13 +653,13 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
         error("When attempting to run coq_makefile:")
         error(repr(e))
         error("Failed to run coq_makefile using command line:")
-        error(" ".join(cmds))
+        error(shlex_join(cmds))
         error("Perhaps you forgot to add COQBIN to your PATH?")
         error("Try running coqc on your files to get .glob files, to work around this.")
         sys.exit(1)
     keep_error_fragment = [] if get_keep_error_reversed(mkfile, **kwargs) else ["KEEP_ERROR=1"]
     make_cmds = ["make", "-k", "-f", mkfile] + keep_error_fragment + targets
-    kwargs["log"](" ".join(make_cmds))
+    kwargs["log"](shlex_join(make_cmds))
     try:
         p_make = subprocess.Popen(
             make_cmds,
@@ -683,6 +684,7 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
 def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
     coqc_prog = get_maybe_passing_arg(kwargs, "coqc")
+    coqpath_paths = get_maybe_passing_arg(kwargs, "coqpath_paths")
     cmds = [coqc_prog, "-q"]
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, "libnames"):
         cmds += [
@@ -699,7 +701,8 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
     for dirname in get_maybe_passing_arg(kwargs, "ocaml_dirnames"):
         cmds += ["-I", dirname]
     cmds += list(get_maybe_passing_arg(kwargs, "coqc_args"))
-    v_file_root, ext = os.path.splitext(fix_path(v_file))
+    v_file = fix_path(v_file)
+    v_file_root, ext = os.path.splitext(v_file)
     o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".vo")
     tmp_glob_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".glob")
     glob_file = v_file_root + ".glob"
@@ -710,25 +713,29 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
             "WARNING: Clobbering '%s' because coqc does not support -o" % o_file,
             level=LOG_ALWAYS,
         )
-    cmds += ["-dump-glob", tmp_glob_file, v_file_root + ext]
+    cmds += ["-dump-glob", tmp_glob_file, v_file]
     # if the file has user-contrib in it, we may try to its local paths with -R for more robustness
-    extra_cmds = []
-    if "/user-contrib/" in v_file:
-        pre_user_contrib_path, post_user_contrib_path = v_file_root.rsplit("/user-contrib/", 1)
-        user_contrib_path = post_user_contrib_path.split("/")[0]
-        extra_cmds = ["-R", pre_user_contrib_path + "/user-contrib/" + user_contrib_path, user_contrib_path]
-    kwargs["log"](" ".join(cmds))
+    extra_cmds_options = []
+    v_file_in_coqpaths = [p for p in coqpath_paths if is_subdirectory_of(v_file, p)]
+    # sort the paths by length of absolute path so that we try the longest paths first
+    v_file_in_coqpaths.sort(key=lambda p: len(os.path.abspath(p)), reverse=True)
+    for coqpath_path in v_file_in_coqpaths:
+        relative_path = os.path.relpath(v_file, coqpath_path)
+        first_component = fix_path(relative_path).split("/")[0]
+        extra_cmds_options.append(["-R", os.path.join(coqpath_path, first_component), first_component])
+    kwargs["log"](shlex_join(cmds))
     try:
         p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
         stdout, stderr = p.communicate()
-        if extra_cmds and p.returncode != 0:
+        for extra_cmds in extra_cmds_options:
+            if p.returncode == 0:
+                break
             kwargs["log"](
-                "WARNING: coqc failed on '%s', retrying with extra -R" % v_file_root + ext,
+                "WARNING: coqc failed on '%s', retrying with extra %s" % (v_file, shlex_join(extra_cmds)),
                 level=LOG_ALWAYS,
             )
-            cmds += extra_cmds
-            kwargs["log"](" ".join(cmds))
-            p = subprocess.Popen(cmds, stdout=subprocess.PIPE)
+            kwargs["log"](shlex_join(cmds + extra_cmds))
+            p = subprocess.Popen(cmds + extra_cmds, stdout=subprocess.PIPE)
             stdout, stderr = p.communicate()
         if os.path.exists(tmp_glob_file) and (
             p.returncode == 0 or not os.path.exists(glob_file) or clobber_glob_on_failure
@@ -736,7 +743,7 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
             if os.path.exists(glob_file):
                 extra = " despite failure of coqc" if p.returncode != 0 else " because coqc succeeded"
                 kwargs["log"](
-                    f"WARNING: Clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) from '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)}){extra}",
+                    f"WARNING: Clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) from '{v_file}' ({os.path.getmtime(v_file_root+ext)}){extra}",
                     level=LOG_ALWAYS,
                 )
             else:
@@ -750,7 +757,7 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
                 )
         elif os.path.exists(tmp_glob_file):
             kwargs["log"](
-                f"WARNING: Not clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) because coqc failed on '{v_file_root + ext}' ({os.path.getmtime(v_file_root+ext)})",
+                f"WARNING: Not clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) because coqc failed on '{v_file}' ({os.path.getmtime(v_file_root+ext)})",
                 level=LOG_ALWAYS,
             )
         return stdout, stderr
@@ -761,11 +768,15 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
             os.remove(tmp_glob_file)
 
 
+def is_subdirectory_of(filename, parent):
+    abs_filename = os.path.normpath(os.path.abspath(filename))
+    parent = os.path.normpath(os.path.abspath(parent))
+    common = os.path.normpath(os.path.commonprefix([parent, abs_filename]))
+    return common == parent
+
+
 def is_local(filename):
-    abs_filename = os.path.abspath(filename)
-    cwd = os.path.abspath(".")
-    common = os.path.commonprefix([cwd, abs_filename])
-    return common == cwd
+    return is_subdirectory_of(filename, ".")
 
 
 def remove_if_local(filename, **kwargs):

@@ -2140,6 +2140,8 @@ def main():
         "temp_file_log_name": args.temp_file_log,
         "coqc_is_coqtop": args.coqc_is_coqtop,
         "passing_coqc_is_coqtop": args.passing_coqc_is_coqtop,
+        "coqpath_paths": [],
+        "passing_coqpath_paths": [],
         "yes": args.yes,
         "color_on": args.color_on,
         "inline_failure_libnames": [],
@@ -2218,16 +2220,18 @@ def main():
     if args.inline_user_contrib:
         for passing_prefix in ("", "passing_"):
             if env[passing_prefix + "coqc"]:
-                update_env_with_coqpath_folders(
-                    passing_prefix,
-                    env,
-                    os.path.join(
+                coq_user_contrib_path = os.path.join(
                         get_coqc_coqlib(
                             env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
                         ),
                         "user-contrib",
-                    ),
+                    )
+                update_env_with_coqpath_folders(
+                    passing_prefix,
+                    env,
+                    coq_user_contrib_path,
                 )
+                env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
 
     if args.inline_coqlib or args.inline_stdlib:
         for passing_prefix in ("", "passing_"):
@@ -2260,6 +2264,10 @@ def main():
                         env[passing_prefix + "libnames"] = tuple(
                             list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Stdlib")]
                         )
+                if args.inline_coqlib or args.inline_stdlib:
+                    env[passing_prefix + "coqpath_paths"].append(coq_theories_path)
+                    env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
+                    env[passing_prefix + "coqpath_paths"].extend(coqpath_paths)
 
     env["log"]("{", level=2)
     for k, v in sorted(list(env.items())):
