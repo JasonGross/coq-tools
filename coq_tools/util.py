@@ -12,6 +12,7 @@ __all__ = [
     "slice_string_at_bytes",
     "len_in_bytes",
     "shlex_quote",
+    "shlex_join",
     "resource_path",
     "group_by",
 ]
@@ -165,6 +166,13 @@ else:
     import shlex
 
     shlex_quote = shlex.quote
+
+if sys.version_info < (3, 8):
+    shlex_join = lambda split_command: " ".join(shlex_quote(arg) for arg in split_command)
+else:
+    import shlex
+
+    shlex_join = shlex.join
 
 
 def resource_path(path):
