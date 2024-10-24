@@ -87,18 +87,18 @@ EXPECTED=$(cat <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Module Export Foo_DOT_A_WRAPPED\.
+\(Module Export Foo_DOT_A_WRAPPED\.\|Module Export Foo\.\)
 Module Export A\.
 Definition foo : Type\.
 Admitted\.
-
+\?
 End A\.
-Module Export Foo\.
+\(Module Export Foo\.
 Module A\.
 Include Foo_DOT_A_WRAPPED\.A\.
 End A\.
-
-Check Foo\.A\.foo : Set\.
+\)\?
+\?Check Foo\.A\.foo : Set\.
 
 EOF
 )
