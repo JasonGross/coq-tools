@@ -39,7 +39,7 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 0-31:
 Error: The command has not failed\s\?!
 
@@ -47,7 +47,6 @@ Error: The command has not failed\s\?!
 I think the error is 'Error: The command has not failed\s\?!
 .\?'\.
 EOF
-)
 # pre-build the files to normalize the output for the run we're testing
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
@@ -79,7 +78,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED=$(cat <<EOF
+{ EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
@@ -93,7 +92,6 @@ Definition baz := Eval unfold bar in bar\.
 Fail Definition foo := 1 + baz\.
 
 EOF
-)
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"

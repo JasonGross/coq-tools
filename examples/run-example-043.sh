@@ -40,7 +40,7 @@ set -x
 #
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 2-61:
 Error: Tactic failure: Universe {TestSuite.issues.issue7.110} is unbound\.
 
@@ -49,7 +49,6 @@ I think the error is 'Error: Tactic failure: Universe {TestSuite.issues.issue7.1
 .\?'\.
 The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+Tactic\\\\s+failure:\\\\s+Universe\\\\s+\[^ \]\*\\\\s+is\\\\s+unbound\\\\..*
 EOF
-)
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null

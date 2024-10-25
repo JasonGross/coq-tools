@@ -35,7 +35,7 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-10:
 Error: Illegal application (Non-functional construction):\s
 The expression "Set" of type "Type"
@@ -52,7 +52,6 @@ The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), charac
 
 \?Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
 EOF
-)
 # pre-build the files to normalize the output for the run we're testing
 # ??? sometimes this doesn't create the output file, cf https://gitlab.com/coq/coq/-/jobs/591578724 ????
 # so for now, we emit the output
@@ -94,14 +93,13 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED=$(cat <<EOF
+{ EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 Notation "(+ \*) " := (Set Set)\.
 Check (+\*)\.
 EOF
-)
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"

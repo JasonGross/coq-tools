@@ -38,13 +38,12 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters \(6-9\|0-16\):
 Error:
 The term "foo" has type "Type" while it is expected to have type[
  ]\+"Set".*
 EOF
-)
 # pre-build the files to normalize the output for the run we're testing
 rm -f *.vo *.glob *.d .*.d
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo # 2>/dev/null >/dev/null
@@ -77,7 +76,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED=$(cat <<EOF
+{ EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
@@ -87,7 +86,6 @@ Definition foo := Set\.
 Check foo : Set\.
 
 EOF
-)
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"

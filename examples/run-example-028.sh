@@ -39,11 +39,10 @@ set -x
 # free to remove this section.
 #
 # Note that the -top argument only appears in Coq >= 8.4
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-\(7\|13\):
 Error: The term "x" has type "Set" while it is expected to have type "nat"\.
 EOF
-)
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
 (cd ../good; ${COQBIN}coqc -q -R . Top A.v && ${COQBIN}coqc -q -R . Top B.v)
@@ -77,7 +76,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED=$(cat <<EOF
+{ EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
@@ -88,7 +87,6 @@ Export Top\.A\.
 Check x : nat\.
 
 EOF
-)
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"

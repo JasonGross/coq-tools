@@ -37,11 +37,10 @@ set -x
 #
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
-EXPECTED_ERROR=$(cat <<EOF
+{ EXPECTED_ERROR=$(cat); } <<EOF
 File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1\(6\|7\), characters 0-24:
 Error: Tactic failure: custom failure.
 EOF
-)
 
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
