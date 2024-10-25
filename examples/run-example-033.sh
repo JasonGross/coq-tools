@@ -37,10 +37,9 @@ ${PYTHON} "$DIR/../minimize-requires.py" "$EXAMPLE_INPUT_COPY" -i --absolutize |
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED=$(cat <<EOF
+{ EXPECTED=$(cat); } <<EOF
 Require Export \(Coq\|Stdlib\).PArith.PArith.
 EOF
-)
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
 ACTUAL="$(cat "$EXAMPLE_INPUT_COPY" | grep -v '^$' | tr '\n' '\1')"
