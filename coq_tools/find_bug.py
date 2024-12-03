@@ -2244,11 +2244,16 @@ def main():
                 coqpath_path = os.environ.get('COQPATH', '')
                 coqpath_paths = coqpath_path.split(os.pathsep) if coqpath_path else []
                 if args.inline_coqlib:
+                    if coqc_version != "" and coqc_version[0] == '8':
+                        env[passing_prefix + "libnames"] = tuple(
+                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
+                        )
+                    else:
+                        env[passing_prefix + "libnames"] = tuple(
+                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Corelib")]
+                        )
                     env[passing_prefix + "libnames"] = tuple(
-                        list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
-                    )
-                    env[passing_prefix + "libnames"] = tuple(
-                        list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Coq")]
+                        list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
                     )
                     for p in coqpath_paths:
                         env[passing_prefix + "libnames"] = tuple(
