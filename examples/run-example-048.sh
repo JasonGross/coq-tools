@@ -89,7 +89,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Require \(Coq\|Corelib\)\.Init\.Ltac\.
+Require \(Coq\|Corelib\|Stdlib\)\.Init\.Ltac\.
 
 Inductive False : Prop := \.
 Axiom proof_admitted : False\.
@@ -100,7 +100,7 @@ Global Set Universe Polymorphism\.
 Definition foo@{i} := Type@{i}\.
 
 End Foo\.
-\(Import \(Coq\|Corelib\)\.Init\.Ltac\.
+\(Import \(Coq\|Corelib\|Stdlib\)\.Init\.Ltac\.
 \)\?Monomorphic Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : eq x x\.
 Arguments eq_refl {A x} , \[A\] x\.
 Definition foo@{} : Set\.
