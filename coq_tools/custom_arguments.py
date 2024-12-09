@@ -303,7 +303,7 @@ def process_CoqProject(env, contents, passing=""):
             i += 1
 
 
-def update_env_with_libname_default(env, args, default=((".", "Top"),), passing=""):
+def update_env_with_libname_default(env, args, default=None, passing=""):
     if (
         len(
             getattr(args, passing + "libnames")
@@ -312,12 +312,13 @@ def update_env_with_libname_default(env, args, default=((".", "Top"),), passing=
             + env[passing + "non_recursive_libnames"]
         )
         == 0
-    ):
+    ) and default is not None:
+        # default = ((".", "Top"),)
         env[passing + "libnames"].extend(list(default))
 
 
 def update_env_with_libnames(
-    env, args, default=((".", "Top"),), include_passing=False, use_default=True, use_passing_default=True
+    env, args, default=None, include_passing=False, use_default=True, use_passing_default=True
 ):
     all_keys = (
         "libnames",
