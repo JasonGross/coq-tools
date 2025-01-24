@@ -2216,20 +2216,18 @@ def main():
             args,
             include_passing=env["passing_coqc"],
             use_default=not has_dir_binding(env["coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
-            use_passing_default=not has_dir_binding(
-                env["passing_coqc_args"], coqc_help=coqc_help, file_name=bug_file_name
-            ),
+            use_passing_default=not has_dir_binding(env["passing_coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
         )
 
         if args.inline_user_contrib:
             for passing_prefix in ("", "passing_"):
                 if env[passing_prefix + "coqc"]:
                     coq_user_contrib_path = os.path.join(
-                        get_coqc_coqlib(
-                            env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
-                        ),
-                        "user-contrib",
-                    )
+                            get_coqc_coqlib(
+                                env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
+                            ),
+                            "user-contrib",
+                        )
                     update_env_with_coqpath_folders(
                         passing_prefix,
                         env,
@@ -2245,7 +2243,7 @@ def main():
                     )
                     coq_theories_path = os.path.join(coq_lib_path, "theories")
                     coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, "user-contrib"), "Stdlib")
-                    coqpath_paths = os.environ.get("COQPATH", "").split(os.pathsep)
+                    coqpath_paths = os.environ.get('COQPATH', '').split(os.pathsep)
                     if args.inline_coqlib:
                         env[passing_prefix + "libnames"] = tuple(
                             list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
@@ -2610,7 +2608,7 @@ def main():
             env["log"](traceback.format_exc(), level=LOG_ALWAYS)
         raise
     finally:
-        if env["remove_temp_file"]:
+        if env.get("remove_temp_file"):
             clean_v_file(env["temp_file_name"])
             if os.path.exists(env["temp_file_log_name"]):
                 os.remove(env["temp_file_log_name"])
