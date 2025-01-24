@@ -22,6 +22,8 @@ __all__ = [
     "group_coq_args_split_recognized",
     "group_coq_args",
     "coq_makefile_supports_arg",
+    "coqlib_args",
+    "coqlib_args_of_coq_args",
     "DEFAULT_COQTOP",
 ]
 
@@ -47,6 +49,10 @@ def subprocess_Popen_memoized(
 def get_coqc_help(coqc_prog, **kwargs):
     (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "--help"], **kwargs)
     return util.s(stdout).strip()
+
+
+def coqlib_args(coqc_prog_coqlib=None):
+    return ["-coqlib", coqc_prog_coqlib] if coqc_prog_coqlib else []
 
 
 HELP_REG = re.compile(r"^  ([^\n]*?)(?:\t|  )", re.MULTILINE)
@@ -132,8 +138,9 @@ def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
 
 
 def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
-    coq_args = coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-config", *coq_args], **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqc_prog, "-q", "-config", *coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)], **kwargs
+    )
     return util.normalize_newlines(util.s(stdout)).strip()
 
 

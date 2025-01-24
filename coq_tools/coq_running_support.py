@@ -1,7 +1,7 @@
 from __future__ import with_statement
 import re
 from .diagnose_error import get_coq_output
-from .coq_version import get_coq_native_compiler_ondemand_fragment
+from .coq_version import get_coq_native_compiler_ondemand_fragment, coqlib_args_of_coq_args
 from .coq_full_grammar import COQ_GRAMMAR_TOKENS
 
 # Like coq_version.py, except for things that use get_coq_output (or
@@ -23,7 +23,7 @@ Proof (fun x => x)."""
 LTAC_SUPPORT_SNIPPET = {}
 
 
-def get_ltac_support_snippet(coqc, **kwargs):
+def get_ltac_support_snippet(coqc, coqc_args=(), **kwargs):
     if coqc in LTAC_SUPPORT_SNIPPET.keys():
         return LTAC_SUPPORT_SNIPPET[coqc]
     test = r"""Inductive False : Prop := .
@@ -31,7 +31,7 @@ Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 Goal False. admit. Qed."""
     errinfo = {}
-    native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, **kwargs))
+    native_ondemand_args = list(get_coq_native_compiler_ondemand_fragment(coqc, coq_args=coqc_args, **kwargs))
     for before, after in (
         ("Require Coq.Init.Ltac.\n", "Import Coq.Init.Ltac.\n"),
         ("Require Coq.Init.Notations.\n", "Import Coq.Init.Notations.\n"),
@@ -45,7 +45,7 @@ Goal False. admit. Qed."""
         contents = "%s\n%s\n%s" % (before, after, test)
         output, cmds, retcode, runtime = get_coq_output(
             coqc,
-            tuple(["-q", "-nois"] + native_ondemand_args),
+            tuple(["-q", "-nois", *coqlib_args_of_coq_args(coqc, coqc_args, **kwargs)] + native_ondemand_args),
             contents,
             timeout_val=None,
             verbose_base=3,
