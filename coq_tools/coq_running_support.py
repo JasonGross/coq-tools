@@ -1,7 +1,7 @@
 from __future__ import with_statement
 import re
 from .diagnose_error import get_coq_output
-from .coq_version import get_coq_native_compiler_ondemand_fragment, coqlib_args_of_coq_args
+from .coq_version import get_coq_native_compiler_ondemand_fragment, get_boot_noinputstate_args, coqlib_args_of_coq_args
 from .coq_full_grammar import COQ_GRAMMAR_TOKENS
 
 # Like coq_version.py, except for things that use get_coq_output (or
@@ -15,7 +15,12 @@ def get_proof_term_works_with_time(coqc_prog, **kwargs):
     contents = r"""Lemma foo : forall _ : Type, Type.
 Proof (fun x => x)."""
     output, cmds, retcode, runtime = get_coq_output(
-        coqc_prog, ("-time", "-q", "-nois", "-boot"), contents, timeout_val=1, verbose_base=3, **kwargs
+        coqc_prog,
+        ("-time", "-q", *get_boot_noinputstate_args(coqc_prog, **kwargs)),
+        contents,
+        timeout_val=1,
+        verbose_base=3,
+        **kwargs,
     )
     return "Error: Attempt to save an incomplete proof" not in output
 
@@ -65,7 +70,12 @@ def get_is_modname_valid(coqc_prog, modname, **kwargs):
     if " " in modname:
         return False
     output, cmds, retcode, runtime = get_coq_output(
-        coqc_prog, ("-q", "-nois", "-boot"), contents, timeout_val=1, verbose_base=3, **kwargs
+        coqc_prog,
+        ("-q", *get_boot_noinputstate_args(coqc_prog, **kwargs)),
+        contents,
+        timeout_val=1,
+        verbose_base=3,
+        **kwargs,
     )
     return "Syntax error:" not in output
 
@@ -74,7 +84,7 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     grammars_contents = "Print Grammar tactic. Print Grammar constr. Print Grammar vernac."
     grammars_output, cmds, retcode, runtime = get_coq_output(
         coqtop_prog,
-        ("-q", "-nois", "-boot"),
+        ("-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)),
         grammars_contents,
         is_coqtop=True,
         pass_on_stdin=True,
@@ -86,7 +96,7 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     contents = "\n".join("Module %s. End %s." % (modname, modname) for modname in tokens)
     output, cmds, retcode, runtime = get_coq_output(
         coqtop_prog,
-        ("-q", "-nois", "-boot"),
+        ("-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)),
         contents,
         is_coqtop=True,
         pass_on_stdin=True,
