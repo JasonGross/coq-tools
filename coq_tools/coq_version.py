@@ -27,10 +27,12 @@ __all__ = [
 # fine.
 DEFAULT_COQTOP = "coqtop" if os.name != "nt" else util.resource_path("coqtop.bat")
 
-
 @memoize
-def get_coqc_version_helper(coqc):
-    p = subprocess.Popen([coqc, "-q", "-v"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+def get_coqc_version_helper(coqc, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
+    p = subprocess.Popen(
+        [coqc, "-q", "-v", *coqlib_args], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE
+    )
     (stdout, stderr) = p.communicate()
     return (
         util.normalize_newlines(util.s(stdout).replace("The Coq Proof Assistant, version ", ""))
@@ -45,22 +47,27 @@ def get_coqc_version(coqc_prog, **kwargs):
 
 
 @memoize
-def get_coqc_help_helper(coqc):
+def get_coqc_help_helper(coqc, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
     p = subprocess.Popen(
-        [coqc, "-q", "--help"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE
+        [coqc, "-q", "--help", *coqlib_args], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE
     )
     (stdout, stderr) = p.communicate()
     return util.s(stdout).strip()
 
 
-def get_coqc_help(coqc_prog, **kwargs):
-    kwargs["log"]('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "--help"]), level=2)
-    return get_coqc_help_helper(coqc_prog)
+def get_coqc_help(coqc_prog, coqc_prog_coqlib: str | None = None, **kwargs):
+    coqlib_args = ["-coqlib", coqc_prog_coqlib] if coqc_prog_coqlib is not None else []
+    kwargs["log"]('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "--help", *coqlib_args]), level=2)
+    return get_coqc_help_helper(coqc_prog, coqc_prog_coqlib)
 
 
 @memoize
-def get_coqtop_version_helper(coqtop):
-    p = subprocess.Popen([coqtop, "-q"], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+def get_coqtop_version_helper(coqtop, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
+    p = subprocess.Popen(
+        [coqtop, "-q", *coqlib_args], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE
+    )
     (stdout, stderr) = p.communicate()
     return (
         util.normalize_newlines(util.s(stdout).replace("Welcome to Coq ", "").replace("Skipping rcfile loading.", ""))
@@ -75,10 +82,13 @@ def get_coqtop_version(coqtop_prog, **kwargs):
 
 
 @memoize
-def get_coq_accepts_top(coqc):
+def get_coq_accepts_top(coqc, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    p = subprocess.Popen([coqc, "-q", "-top", "Top", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    p = subprocess.Popen(
+        [coqc, "-q", "-top", "Top", temp_file_name, *coqlib_args], stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+    )
     (stdout, stderr) = p.communicate()
     temp_file.close()
     clean_v_file(temp_file_name)
@@ -86,10 +96,13 @@ def get_coq_accepts_top(coqc):
 
 
 @memoize
-def get_coq_accepts_compile(coqtop):
+def get_coq_accepts_compile(coqtop, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    p = subprocess.Popen([coqtop, "-q", "-compile", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    p = subprocess.Popen(
+        [coqtop, "-q", "-compile", temp_file_name, *coqlib_args], stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+    )
     (stdout, stderr) = p.communicate()
     rc = p.returncode
     temp_file.close()
@@ -123,11 +136,14 @@ def get_coq_accepts_w(coqc_prog, **kwargs):
 
 
 @memoize
-def get_coqc_native_compiler_ondemand_errors(coqc):
+def get_coqc_native_compiler_ondemand_errors(coqc, coqlib: str | None = None):
+    coqlib_args = ["-coqlib", coqlib] if coqlib is not None else []
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
     p = subprocess.Popen(
-        [coqc, "-q", "-native-compiler", "ondemand", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+        [coqc, "-q", "-native-compiler", "ondemand", temp_file_name, *coqlib_args],
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
     )
     (stdout, stderr) = p.communicate()
     temp_file.close()
@@ -259,3 +275,6 @@ def get_coqc_coqlib(coqc_prog, **kwargs):
         for line in get_coqc_config(coqc_prog, **kwargs).split("\n")
         if line.startswith("COQLIB=")
     ][0]
+
+def get_coqc_coqlib_args(coqc_prog, **kwargs):
+    return ["-coqlib", get_coqc_coqlib(coqc_prog, **kwargs)]

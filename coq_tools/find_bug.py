@@ -44,6 +44,7 @@ from .custom_arguments import (
     add_passing_libname_arguments,
     update_env_with_libnames,
     update_env_with_coqpath_folders,
+    update_env_with_coqlib,
     add_logging_arguments,
     process_logging_arguments,
     get_parser_name_mapping,
@@ -2085,6 +2086,8 @@ def main():
         "admit_obligations": args.admit_obligations and args.admit_any,
         "aggressive": args.aggressive,
         "admit_transparent": args.admit_transparent and args.admit_any,
+        "coqlib": args.coqlib,
+        "passing_coqlib": args.passing_coqlib,
         "coqc_args": tuple(
             i.strip()
             for i in (
@@ -2189,6 +2192,9 @@ def main():
         if env["temp_file_log_name"] == "":
             env["temp_file_log_name"] = env["temp_file_name"] + ".log"
 
+        for passing_prefix in ("", "passing_"):
+            update_env_with_coqlib(env, passing_prefix=passing_prefix)
+
         def make_make_coqc(coqc_prog, **kwargs):
             if get_coq_accepts_compile(coqc_prog):
                 return f"{util.resource_path('coqtop-as-coqc.sh')} {coqc_prog}"
@@ -2208,7 +2214,7 @@ def main():
                     env["passing_coqc"] = env["coqtop"]
             env["passing_make_coqc"] = make_make_coqc(env["passing_coqc"], **env)
 
-        coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
+        coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), get_preferred_passing("coqlib", **env), **env)
         coqc_version = get_coqc_version(env["coqc"], **env)
 
         update_env_with_libnames(
