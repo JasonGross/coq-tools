@@ -192,7 +192,7 @@ def get_single_help_tags(coqc_help, **kwargs):
 
 
 def get_multiple_help_tags(coqc_help, **kwargs):
-    return dict(
+    return {"-coqlib": 1, "--coqlib": 1} | dict(
         (t.split(" ")[0], len(t.split(" ")))
         for i in all_help_tags(coqc_help, **kwargs)
         if " " in i.replace(", ", "")
