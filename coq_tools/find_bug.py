@@ -2151,143 +2151,147 @@ def main():
         "cli_mapping": get_parser_name_mapping(parser),
     }
 
-    if bug_file_name[-2:] != ".v":
-        env["log"](
-            "\nError: BUGGY_FILE must end in .v (value: %s)" % bug_file_name, force_stdout=True, level=LOG_ALWAYS
-        )
-        sys.exit(1)
-    if output_file_name[-2:] != ".v":
-        env["log"](
-            "\nError: OUT_FILE must end in .v (value: %s)" % output_file_name, force_stdout=True, level=LOG_ALWAYS
-        )
-        sys.exit(1)
-    if os.path.exists(output_file_name):
-        env["log"](
-            "\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n" % output_file_name,
-            force_stdout=True,
-            level=LOG_ALWAYS,
-        )
-        if not yes_no_prompt(yes=env["yes"]):
-            sys.exit(1)
-    for k, arg in (("base_dir", "--base-dir"), ("passing_base_dir", "--passing-base-dir")):
-        if env[k] is not None and not os.path.isdir(env[k]):
+    try:
+
+        if bug_file_name[-2:] != ".v":
             env["log"](
-                "\nError: Argument to %s (%s) must exist and be a directory." % (arg, env[k]),
+                "\nError: BUGGY_FILE must end in .v (value: %s)" % bug_file_name, force_stdout=True, level=LOG_ALWAYS
+            )
+            sys.exit(1)
+        if output_file_name[-2:] != ".v":
+            env["log"](
+                "\nError: OUT_FILE must end in .v (value: %s)" % output_file_name, force_stdout=True, level=LOG_ALWAYS
+            )
+            sys.exit(1)
+        if os.path.exists(output_file_name):
+            env["log"](
+                "\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n" % output_file_name,
                 force_stdout=True,
                 level=LOG_ALWAYS,
             )
-            sys.exit(1)
-
-    env["remove_temp_file"] = False
-    if env["temp_file_name"] == "":
-        temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=False)
-        env["temp_file_name"] = temp_file.name
-        temp_file.close()
-        env["remove_temp_file"] = True
-    if env["temp_file_log_name"] == "":
-        env["temp_file_log_name"] = env["temp_file_name"] + ".log"
-
-    def make_make_coqc(coqc_prog, **kwargs):
-        if get_coq_accepts_compile(coqc_prog):
-            return f"{util.resource_path('coqtop-as-coqc.sh')} {coqc_prog}"
-        if "coqtop" in coqc_prog:
-            return coqc_prog.replace("coqtop", "coqc")
-        return "coqc"
-
-    if env["coqc_is_coqtop"]:
-        if env["coqc"] == "coqc":
-            env["coqc"] = env["coqtop"]
-        env["make_coqc"] = make_make_coqc(env["coqc"], **env)
-    if env["passing_coqc_is_coqtop"]:
-        if env["passing_coqc"] == "coqc":
-            if env["passing_coqtop"] is not None:
-                env["passing_coqc"] = env["passing_coqtop"]
-            else:
-                env["passing_coqc"] = env["coqtop"]
-        env["passing_make_coqc"] = make_make_coqc(env["passing_coqc"], **env)
-
-    coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
-    coqc_version = get_coqc_version(env["coqc"], **env)
-
-    update_env_with_libnames(
-        env,
-        args,
-        include_passing=env["passing_coqc"],
-        use_default=not has_dir_binding(env["coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
-        use_passing_default=not has_dir_binding(env["passing_coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
-    )
-
-    if args.inline_user_contrib:
-        for passing_prefix in ("", "passing_"):
-            if env[passing_prefix + "coqc"]:
-                coq_user_contrib_path = os.path.join(
-                    get_coqc_coqlib(env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env),
-                    "user-contrib",
+            if not yes_no_prompt(yes=env["yes"]):
+                sys.exit(1)
+        for k, arg in (("base_dir", "--base-dir"), ("passing_base_dir", "--passing-base-dir")):
+            if env[k] is not None and not os.path.isdir(env[k]):
+                env["log"](
+                    "\nError: Argument to %s (%s) must exist and be a directory." % (arg, env[k]),
+                    force_stdout=True,
+                    level=LOG_ALWAYS,
                 )
-                update_env_with_coqpath_folders(
-                    passing_prefix,
-                    env,
-                    coq_user_contrib_path,
-                )
-                env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
+                sys.exit(1)
 
-    if args.inline_coqlib or args.inline_stdlib:
-        for passing_prefix in ("", "passing_"):
-            if env[passing_prefix + "coqc"]:
-                coq_lib_path = get_coqc_coqlib(
-                    env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
-                )
-                coq_theories_path = os.path.join(coq_lib_path, "theories")
-                coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, "user-contrib"), "Stdlib")
-                coqpath_path = os.environ.get("COQPATH", "")
-                coqpath_paths = coqpath_path.split(os.pathsep) if coqpath_path else []
-                if args.inline_coqlib:
-                    if coqc_version != "" and coqc_version[0] == "8":
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
-                        )
-                    else:
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Corelib")]
-                        )
-                    env[passing_prefix + "libnames"] = tuple(
-                        list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
+        env["remove_temp_file"] = False
+        if env["temp_file_name"] == "":
+            temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=False)
+            env["temp_file_name"] = temp_file.name
+            temp_file.close()
+            env["remove_temp_file"] = True
+        if env["temp_file_log_name"] == "":
+            env["temp_file_log_name"] = env["temp_file_name"] + ".log"
+
+        def make_make_coqc(coqc_prog, **kwargs):
+            if get_coq_accepts_compile(coqc_prog):
+                return f"{util.resource_path('coqtop-as-coqc.sh')} {coqc_prog}"
+            if "coqtop" in coqc_prog:
+                return coqc_prog.replace("coqtop", "coqc")
+            return "coqc"
+
+        if env["coqc_is_coqtop"]:
+            if env["coqc"] == "coqc":
+                env["coqc"] = env["coqtop"]
+            env["make_coqc"] = make_make_coqc(env["coqc"], **env)
+        if env["passing_coqc_is_coqtop"]:
+            if env["passing_coqc"] == "coqc":
+                if env["passing_coqtop"] is not None:
+                    env["passing_coqc"] = env["passing_coqtop"]
+                else:
+                    env["passing_coqc"] = env["coqtop"]
+            env["passing_make_coqc"] = make_make_coqc(env["passing_coqc"], **env)
+
+        coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
+        coqc_version = get_coqc_version(env["coqc"], **env)
+
+        update_env_with_libnames(
+            env,
+            args,
+            include_passing=env["passing_coqc"],
+            use_default=not has_dir_binding(env["coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
+            use_passing_default=not has_dir_binding(
+                env["passing_coqc_args"], coqc_help=coqc_help, file_name=bug_file_name
+            ),
+        )
+
+        if args.inline_user_contrib:
+            for passing_prefix in ("", "passing_"):
+                if env[passing_prefix + "coqc"]:
+                    coq_user_contrib_path = os.path.join(
+                        get_coqc_coqlib(
+                            env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
+                        ),
+                        "user-contrib",
                     )
-                    for p in coqpath_paths:
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Coq")]
-                        )
-                if args.inline_stdlib:
-                    env[passing_prefix + "libnames"] = tuple(
-                        list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Stdlib")]
+                    update_env_with_coqpath_folders(
+                        passing_prefix,
+                        env,
+                        coq_user_contrib_path,
                     )
-                    env[passing_prefix + "libnames"] = tuple(
-                        list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
-                    )
-                    for p in coqpath_paths:
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Stdlib")]
-                        )
-                if args.inline_coqlib or args.inline_stdlib:
-                    env[passing_prefix + "coqpath_paths"].append(coq_theories_path)
                     env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
-                    env[passing_prefix + "coqpath_paths"].extend(coqpath_paths)
 
-    env["log"]("{", level=2)
-    for k, v in sorted(list(env.items())):
-        env["log"]("  %s: %s" % (repr(k), repr(v)), level=2)
-    env["log"]("}", level=2)
+        if args.inline_coqlib or args.inline_stdlib:
+            for passing_prefix in ("", "passing_"):
+                if env[passing_prefix + "coqc"]:
+                    coq_lib_path = get_coqc_coqlib(
+                        env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
+                    )
+                    coq_theories_path = os.path.join(coq_lib_path, "theories")
+                    coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, "user-contrib"), "Stdlib")
+                    coqpath_path = os.environ.get("COQPATH", "")
+                    coqpath_paths = coqpath_path.split(os.pathsep) if coqpath_path else []
+                    if args.inline_coqlib:
+                        if coqc_version != "" and coqc_version[0] == "8":
+                            env[passing_prefix + "libnames"] = tuple(
+                                list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
+                            )
+                        else:
+                            env[passing_prefix + "libnames"] = tuple(
+                                list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Corelib")]
+                            )
+                        env[passing_prefix + "libnames"] = tuple(
+                            list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
+                        )
+                        for p in coqpath_paths:
+                            env[passing_prefix + "libnames"] = tuple(
+                                list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Coq")]
+                            )
+                    if args.inline_stdlib:
+                        env[passing_prefix + "libnames"] = tuple(
+                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Stdlib")]
+                        )
+                        env[passing_prefix + "libnames"] = tuple(
+                            list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
+                        )
+                        for p in coqpath_paths:
+                            env[passing_prefix + "libnames"] = tuple(
+                                list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Stdlib")]
+                            )
+                    if args.inline_coqlib or args.inline_stdlib:
+                        env[passing_prefix + "coqpath_paths"].append(coq_theories_path)
+                        env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
+                        env[passing_prefix + "coqpath_paths"].extend(coqpath_paths)
 
-    for passing_prefix in ("", "passing_"):
-        if env[passing_prefix + "coqc"]:
-            args_key = passing_prefix + "coqc_args"
-            if "-native-compiler" not in env[args_key]:
-                env[args_key] = tuple(
-                    list(env[args_key])
-                    + list(get_coq_native_compiler_ondemand_fragment(env[passing_prefix + "coqc"], **env))
-                )
+        env["log"]("{", level=2)
+        for k, v in sorted(list(env.items())):
+            env["log"]("  %s: %s" % (repr(k), repr(v)), level=2)
+        env["log"]("}", level=2)
 
-    try:
+        for passing_prefix in ("", "passing_"):
+            if env[passing_prefix + "coqc"]:
+                args_key = passing_prefix + "coqc_args"
+                if "-native-compiler" not in env[args_key]:
+                    env[args_key] = tuple(
+                        list(env[args_key])
+                        + list(get_coq_native_compiler_ondemand_fragment(env[passing_prefix + "coqc"], **env))
+                    )
 
         if env["temp_file_name"][-2:] != ".v":
             env["log"](
