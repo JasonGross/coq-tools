@@ -192,12 +192,14 @@ def get_single_help_tags(coqc_help, **kwargs):
 
 
 def get_multiple_help_tags(coqc_help, **kwargs):
-    return {"-coqlib": 1, "--coqlib": 1} | dict(
+    result = {"-coqlib": 1, "--coqlib": 1}
+    result.update(dict(
         (t.split(" ")[0], len(t.split(" ")))
         for i in all_help_tags(coqc_help, **kwargs)
         if " " in i.replace(", ", "")
         for t in re.sub(r'"[^"]*"', '""', i).split(", ")
-    )
+    ))
+    return result
 
 
 def coq_makefile_supports_arg(coq_makefile_help):
