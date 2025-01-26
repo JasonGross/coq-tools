@@ -15,7 +15,7 @@ def get_proof_term_works_with_time(coqc_prog, **kwargs):
     contents = r"""Lemma foo : forall _ : Type, Type.
 Proof (fun x => x)."""
     output, cmds, retcode, runtime = get_coq_output(
-        coqc_prog, ("-time", "-q"), contents, timeout_val=1, verbose_base=3, **kwargs
+        coqc_prog, ("-time", "-q", "-nois", "-boot"), contents, timeout_val=1, verbose_base=3, **kwargs
     )
     return "Error: Attempt to save an incomplete proof" not in output
 
@@ -65,7 +65,7 @@ def get_is_modname_valid(coqc_prog, modname, **kwargs):
     if " " in modname:
         return False
     output, cmds, retcode, runtime = get_coq_output(
-        coqc_prog, ("-q",), contents, timeout_val=1, verbose_base=3, **kwargs
+        coqc_prog, ("-q", "-nois", "-boot"), contents, timeout_val=1, verbose_base=3, **kwargs
     )
     return "Syntax error:" not in output
 
@@ -74,7 +74,7 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     grammars_contents = "Print Grammar tactic. Print Grammar constr. Print Grammar vernac."
     grammars_output, cmds, retcode, runtime = get_coq_output(
         coqtop_prog,
-        ("-q",),
+        ("-q", "-nois", "-boot"),
         grammars_contents,
         is_coqtop=True,
         pass_on_stdin=True,
@@ -85,7 +85,14 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     tokens = sorted(set([i.strip('"') for i in re.findall(r'"[a-zA-Z_][^"]*"', grammars_output)] + COQ_GRAMMAR_TOKENS))
     contents = "\n".join("Module %s. End %s." % (modname, modname) for modname in tokens)
     output, cmds, retcode, runtime = get_coq_output(
-        coqtop_prog, ("-q",), contents, is_coqtop=True, pass_on_stdin=True, timeout_val=10, verbose_base=3, **kwargs
+        coqtop_prog,
+        ("-q", "-nois", "-boot"),
+        contents,
+        is_coqtop=True,
+        pass_on_stdin=True,
+        timeout_val=10,
+        verbose_base=3,
+        **kwargs,
     )
     success = re.findall(r"Module ([^ ]+) is defined", output)
     return tuple(modname for modname in tokens if modname not in success)
