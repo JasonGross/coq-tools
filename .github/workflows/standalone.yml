@@ -15,16 +15,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         os: [ubuntu-latest, macos-latest, windows-latest]
-        exclude:
-          - os: windows-latest  # build fails
-            python-version: '3.7'
-          - os: macos-latest  # version not available
-            python-version: '3.7'
         include:
           - os: ubuntu-20.04 # version does not exist on later versions of Ubuntu
             python-version: '3.6'
+          - os: ubuntu-22.04 # version does not exist on later versions of Ubuntu
+            python-version: '3.7'
           - os: macos-13 # version does not exist on arm64 versions of Mac
             python-version: '3.7'
           - os: macos-13 # version does not exist on arm64 versions of Mac
