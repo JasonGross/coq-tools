@@ -7,6 +7,7 @@ from .custom_arguments import (
     update_env_with_libnames,
     update_env_with_coqpath_folders,
     add_logging_arguments,
+    update_env_with_coqlib,
     process_logging_arguments,
     get_parser_name_mapping,
 )
@@ -141,6 +142,7 @@ def main():
         "walk_tree": args.walk_tree,
         "cli_mapping": get_parser_name_mapping(parser),
     }
+    update_env_with_coqlib("", env)
     update_env_with_libnames(env, args)
     if args.inline_user_contrib:
         update_env_with_coqpath_folders(

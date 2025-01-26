@@ -44,6 +44,7 @@ from .custom_arguments import (
     add_passing_libname_arguments,
     update_env_with_libnames,
     update_env_with_coqpath_folders,
+    update_env_with_coqlib,
     add_logging_arguments,
     process_logging_arguments,
     get_parser_name_mapping,
@@ -2085,6 +2086,8 @@ def main():
         "admit_obligations": args.admit_obligations and args.admit_any,
         "aggressive": args.aggressive,
         "admit_transparent": args.admit_transparent and args.admit_any,
+        "coqlib": args.coqlib,
+        "passing_coqlib": args.passing_coqlib,
         "coqc_args": tuple(
             i.strip()
             for i in (
@@ -2188,6 +2191,9 @@ def main():
             env["remove_temp_file"] = True
         if env["temp_file_log_name"] == "":
             env["temp_file_log_name"] = env["temp_file_name"] + ".log"
+
+        for passing_prefix in ("", "passing_"):
+            update_env_with_coqlib(env=env, passing_prefix=passing_prefix)
 
         def make_make_coqc(coqc_prog, **kwargs):
             if get_coq_accepts_compile(coqc_prog):
