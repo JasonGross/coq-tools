@@ -44,6 +44,107 @@ def subprocess_Popen_memoized(
     return subprocess_Popen_memoized_helper(cmd, stderr=stderr, stdin=stdin, stdout=stdout)
 
 
+def get_coqc_help(coqc_prog, **kwargs):
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "--help"], **kwargs)
+    return util.s(stdout).strip()
+
+
+HELP_REG = re.compile(r"^  ([^\n]*?)(?:\t|  )", re.MULTILINE)
+HELP_MAKEFILE_REG = re.compile(r"^\[(-[^\n\]]*)\]", re.MULTILINE)
+
+
+def adjust_help_string(coqc_help):
+    # we need to insert some spaces to make parsing easier
+    for one_arg_option in ("-diffs", "-native-compiler"):
+        coqc_help = re.sub(r"(\n\s*%s\s+[^\s]*)" % one_arg_option, r"\1 ", coqc_help, re.MULTILINE)
+    return coqc_help
+
+
+def all_help_tags(coqc_help, is_coq_makefile=False):
+    coqc_help = adjust_help_string(coqc_help)
+    if is_coq_makefile:
+        return HELP_MAKEFILE_REG.findall(coqc_help)
+    else:
+        return HELP_REG.findall(coqc_help)
+
+
+def get_single_help_tags(coqc_help, **kwargs):
+    return tuple(
+        t
+        for i in all_help_tags(coqc_help, **kwargs)
+        if " " not in i.replace(", ", "")
+        for t in i.split(", ")
+        if len(t) > 0
+    )
+
+
+def get_multiple_help_tags(coqc_help, **kwargs):
+    result = {"-coqlib": 1, "--coqlib": 1}
+    result.update(
+        dict(
+            (t.split(" ")[0], len(t.split(" ")))
+            for i in all_help_tags(coqc_help, **kwargs)
+            if " " in i.replace(", ", "")
+            for t in re.sub(r'"[^"]*"', '""', i).split(", ")
+        )
+    )
+    return result
+
+
+def coq_makefile_supports_arg(coq_makefile_help):
+    tags = get_multiple_help_tags(coq_makefile_help, is_coq_makefile=True)
+    return any(tag == "-arg" for tag in tags.keys())
+
+
+def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefile=False):
+    args = list(args)
+    bindings = []
+    unrecognized_bindings = []
+    single_tags = get_single_help_tags(coqc_help, is_coq_makefile=is_coq_makefile)
+    multiple_tags = get_multiple_help_tags(coqc_help, is_coq_makefile=is_coq_makefile)
+    while len(args) > 0:
+        if args[0] in multiple_tags.keys() and len(args) >= multiple_tags[args[0]]:
+            cur_binding, args = tuple(args[: multiple_tags[args[0]]]), args[multiple_tags[args[0]] :]
+            if cur_binding not in bindings:
+                bindings.append(cur_binding)
+        else:
+            cur = tuple([args.pop(0)])
+            if cur[0] not in single_tags:
+                unrecognized_bindings.append(cur[0])
+            elif cur not in bindings:
+                bindings.append(cur)
+    if topname is not None and "-top" not in [i[0] for i in bindings] and "-top" in multiple_tags.keys():
+        bindings.append(("-top", topname))
+    return (bindings, unrecognized_bindings)
+
+
+def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
+    bindings, unrecognized_bindings = group_coq_args_split_recognized(
+        args, coqc_help, topname=topname, is_coq_makefile=is_coq_makefile
+    )
+    return bindings + [tuple([v]) for v in unrecognized_bindings]
+
+
+def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
+    grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
+    coq_args = [arg for args in grouped_args if args[0] in ("--coqlib", "-coqlib") for arg in args]
+    return coq_args
+
+
+def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
+    coq_args = coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-config", *coq_args], **kwargs)
+    return util.normalize_newlines(util.s(stdout)).strip()
+
+
+def get_coqc_coqlib(coqc_prog, **kwargs):
+    return [
+        line[len("COQLIB=") :]
+        for line in get_coqc_config(coqc_prog, **kwargs).split("\n")
+        if line.startswith("COQLIB=")
+    ][0]
+
+
 def get_coqc_version(coqc_prog, **kwargs):
     (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-v"], **kwargs)
     return (
@@ -51,11 +152,6 @@ def get_coqc_version(coqc_prog, **kwargs):
         .replace("\n", " ")
         .strip()
     )
-
-
-def get_coqc_help(coqc_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "--help"], **kwargs)
-    return util.s(stdout).strip()
 
 
 def get_coqtop_version(coqtop_prog, **kwargs):
@@ -155,97 +251,3 @@ def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
         elif not get_coqc_native_compiler_ondemand_errors(coqc_prog, **kwargs):
             return ("-native-compiler", "ondemand")
     return tuple()
-
-
-HELP_REG = re.compile(r"^  ([^\n]*?)(?:\t|  )", re.MULTILINE)
-HELP_MAKEFILE_REG = re.compile(r"^\[(-[^\n\]]*)\]", re.MULTILINE)
-
-
-def adjust_help_string(coqc_help):
-    # we need to insert some spaces to make parsing easier
-    for one_arg_option in ("-diffs", "-native-compiler"):
-        coqc_help = re.sub(r"(\n\s*%s\s+[^\s]*)" % one_arg_option, r"\1 ", coqc_help, re.MULTILINE)
-    return coqc_help
-
-
-def all_help_tags(coqc_help, is_coq_makefile=False):
-    coqc_help = adjust_help_string(coqc_help)
-    if is_coq_makefile:
-        return HELP_MAKEFILE_REG.findall(coqc_help)
-    else:
-        return HELP_REG.findall(coqc_help)
-
-
-def get_single_help_tags(coqc_help, **kwargs):
-    return tuple(
-        t
-        for i in all_help_tags(coqc_help, **kwargs)
-        if " " not in i.replace(", ", "")
-        for t in i.split(", ")
-        if len(t) > 0
-    )
-
-
-def get_multiple_help_tags(coqc_help, **kwargs):
-    result = {"-coqlib": 1, "--coqlib": 1}
-    result.update(dict(
-        (t.split(" ")[0], len(t.split(" ")))
-        for i in all_help_tags(coqc_help, **kwargs)
-        if " " in i.replace(", ", "")
-        for t in re.sub(r'"[^"]*"', '""', i).split(", ")
-    ))
-    return result
-
-
-def coq_makefile_supports_arg(coq_makefile_help):
-    tags = get_multiple_help_tags(coq_makefile_help, is_coq_makefile=True)
-    return any(tag == "-arg" for tag in tags.keys())
-
-
-def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefile=False):
-    args = list(args)
-    bindings = []
-    unrecognized_bindings = []
-    single_tags = get_single_help_tags(coqc_help, is_coq_makefile=is_coq_makefile)
-    multiple_tags = get_multiple_help_tags(coqc_help, is_coq_makefile=is_coq_makefile)
-    while len(args) > 0:
-        if args[0] in multiple_tags.keys() and len(args) >= multiple_tags[args[0]]:
-            cur_binding, args = tuple(args[: multiple_tags[args[0]]]), args[multiple_tags[args[0]] :]
-            if cur_binding not in bindings:
-                bindings.append(cur_binding)
-        else:
-            cur = tuple([args.pop(0)])
-            if cur[0] not in single_tags:
-                unrecognized_bindings.append(cur[0])
-            elif cur not in bindings:
-                bindings.append(cur)
-    if topname is not None and "-top" not in [i[0] for i in bindings] and "-top" in multiple_tags.keys():
-        bindings.append(("-top", topname))
-    return (bindings, unrecognized_bindings)
-
-
-def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
-    bindings, unrecognized_bindings = group_coq_args_split_recognized(
-        args, coqc_help, topname=topname, is_coq_makefile=is_coq_makefile
-    )
-    return bindings + [tuple([v]) for v in unrecognized_bindings]
-
-
-def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
-    grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
-    coq_args = [arg for args in grouped_args if args[0] in ("--coqlib", "-coqlib") for arg in args]
-    return coq_args
-
-
-def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
-    coq_args = coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-config", *coq_args], **kwargs)
-    return util.normalize_newlines(util.s(stdout)).strip()
-
-
-def get_coqc_coqlib(coqc_prog, **kwargs):
-    return [
-        line[len("COQLIB=") :]
-        for line in get_coqc_config(coqc_prog, **kwargs).split("\n")
-        if line.startswith("COQLIB=")
-    ][0]
