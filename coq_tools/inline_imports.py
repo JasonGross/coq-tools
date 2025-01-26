@@ -144,7 +144,7 @@ def main():
     update_env_with_libnames(env, args)
     if args.inline_user_contrib:
         update_env_with_coqpath_folders(
-            env, os.path.join(get_coqc_coqlib(env["coqc"], coq_args=env["coqc_args"], **env), "user-contrib")
+            "", env, os.path.join(get_coqc_coqlib(env["coqc"], coq_args=env["coqc_args"], **env), "user-contrib")
         )
 
     filename = args.input_file.name
