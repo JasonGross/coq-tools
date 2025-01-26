@@ -3,6 +3,9 @@ import subprocess, tempfile, re, os
 from .file_util import clean_v_file
 from .memoize import memoize
 from . import util
+from .custom_arguments import (
+    DEFAULT_LOG,
+)
 
 __all__ = [
     "get_coqc_version",
@@ -29,9 +32,20 @@ DEFAULT_COQTOP = "coqtop" if os.name != "nt" else util.resource_path("coqtop.bat
 
 
 @memoize
-def get_coqc_version_helper(coqc):
-    p = subprocess.Popen([coqc, "-q", "-v"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
+def subprocess_Popen_memoized_helper(cmd, **kwargs):
+    p = subprocess.Popen(cmd, **kwargs)
+    return p.communicate(), p.returncode
+
+
+def subprocess_Popen_memoized(
+    cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, log=DEFAULT_LOG, **kwargs
+):
+    log('Running command: "%s"' % '" "'.join(cmd), level=2)
+    return subprocess_Popen_memoized_helper(cmd, stderr=stderr, stdin=stdin, stdout=stdout)
+
+
+def get_coqc_version(coqc_prog, **kwargs):
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-v"], **kwargs)
     return (
         util.normalize_newlines(util.s(stdout).replace("The Coq Proof Assistant, version ", ""))
         .replace("\n", " ")
@@ -39,29 +53,13 @@ def get_coqc_version_helper(coqc):
     )
 
 
-def get_coqc_version(coqc_prog, **kwargs):
-    kwargs["log"]('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-v"]), level=2)
-    return get_coqc_version_helper(coqc_prog)
-
-
-@memoize
-def get_coqc_help_helper(coqc):
-    p = subprocess.Popen(
-        [coqc, "-q", "--help"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE
-    )
-    (stdout, stderr) = p.communicate()
+def get_coqc_help(coqc_prog, **kwargs):
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "--help"], **kwargs)
     return util.s(stdout).strip()
 
 
-def get_coqc_help(coqc_prog, **kwargs):
-    kwargs["log"]('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "--help"]), level=2)
-    return get_coqc_help_helper(coqc_prog)
-
-
-@memoize
-def get_coqtop_version_helper(coqtop):
-    p = subprocess.Popen([coqtop, "-q"], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
+def get_coqtop_version(coqtop_prog, **kwargs):
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqtop_prog, "-q"], **kwargs)
     return (
         util.normalize_newlines(util.s(stdout).replace("Welcome to Coq ", "").replace("Skipping rcfile loading.", ""))
         .replace("\n", " ")
@@ -69,32 +67,32 @@ def get_coqtop_version_helper(coqtop):
     )
 
 
-def get_coqtop_version(coqtop_prog, **kwargs):
-    kwargs["log"]('Running command: "%s"' % '" "'.join([coqtop_prog, "-q", "-v"]), level=2)
-    return get_coqtop_version_helper(coqtop_prog)
-
-
 @memoize
-def get_coq_accepts_top(coqc):
+def get_coq_accepts_top_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    p = subprocess.Popen([coqc, "-q", "-top", "Top", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc, "-q", "-top", "Top", temp_file_name])
     temp_file.close()
     clean_v_file(temp_file_name)
     return "-top: no such file or directory" not in util.s(stdout)
 
 
+def get_coq_accepts_top(coqc_prog, **kwargs):
+    return get_coq_accepts_top_helper(coqc_prog)
+
+
 @memoize
-def get_coq_accepts_compile(coqtop):
+def get_coq_accepts_compile_helper(coqtop):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    p = subprocess.Popen([coqtop, "-q", "-compile", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    (stdout, stderr) = p.communicate()
-    rc = p.returncode
+    (_stdout, _stderr), rc = subprocess_Popen_memoized([coqtop, "-q", "-compile", temp_file_name])
     temp_file.close()
     clean_v_file(temp_file_name)
     return rc == 0
+
+
+def get_coq_accepts_compile(coqtop_prog, **kwargs):
+    return get_coq_accepts_compile_helper(coqtop_prog)
 
 
 def get_coq_accepts_option(coqc_prog, option, **kwargs):
@@ -123,13 +121,10 @@ def get_coq_accepts_w(coqc_prog, **kwargs):
 
 
 @memoize
-def get_coqc_native_compiler_ondemand_errors(coqc):
+def get_coqc_native_compiler_ondemand_errors_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    p = subprocess.Popen(
-        [coqc, "-q", "-native-compiler", "ondemand", temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE
-    )
-    (stdout, stderr) = p.communicate()
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc, "-q", "-native-compiler", "ondemand", temp_file_name])
     temp_file.close()
     clean_v_file(temp_file_name)
     return any(
@@ -143,6 +138,10 @@ def get_coqc_native_compiler_ondemand_errors(coqc):
     )
 
 
+def get_coqc_native_compiler_ondemand_errors(coqc_prog, **kwargs):
+    return get_coqc_native_compiler_ondemand_errors_helper(coqc_prog)
+
+
 def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
     help_lines = get_coqc_help(coqc_prog, **kwargs).split("\n")
     if any("ondemand" in line for line in help_lines if line.strip().startswith("-native-compiler")):
@@ -153,13 +152,9 @@ def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
                 "-native-compiler",
                 "ondemand",
             )
-        elif not get_coqc_native_compiler_ondemand_errors(coqc_prog):
+        elif not get_coqc_native_compiler_ondemand_errors(coqc_prog, **kwargs):
             return ("-native-compiler", "ondemand")
     return tuple()
-
-
-def get_coq_accepts_time(coqc_prog, **kwargs):
-    return "-time" in get_coqc_help(coqc_prog, **kwargs)
 
 
 HELP_REG = re.compile(r"^  ([^\n]*?)(?:\t|  )", re.MULTILINE)
@@ -236,23 +231,16 @@ def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
     return bindings + [tuple([v]) for v in unrecognized_bindings]
 
 
-@memoize
-def get_coqc_config_helper(coqc, coq_args):
-    p = subprocess.Popen(
-        [coqc, "-q", "-config"] + list(coq_args),
-        stderr=subprocess.STDOUT,
-        stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
-    )
-    (stdout, stderr) = p.communicate()
-    return util.normalize_newlines(util.s(stdout)).strip()
+def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
+    grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
+    coq_args = [arg for args in grouped_args if args[0] in ("--coqlib", "-coqlib") for arg in args]
+    return coq_args
 
 
 def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
-    grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
-    coq_args = [arg for args in grouped_args if args[0] in ("--coqlib", "-coqlib") for arg in args]
-    kwargs["log"]('Running command: "%s"' % '" "'.join([coqc_prog, "-q", "-config"] + coq_args), level=2)
-    return get_coqc_config_helper(coqc_prog, tuple(coq_args))
+    coq_args = coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-config", *coq_args], **kwargs)
+    return util.normalize_newlines(util.s(stdout)).strip()
 
 
 def get_coqc_coqlib(coqc_prog, **kwargs):
