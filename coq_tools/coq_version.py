@@ -161,12 +161,12 @@ def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
     return util.normalize_newlines(util.s(stdout)).strip()
 
 
+def get_coqc_coqlib_of_config(coqc_config):
+    return [line[len("COQLIB=") :] for line in coqc_config.split("\n") if line.startswith("COQLIB=")][0]
+
+
 def get_coqc_coqlib(coqc_prog, **kwargs):
-    return [
-        line[len("COQLIB=") :]
-        for line in get_coqc_config(coqc_prog, **kwargs).split("\n")
-        if line.startswith("COQLIB=")
-    ][0]
+    return get_coqc_coqlib_of_config(get_coqc_config(coqc_prog, **kwargs))
 
 
 def get_coqc_version(coqc_prog, **kwargs):
