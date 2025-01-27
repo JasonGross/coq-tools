@@ -171,10 +171,12 @@ def get_coqc_coqlib(coqc_prog, **kwargs):
 
 def get_coqc_version(coqc_prog, **kwargs):
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
+        [coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], stderr=subprocess.PIPE, **kwargs
     )
     return (
-        util.normalize_newlines(util.s(stdout).replace("The Coq Proof Assistant, version ", ""))
+        util.normalize_newlines(
+            util.s(stdout).replace("The Coq Proof Assistant, version ", "").replace("The Rocq Prover, version ", "")
+        )
         .replace("\n", " ")
         .strip()
     )
