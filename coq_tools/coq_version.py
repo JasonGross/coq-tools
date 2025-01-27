@@ -162,7 +162,11 @@ def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
 
 
 def get_coqc_coqlib_of_config(coqc_config):
-    return [line[len("COQLIB=") :] for line in coqc_config.split("\n") if line.startswith("COQLIB=")][0]
+    return [
+        line[len("COQLIB=") :]
+        for line in coqc_config.replace("ROCQLIB=", "COQLIB=").split("\n")
+        if line.startswith("COQLIB=")
+    ][0]
 
 
 def get_coqc_coqlib(coqc_prog, **kwargs):
