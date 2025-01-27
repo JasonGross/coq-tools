@@ -173,24 +173,32 @@ def get_coqc_coqlib(coqc_prog, **kwargs):
     return get_coqc_coqlib_of_config(get_coqc_config(coqc_prog, **kwargs))
 
 
+def format_coq_version(stdout: str, stderr: str = ""):
+    stdout = util.normalize_newlines(stdout).replace("\n", " ")
+    stdout = (
+        stdout.replace("The Coq Proof Assistant, version ", "")
+        .replace("The Rocq Prover, version ", "")
+        .replace("Welcome to Coq ", "")
+        .replace("Welcome to Rocq ", "")
+        .replace("Rocq <", "")
+        .replace("Coq <", "")
+        .replace("Skipping rcfile loading.", "")
+    )
+    return stdout.strip() or util.normalize_newlines(stderr).strip()
+
+
 def get_coqc_version(coqc_prog, **kwargs):
     (stdout, stderr), _rc = subprocess_Popen_memoized(
         [coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], stderr=subprocess.PIPE, **kwargs
     )
-    return util.normalize_newlines(
-        util.s(stdout).replace("The Coq Proof Assistant, version ", "").replace("The Rocq Prover, version ", "")
-    ).replace("\n", " ").strip() or util.normalize_newlines(util.s(stderr))
+    return format_coq_version(util.s(stdout), util.s(stderr))
 
 
 def get_coqtop_version(coqtop_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+    (stdout, stderr), _rc = subprocess_Popen_memoized(
         [coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)], **kwargs
     )
-    return (
-        util.normalize_newlines(util.s(stdout).replace("Welcome to Coq ", "").replace("Skipping rcfile loading.", ""))
-        .replace("\n", " ")
-        .strip()
-    )
+    return format_coq_version(util.s(stdout), util.s(stderr))
 
 
 @memoize
