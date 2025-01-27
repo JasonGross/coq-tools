@@ -8,6 +8,7 @@ from .custom_arguments import (
 )
 
 __all__ = [
+    "get_boot_noinputstate_args",
     "get_coqc_version",
     "get_coqtop_version",
     "get_coqc_help",
@@ -46,8 +47,24 @@ def subprocess_Popen_memoized(
     return subprocess_Popen_memoized_helper(cmd, stderr=stderr, stdin=stdin, stdout=stdout)
 
 
+def get_coq_accepts_boot(coqc_prog, **kwargs):
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-boot", "-h"], **kwargs)
+    stdout = util.s(stdout)
+    return (
+        ("Unknown option -boot" not in stdout)
+        and "Don't know what to do with -boot" not in stdout
+        and "-boot" in stdout
+    )
+
+
+def get_boot_noinputstate_args(coqc_prog, **kwargs):
+    return ["-boot", "-nois"] if get_coq_accepts_boot(coqc_prog, **kwargs) else ["-nois"]
+
+
 def get_coqc_help(coqc_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "--help"], **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
+    )
     return util.s(stdout).strip()
 
 
@@ -153,7 +170,9 @@ def get_coqc_coqlib(coqc_prog, **kwargs):
 
 
 def get_coqc_version(coqc_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-v"], **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
+    )
     return (
         util.normalize_newlines(util.s(stdout).replace("The Coq Proof Assistant, version ", ""))
         .replace("\n", " ")
@@ -162,7 +181,9 @@ def get_coqc_version(coqc_prog, **kwargs):
 
 
 def get_coqtop_version(coqtop_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqtop_prog, "-q"], **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)], **kwargs
+    )
     return (
         util.normalize_newlines(util.s(stdout).replace("Welcome to Coq ", "").replace("Skipping rcfile loading.", ""))
         .replace("\n", " ")
@@ -174,7 +195,9 @@ def get_coqtop_version(coqtop_prog, **kwargs):
 def get_coq_accepts_top_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc, "-q", "-top", "Top", temp_file_name])
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqc, "-q", "-top", "Top", temp_file_name, *get_boot_noinputstate_args(coqc)]
+    )
     temp_file.close()
     clean_v_file(temp_file_name)
     return "-top: no such file or directory" not in util.s(stdout)
@@ -188,7 +211,9 @@ def get_coq_accepts_top(coqc_prog, **kwargs):
 def get_coq_accepts_compile_helper(coqtop):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    (_stdout, _stderr), rc = subprocess_Popen_memoized([coqtop, "-q", "-compile", temp_file_name])
+    (_stdout, _stderr), rc = subprocess_Popen_memoized(
+        [coqtop, "-q", "-compile", temp_file_name, *get_boot_noinputstate_args(coqtop)]
+    )
     temp_file.close()
     clean_v_file(temp_file_name)
     return rc == 0
@@ -227,7 +252,9 @@ def get_coq_accepts_w(coqc_prog, **kwargs):
 def get_coqc_native_compiler_ondemand_errors_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc, "-q", "-native-compiler", "ondemand", temp_file_name])
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [coqc, "-q", "-native-compiler", "ondemand", temp_file_name, *get_boot_noinputstate_args(coqc)]
+    )
     temp_file.close()
     clean_v_file(temp_file_name)
     return any(
