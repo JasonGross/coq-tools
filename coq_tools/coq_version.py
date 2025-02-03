@@ -173,10 +173,10 @@ def get_coqc_coqlib(coqc_prog, **kwargs):
     return get_coqc_coqlib_of_config(get_coqc_config(coqc_prog, **kwargs))
 
 
-def format_coq_version(stdout: str, stderr: str = ""):
-    stdout = util.normalize_newlines(stdout).replace("\n", " ")
-    stdout = (
-        stdout.replace("The Coq Proof Assistant, version ", "")
+def format_coq_version_helper(text: str):
+    text = util.normalize_newlines(text).replace("\n", " ")
+    text = (
+        text.replace("The Coq Proof Assistant, version ", "")
         .replace("The Rocq Prover, version ", "")
         .replace("Welcome to Coq ", "")
         .replace("Welcome to Rocq ", "")
@@ -184,7 +184,18 @@ def format_coq_version(stdout: str, stderr: str = ""):
         .replace("Coq <", "")
         .replace("Skipping rcfile loading.", "")
     )
-    return stdout.strip() or util.normalize_newlines(stderr).strip()
+    text = re.sub(r"Warning: Deprecated environment variable ([^, ]*), use ([^ ]*) instead.", "", text)
+    text = re.sub(r"Deprecated environment variable ([^, ]*), use ([^ ]*) instead.", "", text)
+    text = re.sub(r".deprecated-coq-env-var,deprecated-since-[^,]*,deprecated,default.", "", text)
+    return text.strip()
+
+
+def format_coq_version(stdout: str, stderr: str = ""):
+    stdout = (
+        format_coq_version_helper(stdout)
+        or format_coq_version_helper(stderr)
+        or util.normalize_newlines(stderr).strip()
+    )
 
 
 def get_coqc_version(coqc_prog, **kwargs):
