@@ -45,7 +45,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 72-73:
+File "/[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 72-73:
 Error:
 In environment
 f := fun _ : bar => eq_refl : forall _ : bar, eq Foo\.foo Set

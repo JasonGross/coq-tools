@@ -39,7 +39,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-15:
+File "/[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-15:
 Error:
 The term "A.foo" has type "Type" while it is expected to have type\s\?
 "Set" (universe inconsistency[^)]*)\.
