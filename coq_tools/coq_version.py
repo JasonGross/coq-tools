@@ -48,7 +48,8 @@ def subprocess_Popen_memoized(
 
 
 def get_coq_accepts_boot(coqc_prog, **kwargs):
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([coqc_prog, "-q", "-boot", "-h"], **kwargs)
+    assert isinstance(coqc_prog, tuple), coqc_prog
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([*coqc_prog, "-q", "-boot", "-h"], **kwargs)
     stdout = util.s(stdout)
     return (
         ("Unknown option -boot" not in stdout)
@@ -62,8 +63,9 @@ def get_boot_noinputstate_args(coqc_prog, **kwargs):
 
 
 def get_coqc_help(coqc_prog, **kwargs):
+    assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
+        [*coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
     )
     return util.s(stdout).strip()
 
@@ -155,8 +157,9 @@ def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
 
 
 def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
+    assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [coqc_prog, "-q", "-config", *coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)], **kwargs
+        [*coqc_prog, "-q", "-config", *coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)], **kwargs
     )
     return util.normalize_newlines(util.s(stdout)).strip()
 
@@ -199,15 +202,17 @@ def format_coq_version(stdout: str, stderr: str = ""):
 
 
 def get_coqc_version(coqc_prog, **kwargs):
+    assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, stderr), _rc = subprocess_Popen_memoized(
-        [coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], stderr=subprocess.PIPE, **kwargs
+        [*coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], stderr=subprocess.PIPE, **kwargs
     )
     return format_coq_version(util.s(stdout), util.s(stderr))
 
 
 def get_coqtop_version(coqtop_prog, **kwargs):
+    assert isinstance(coqtop_prog, tuple), coqtop_prog
     (stdout, stderr), _rc = subprocess_Popen_memoized(
-        [coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)], **kwargs
+        [*coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)], **kwargs
     )
     return format_coq_version(util.s(stdout), util.s(stderr))
 
@@ -216,8 +221,9 @@ def get_coqtop_version(coqtop_prog, **kwargs):
 def get_coq_accepts_top_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
+    assert isinstance(coqc, tuple), coqc
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [coqc, "-q", "-top", "Top", temp_file_name, *get_boot_noinputstate_args(coqc)]
+        [*coqc, "-q", "-top", "Top", temp_file_name, *get_boot_noinputstate_args(coqc)]
     )
     temp_file.close()
     clean_v_file(temp_file_name)
@@ -232,8 +238,9 @@ def get_coq_accepts_top(coqc_prog, **kwargs):
 def get_coq_accepts_compile_helper(coqtop):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
+    assert isinstance(coqtop, tuple), coqtop
     (_stdout, _stderr), rc = subprocess_Popen_memoized(
-        [coqtop, "-q", "-compile", temp_file_name, *get_boot_noinputstate_args(coqtop)]
+        [*coqtop, "-q", "-compile", temp_file_name, *get_boot_noinputstate_args(coqtop)]
     )
     temp_file.close()
     clean_v_file(temp_file_name)
@@ -273,8 +280,9 @@ def get_coq_accepts_w(coqc_prog, **kwargs):
 def get_coqc_native_compiler_ondemand_errors_helper(coqc):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
+    assert isinstance(coqc, tuple), coqc
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [coqc, "-q", "-native-compiler", "ondemand", temp_file_name, *get_boot_noinputstate_args(coqc)]
+        [*coqc, "-q", "-native-compiler", "ondemand", temp_file_name, *get_boot_noinputstate_args(coqc)]
     )
     temp_file.close()
     clean_v_file(temp_file_name)

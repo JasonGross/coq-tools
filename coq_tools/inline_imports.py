@@ -81,7 +81,7 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", nargs="*", help="The path to the coqc program."
 )
 parser.add_argument(
     "--coqtop",
@@ -89,6 +89,7 @@ parser.add_argument(
     dest="coqtop",
     type=str,
     default=DEFAULT_COQTOP,
+    nargs="*",
     help=("The path to the coqtop program (default: %s)." % DEFAULT_COQTOP),
 )
 parser.add_argument(
@@ -113,6 +114,7 @@ parser.add_argument(
     dest="coq_makefile",
     type=str,
     default="coq_makefile",
+    action="append",
     help="The path to the coq_makefile program.",
 )
 parser.add_argument(
@@ -130,9 +132,17 @@ add_logging_arguments(parser)
 def main():
     args = process_logging_arguments(parser.parse_args())
 
+    def prepend_coqbin(prog):
+        if isinstance(prog, str):
+            prog = (prog,)
+        if args.coqbin != "":
+            return os.path.join(args.coqbin, prog[0]), *prog[1:]
+        else:
+            return tuple(prog)
+
     env = {
         "log": args.log,
-        "coqc": (args.coqc if args.coqbin == "" else os.path.join(args.coqbin, args.coqc)),
+        "coqc": prepend_coqbin(args.coqc or "coqc"),
         "absolutize": args.absolutize,
         "as_modules": args.wrap_modules,
         "fast": args.fast_merge_imports,

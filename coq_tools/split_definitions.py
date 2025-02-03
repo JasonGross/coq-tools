@@ -6,6 +6,7 @@ from .coq_version import get_coq_accepts_time, get_coq_accepts_emacs
 from .coq_running_support import get_proof_term_works_with_time
 from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from . import util
+from .util import shlex_join
 
 __all__ = [
     "join_definitions",
@@ -94,7 +95,7 @@ def strip_newlines(string):
 def split_statements_to_definitions(
     statements,
     log=DEFAULT_LOG,
-    coqtop="coqtop",
+    coqtop=("coqtop",),
     coqtop_args=tuple(),
     fallback_coqtop=None,
     fallback_coqtop_args=None,
@@ -136,7 +137,7 @@ def split_statements_to_definitions(
         if fallback_coqtop is not None:
             log(
                 "Your preferred version of coqtop (%s) doesn't support -emacs -time.  Falling back to fallback coqtop (%s)."
-                % (coqtop, fallback_coqtop)
+                % (shlex_join(coqtop), shlex_join(fallback_coqtop))
             )
             return split_statements_to_definitions(
                 statements,
@@ -159,7 +160,8 @@ def split_statements_to_definitions(
         return fallback()
     if not get_proof_term_works_with_time(coqtop, is_coqtop=True, log=log, **kwargs):
         statements = postprocess_split_proof_term(statements, log=log, **kwargs)
-    p = Popen([coqtop, "-q", "-emacs", "-time"] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    assert isinstance(coqtop, tuple), coqtop
+    p = Popen([*coqtop, "-q", "-emacs", "-time"] + list(coqtop_args), stdout=PIPE, stderr=STDOUT, stdin=PIPE)
     chars_time_reg = re.compile(r"Chars ([0-9]+) - ([0-9]+) [^\s]+".replace(" ", r"\s*"))
     prompt_reg = re.compile(
         r"^(.*)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*)$".replace(" ", r"\s*"), flags=re.DOTALL

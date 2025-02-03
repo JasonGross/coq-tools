@@ -52,7 +52,7 @@ from .custom_arguments import (
 )
 from .binding_util import process_maybe_list
 from .file_util import clean_v_file, read_from_file, write_to_file, restore_file
-from .util import yes_no_prompt, PY3
+from .util import yes_no_prompt, PY3, shlex_join
 from . import util
 
 if PY3:
@@ -360,14 +360,15 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
 parser.add_argument(
     "--coqtop",
     metavar="COQTOP",
     dest="coqtop",
     type=str,
-    default=DEFAULT_COQTOP,
+    default=None,
+    action="append",
     help=("The path to the coqtop program (default: %s)." % DEFAULT_COQTOP),
 )
 parser.add_argument(
@@ -405,7 +406,8 @@ parser.add_argument(
     metavar="COQ_MAKEFILE",
     dest="coq_makefile",
     type=str,
-    default="coq_makefile",
+    default=None,
+    action="append",
     help="The path to the coq_makefile program.",
 )
 parser.add_argument(
@@ -416,7 +418,8 @@ parser.add_argument(
     metavar="COQC",
     dest="passing_coqc",
     type=str,
-    default="",
+    default=None,
+    action="append",
     help="The path to the coqc program that should compile the file successfully.",
 )
 parser.add_argument(
@@ -424,7 +427,8 @@ parser.add_argument(
     metavar="COQTOP",
     dest="passing_coqtop",
     type=str,
-    default="",
+    default=None,
+    action="append",
     help=("The path to the coqtop program that should compile the file successfully."),
 )
 parser.add_argument(
@@ -2059,18 +2063,20 @@ def main():
             exc.reraise()
 
     def prepend_coqbin(prog):
+        if isinstance(prog, str):
+            prog = (prog,)
         if args.coqbin != "":
-            return os.path.join(args.coqbin, prog)
+            return os.path.join(args.coqbin, prog[0]), *prog[1:]
         else:
-            return prog
+            return tuple(prog)
 
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
     env = {
         "fast_merge_imports": args.fast_merge_imports,
         "log": args.log,
-        "coqc": prepend_coqbin(args.coqc),
-        "coqtop": prepend_coqbin(args.coqtop),
+        "coqc": prepend_coqbin(args.coqc or "coqc"),
+        "coqtop": prepend_coqbin(args.coqtop or DEFAULT_COQTOP),
         "as_modules": args.wrap_modules,
         "max_consecutive_newlines": args.max_consecutive_newlines,
         "header": args.header,
@@ -2102,7 +2108,7 @@ def main():
                 + list(process_maybe_list(args.coq_args, log=args.log))
             )
         ),
-        "coq_makefile": prepend_coqbin(args.coq_makefile),
+        "coq_makefile": prepend_coqbin(args.coq_makefile or "coq_makefile"),
         "coqdep": prepend_coqbin(args.coqdep),
         "passing_coqc_args": tuple(
             i.strip()
@@ -2123,12 +2129,12 @@ def main():
         ),
         "passing_coqc": (
             prepend_coqbin(args.passing_coqc)
-            if args.passing_coqc != ""
+            if args.passing_coqc
             else (prepend_coqbin(args.coqc) if args.passing_coqc_args is not None else None)
         ),
         "passing_coqtop": (
             prepend_coqbin(args.passing_coqtop)
-            if args.passing_coqtop != ""
+            if args.passing_coqtop
             else (prepend_coqbin(args.coqtop) if args.passing_coqtop_args is not None else None)
         ),
         "passing_base_dir": (os.path.abspath(args.passing_base_dir) if args.passing_base_dir != "" else None),
@@ -2191,17 +2197,19 @@ def main():
 
         def make_make_coqc(coqc_prog, **kwargs):
             if get_coq_accepts_compile(coqc_prog):
-                return f"{util.resource_path('coqtop-as-coqc.sh')} {coqc_prog}"
-            if "coqtop" in coqc_prog:
-                return coqc_prog.replace("coqtop", "coqc")
-            return "coqc"
+                return (str(util.resource_path("coqtop-as-coqc.sh")), *coqc_prog)
+            if "coqtop" in coqc_prog[0]:
+                return coqc_prog[0].replace("coqtop", "coqc"), *coqc_prog[1:]
+            if coqc_prog[1] == "top":
+                return coqc_prog[0], "c", *coqc_prog[2:]
+            return ("coqc",)
 
         if env["coqc_is_coqtop"]:
-            if env["coqc"] == "coqc":
+            if env["coqc"] == ("coqc",):
                 env["coqc"] = env["coqtop"]
             env["make_coqc"] = make_make_coqc(env["coqc"], **env)
         if env["passing_coqc_is_coqtop"]:
-            if env["passing_coqc"] == "coqc":
+            if env["passing_coqc"] == ("coqc",):
                 if env["passing_coqtop"] is not None:
                     env["passing_coqc"] = env["passing_coqtop"]
                 else:

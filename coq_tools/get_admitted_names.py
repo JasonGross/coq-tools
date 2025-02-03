@@ -47,7 +47,7 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
 parser.add_argument(
     "--coqc-is-coqtop",
@@ -62,7 +62,8 @@ parser.add_argument(
     metavar="COQTOP",
     dest="coqtop",
     type=str,
-    default=DEFAULT_COQTOP,
+    default=None,
+    action="append",
     help=("The path to the coqtop program (default: %s)." % DEFAULT_COQTOP),
 )
 add_libname_arguments(parser)
@@ -135,15 +136,17 @@ def main():
             exc.reraise()
 
     def prepend_coqbin(prog):
+        if isinstance(prog, str):
+            prog = (prog,)
         if args.coqbin != "":
-            return os.path.join(args.coqbin, prog)
+            return os.path.join(args.coqbin, prog[0]), *prog[1:]
         else:
-            return prog
+            return tuple(prog)
 
     env = {
         "log": args.log,
-        "coqc": prepend_coqbin(args.coqc),
-        "coqtop": prepend_coqbin(args.coqtop),
+        "coqc": prepend_coqbin(args.coqc or "coqc"),
+        "coqtop": prepend_coqbin(args.coqtop or DEFAULT_COQTOP),
         "coqc_args": tuple(i.strip() for i in process_maybe_list(args.coq_args, log=args.log)),
         "coqc_is_coqtop": args.coqc_is_coqtop,
         "temp_file_name": "",
@@ -158,9 +161,9 @@ def main():
         env["remove_temp_file"] = True
 
     if env["coqc_is_coqtop"]:
-        if env["coqc"] == "coqc":
+        if env["coqc"] == ("coqc",):
             env["coqc"] = env["coqtop"]
-        env["make_coqc"] = util.resource_path("coqtop-as-coqc.sh") + " " + env["coqc"]
+        env["make_coqc"] = (util.resource_path("coqtop-as-coqc.sh"), *env["coqc"])
 
     coqc_help = get_coqc_help(env["coqc"], **env)
     coqc_version = get_coqc_version(env["coqc"], **env)

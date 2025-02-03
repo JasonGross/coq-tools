@@ -109,9 +109,9 @@ def fill_kwargs(kwargs, for_makefile=False):
         "non_recursive_libnames": tuple(),
         "ocaml_dirnames": tuple(),
         "log": DEFAULT_LOG,
-        "coqc": "coqc",
-        "coq_makefile": "coq_makefile",
-        "coqdep": "coqdep",
+        "coqc": ("coqc",),
+        "coq_makefile": ("coq_makefile",),
+        "coqdep": ("coqdep",),
         "use_coq_makefile_for_deps": True,
         "walk_tree": True,
         "coqc_args": tuple(),
@@ -595,14 +595,17 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
     f = tempfile.NamedTemporaryFile(suffix=".coq", prefix="Makefile", dir=".", delete=False)
     mkfile = os.path.basename(f.name)
     f.close()
+    assert isinstance(kwargs["coq_makefile"], tuple), kwargs["coq_makefile"]
+    assert isinstance(kwargs["coqdep"], tuple), kwargs["coqdep"]
+    assert isinstance(get_maybe_passing_arg(kwargs, "coqc"), tuple), get_maybe_passing_arg(kwargs, "coqc")
     cmds = [
-        kwargs["coq_makefile"],
+        *kwargs["coq_makefile"],
         "COQC",
         "=",
-        get_maybe_passing_arg(kwargs, "coqc"),
+        shlex_join(get_maybe_passing_arg(kwargs, "coqc")),
         "COQDEP",
         "=",
-        kwargs["coqdep"],
+        shlex_join(kwargs["coqdep"]),
         "-o",
         mkfile,
     ]
@@ -685,7 +688,8 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
     coqc_prog = get_maybe_passing_arg(kwargs, "coqc")
     coqpath_paths = get_maybe_passing_arg(kwargs, "coqpath_paths")
-    cmds = [coqc_prog, "-q"]
+    assert isinstance(coqc_prog, tuple), coqc_prog
+    cmds = [*coqc_prog, "-q"]
     for physical_name, logical_name in get_maybe_passing_arg(kwargs, "libnames"):
         cmds += [
             "-R",
