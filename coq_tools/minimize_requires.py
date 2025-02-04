@@ -238,7 +238,7 @@ def main():
         if isinstance(prog, str):
             prog = (prog,)
         if args.coqbin != "":
-            return os.path.join(args.coqbin, prog[0]), *prog[1:]
+            return (os.path.join(args.coqbin, prog[0]), *prog[1:])
         else:
             return tuple(prog)
 
