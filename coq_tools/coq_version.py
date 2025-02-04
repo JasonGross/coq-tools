@@ -191,7 +191,7 @@ def format_coq_version_helper(text: str):
 
 
 def format_coq_version(stdout: str, stderr: str = ""):
-    stdout = (
+    return (
         format_coq_version_helper(stdout)
         or format_coq_version_helper(stderr)
         or util.normalize_newlines(stderr).strip()
