@@ -38,7 +38,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[a-z]\+/tmp[A-Za-z0-9_/]\+\.v", line 1\(6\|7\), characters 0-24:
+File "/[A-Za-z0-9_/]\+\.v", line 1\(6\|7\), characters 0-24:
 Error: Tactic failure: custom failure.
 EOF
 
