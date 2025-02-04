@@ -2199,9 +2199,9 @@ def main():
             if get_coq_accepts_compile(coqc_prog):
                 return (str(util.resource_path("coqtop-as-coqc.sh")), *coqc_prog)
             if "coqtop" in coqc_prog[0]:
-                return coqc_prog[0].replace("coqtop", "coqc"), *coqc_prog[1:]
+                return (coqc_prog[0].replace("coqtop", "coqc"), *coqc_prog[1:])
             if coqc_prog[1] == "top":
-                return coqc_prog[0], "c", *coqc_prog[2:]
+                return (coqc_prog[0], "c", *coqc_prog[2:])
             return ("coqc",)
 
         if env["coqc_is_coqtop"]:
