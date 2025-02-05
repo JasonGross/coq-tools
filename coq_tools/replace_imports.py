@@ -42,10 +42,10 @@ def fill_kwargs(kwargs, for_makefile=True):
         "log": DEFAULT_LOG,
         "libnames": DEFAULT_LIBNAMES,
         "non_recursive_libnames": tuple(),
-        "coqc": "coqc",
-        "coqtop": "coqtop",
+        "coqc": ("coqc",),
+        "coqtop": ("coqtop",),
         "absolutize": ALL_ABSOLUTIZE_TUPLE,
-        "coq_makefile": "coq_makefile",
+        "coq_makefile": ("coq_makefile",),
     }
     rtn.update(kwargs)
     if for_makefile:

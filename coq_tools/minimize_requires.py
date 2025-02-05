@@ -97,7 +97,7 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
 add_libname_arguments(parser)
 add_logging_arguments(parser)
@@ -233,11 +233,20 @@ def make_save_state(filename, **kwargs):
 
 def main():
     args = process_logging_arguments(parser.parse_args())
+
+    def prepend_coqbin(prog):
+        if isinstance(prog, str):
+            prog = (prog,)
+        if args.coqbin != "":
+            return (os.path.join(args.coqbin, prog[0]), *prog[1:])
+        else:
+            return tuple(prog)
+
     env = {
         "log": args.log,
         "keep_exports": args.keep_exports,
         "keep_going": args.keep_going,
-        "coqc": (args.coqc if args.coqbin == "" else os.path.join(args.coqbin, args.coqc)),
+        "coqc": prepend_coqbin(args.coqc or "coqc"),
         "coqc_args": (args.coq_args if args.coq_args else tuple()),
         "timeout": args.timeout,
         "inplace": args.suffix != "",  # it's None if they passed no argument, and '' if they didn't pass -i

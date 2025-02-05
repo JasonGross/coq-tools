@@ -277,7 +277,8 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
         return rmtree_onerror
 
     key = (coqc_prog, tuple(coqc_prog_args), kwargs["pass_on_stdin"], contents, timeout_val, cwd)
-    cmds = [coqc_prog] + list(coqc_prog_args)
+    assert isinstance(coqc_prog, tuple), coqc_prog
+    cmds = list(coqc_prog) + list(coqc_prog_args)
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
         cleaner = lambda: None

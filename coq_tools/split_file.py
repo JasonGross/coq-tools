@@ -229,8 +229,9 @@ def get_coq_statement_byte_ranges(file_name, coqc, **kwargs):
     if not get_coq_accepts_time(coqc, **kwargs):
         raise UnsupportedCoqVersionError
 
+    assert isinstance(coqc, tuple), coqc
     p = subprocess.Popen(
-        [coqc, "-q", "-time"] + list(kwargs["coqc_args"]) + [file_name],
+        [*coqc, "-q", "-time"] + list(kwargs["coqc_args"]) + [file_name],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,

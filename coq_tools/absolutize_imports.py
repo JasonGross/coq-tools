@@ -51,14 +51,15 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
 parser.add_argument(
     "--coq_makefile",
     metavar="COQ_MAKEFILE",
     dest="coq_makefile",
     type=str,
-    default="coq_makefile",
+    default=None,
+    action="append",
     help="The path to the coq_makefile program.",
 )
 add_libname_arguments(parser)
@@ -79,18 +80,20 @@ def main():
     args = process_logging_arguments(parser.parse_args())
 
     def prepend_coqbin(prog):
+        if isinstance(prog, str):
+            prog = (prog,)
         if args.coqbin != "":
-            return os.path.join(args.coqbin, prog)
+            return (os.path.join(args.coqbin, prog[0]), *prog[1:])
         else:
-            return prog
+            return tuple(prog)
 
     env = {
         "log": args.log,
-        "coqc": prepend_coqbin(args.coqc),
+        "coqc": prepend_coqbin(args.coqc or "coqc"),
         "inplace": args.suffix != "",  # it's None if they passed no argument, and '' if they didn't pass -i
         "suffix": args.suffix,
         "absolutize": args.absolutize,
-        "coq_makefile": prepend_coqbin(args.coq_makefile),
+        "coq_makefile": prepend_coqbin(args.coq_makefile or "coq_makefile"),
         "input_files": tuple(f.name for f in args.input_files),
         "cli_mapping": get_parser_name_mapping(parser),
     }
