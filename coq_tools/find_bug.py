@@ -359,6 +359,15 @@ parser.add_argument(
     default="",
     help="The path to a folder containing the coqc and coqtop programs.",
 )
+parser.add_argument("--ocamlpath", metavar="OCAMLPATH", dest="ocamlpath", type=str, default=None, help="The OCAMLPATH.")
+parser.add_argument(
+    "--passing-ocamlpath",
+    metavar="OCAMLPATH",
+    dest="passing_ocamlpath",
+    type=str,
+    default=None,
+    help="The OCAMLPATH for the passing coqc.",
+)
 parser.add_argument(
     "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
