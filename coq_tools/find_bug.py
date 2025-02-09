@@ -361,6 +361,14 @@ parser.add_argument(
 )
 parser.add_argument("--ocamlpath", metavar="OCAMLPATH", dest="ocamlpath", type=str, default=None, help="The OCAMLPATH.")
 parser.add_argument(
+    "--nonpassing-ocamlpath",
+    metavar="OCAMLPATH",
+    dest="nonpassing_ocamlpath",
+    type=str,
+    default=None,
+    help="The OCAMLPATH for the nonpassing coqc.",
+)
+parser.add_argument(
     "--passing-ocamlpath",
     metavar="OCAMLPATH",
     dest="passing_ocamlpath",
@@ -662,6 +670,7 @@ def get_error_reg_string(output_file_name, **kwargs):
             is_coqtop=kwargs["coqc_is_coqtop"],
             verbose_base=1,
             cwd=kwargs["base_dir"],
+            ocamlpath=kwargs["nonpassing_ocamlpath"],
             **kwargs,
         )
         result = ""
@@ -842,6 +851,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
             cwd=kwargs["base_dir"],
             is_coqtop=kwargs["coqc_is_coqtop"],
             verbose_base=2,
+            ocamlpath=kwargs["nonpassing_ocamlpath"],
             **kwargs,
         )
     output, cmds, retcode, runtime = diagnose_error.get_coq_output(
@@ -852,6 +862,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
         cwd=kwargs["base_dir"],
         is_coqtop=kwargs["coqc_is_coqtop"],
         verbose_base=2,
+        ocamlpath=kwargs["nonpassing_ocamlpath"],
         **kwargs,
     )
     if diagnose_error.has_error(output, kwargs["error_reg_string"]):
@@ -865,6 +876,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
                     cwd=kwargs["passing_base_dir"],
                     is_coqtop=kwargs["passing_coqc_is_coqtop"],
                     verbose_base=2,
+                    ocamlpath=kwargs["passing_ocamlpath"],
                     **kwargs,
                 )
             passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(
@@ -875,6 +887,7 @@ def classify_contents_change(old_contents, new_contents, ignore_coq_output_cache
                 cwd=kwargs["passing_base_dir"],
                 is_coqtop=kwargs["passing_coqc_is_coqtop"],
                 verbose_base=2,
+                ocamlpath=kwargs["passing_ocamlpath"],
                 **kwargs,
             )
             if not (diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(passing_output)):
@@ -1952,6 +1965,7 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         is_coqtop=env["coqc_is_coqtop"],
         verbose_base=2,
         cwd=env["base_dir"],
+        ocamlpath=env["nonpassing_ocamlpath"],
         **env,
     )
     line_num = diagnose_error.get_error_line_number(output, env["error_reg_string"])
@@ -2145,6 +2159,18 @@ def main():
             prepend_coqbin(args.passing_coqtop)
             if args.passing_coqtop
             else (prepend_coqbin(args.coqtop) if args.passing_coqtop_args is not None else None)
+        ),
+        "nonpassing_ocamlpath": (
+            args.nonpassing_ocamlpath if args.nonpassing_ocamlpath is not None else args.ocamlpath
+        ),
+        "passing_ocamlpath": (
+            args.passing_ocamlpath
+            if args.passing_ocamlpath is not None
+            else (
+                args.ocamlpath
+                if args.ocamlpath is not None and (args.passing_coqc != "" or args.passing_coqc_args is not None)
+                else args.ocamlpath
+            )
         ),
         "passing_base_dir": (os.path.abspath(args.passing_base_dir) if args.passing_base_dir != "" else None),
         "base_dir": (os.path.abspath(args.base_dir) if args.base_dir != "" else None),
