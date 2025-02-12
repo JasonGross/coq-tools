@@ -262,7 +262,7 @@ def get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs):
 prepare_cmds_for_coq_output_printed_cmd_already = set()
 
 
-def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, **kwargs):
+def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, ocamlpath=None, **kwargs):
     def make_rmtree_onerror(file_name):
         def rmtree_onerror(function, path, exc_info):
             kwargs["log"]("Non-fatal error encountered when cleaning up %s:\n" % file_name)
@@ -276,7 +276,7 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
 
         return rmtree_onerror
 
-    key = (coqc_prog, tuple(coqc_prog_args), kwargs["pass_on_stdin"], contents, timeout_val, cwd)
+    key = (coqc_prog, tuple(coqc_prog_args), kwargs["pass_on_stdin"], contents, timeout_val, cwd, ocamlpath)
     assert isinstance(coqc_prog, tuple), coqc_prog
     cmds = list(coqc_prog) + list(coqc_prog_args)
     if key in COQ_OUTPUT.keys():
@@ -327,7 +327,17 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
     )
     prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
     kwargs["log"]("\nContents:\n%s\n" % contents, level=kwargs["verbose_base"] + 1)
-    return key, file_name, cmds, input_val, cleaner
+    env = dict(os.environ)
+    if ocamlpath is not None:
+        env["OCAMLPATH"] = ocamlpath
+    return (
+        key,
+        file_name,
+        cmds,
+        input_val,
+        cleaner,
+        env,
+    )
 
 
 def reset_coq_output_cache(
@@ -339,9 +349,10 @@ def reset_coq_output_cache(
     is_coqtop=False,
     pass_on_stdin=False,
     verbose_base=1,
+    ocamlpath=None,
     **kwargs
 ):
-    key, file_name, cmds, input_val, cleaner = prepare_cmds_for_coq_output(
+    key, file_name, cmds, input_val, cleaner, env = prepare_cmds_for_coq_output(
         coqc_prog,
         coqc_prog_args,
         contents,
@@ -350,6 +361,7 @@ def reset_coq_output_cache(
         is_coqtop=is_coqtop,
         pass_on_stdin=pass_on_stdin,
         verbose_base=verbose_base,
+        ocamlpath=ocamlpath,
         **kwargs,
     )
     cleaner()
@@ -368,6 +380,7 @@ def get_coq_output(
     pass_on_stdin=False,
     verbose_base=1,
     retry_with_debug_when=(lambda output: "is not a compiled interface for this version of OCaml" in output),
+    ocamlpath=None,
     **kwargs
 ):
     """Returns the coqc output of running through the given
@@ -383,10 +396,11 @@ def get_coq_output(
             pass_on_stdin=pass_on_stdin,
             verbose_base=verbose_base,
             retry_with_debug_when=retry_with_debug_when,
+            ocamlpath=ocamlpath,
             **kwargs,
         )
 
-    key, file_name, cmds, input_val, cleaner = prepare_cmds_for_coq_output(
+    key, file_name, cmds, input_val, cleaner, env = prepare_cmds_for_coq_output(
         coqc_prog,
         coqc_prog_args,
         contents,
@@ -395,6 +409,7 @@ def get_coq_output(
         is_coqtop=is_coqtop,
         pass_on_stdin=pass_on_stdin,
         verbose_base=verbose_base,
+        ocamlpath=ocamlpath,
         **kwargs,
     )
 
@@ -412,6 +427,7 @@ def get_coq_output(
         timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None),
         input=input_val,
         cwd=cwd,
+        env=env,
     )
     finish = time.time()
     runtime = finish - start
@@ -438,6 +454,6 @@ def get_coq_output(
             pass_on_stdin=pass_on_stdin,
             verbose_base=verbose_base,
             retry_with_debug_when=(lambda output: False),
-            **kwargs,
+            ocamlpath=ocamlpath,
         )
     return COQ_OUTPUT[key][1]
