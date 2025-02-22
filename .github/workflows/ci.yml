@@ -224,9 +224,9 @@ jobs:
     - run: opam exec -- make has-all-tests
     - run: opam exec -- make check PYTHON=python CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'local' }}
-    - run: opam exec -- make check PYTHON=python FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
+    - run: opam exec -- make check PYTHON=python FIND_BUG=coq-bug-minimizer MINIMIZE_REQUIRES=coq-require-minimizer INLINE_IMPORTS=coq-import-inliner CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'installed' }}
-    - run: opam exec -- make check PYTHON=python FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
+    - run: opam exec -- make check PYTHON=python FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer MINIMIZE_REQUIRES=dist/coq-bug-minimizer/coq-require-minimizer INLINE_IMPORTS=dist/coq-bug-minimizer/coq-import-inliner CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'standalone' }}
 
 
