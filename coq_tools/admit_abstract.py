@@ -14,7 +14,7 @@ ABSTRACT_NO_PARENS_DOT = re.compile(
 )
 
 
-def transform_abstract_to_admit_statement(statement, agressive=False, log=DEFAULT_LOG):
+def transform_abstract_to_admit_statement(statement, aggressive=False, log=DEFAULT_LOG):
     # remove the unparenthesized ones
     statement = ABSTRACT_NO_PARENS_DOT.sub(r"\1admit", statement)
 
@@ -29,14 +29,14 @@ def transform_abstract_to_admit_statement(statement, agressive=False, log=DEFAUL
     cur = []
     for term in re.split("([;\.\(\)])", statement):
         log(
-            "in_abstract: %d; abstract_paren_level: %d; agressive: %d; ready_for_abstract: %d;\n^term: %s"
-            % (in_abstract, abstract_paren_level, agressive, ready_for_abstract, term),
+            "in_abstract: %d; abstract_paren_level: %d; aggressive: %d; ready_for_abstract: %d;\n^term: %s"
+            % (in_abstract, abstract_paren_level, aggressive, ready_for_abstract, term),
             level=3,
         )
         if in_abstract:
             if abstract_paren_level == 0 and term in tuple(";."):
                 if term == ";":
-                    if agressive:
+                    if aggressive:
                         rtn.append(" admit;")
                         log("Appending ' admit;' to rtn", level=3)
                     else:

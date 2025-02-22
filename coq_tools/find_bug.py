@@ -1440,13 +1440,13 @@ def try_remove_contexts(definitions, output_file_name, **kwargs):
 
 
 def try_admit_abstracts(definitions, output_file_name, **kwargs):
-    def do_call(method, definitions, agressive):
+    def do_call(method, definitions, aggressive):
         return method(
             definitions,
             output_file_name,
             (
                 lambda definition, rest_definitions: transform_abstract_to_admit(
-                    definition, rest_definitions, agressive=agressive, log=kwargs["log"]
+                    definition, rest_definitions, aggressive=aggressive, log=kwargs["log"]
                 )
             ),
             noun_description="Admitting [abstract ...]",
@@ -1462,18 +1462,18 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
         kwargs["log"](
-            "Success with [abstract ...] admits on try_transform_reversed, agressive: True, definitions:\n%s"
+            "Success with [abstract ...] admits on try_transform_reversed, aggressive: True, definitions:\n%s"
             % new_definitions,
             level=3,
         )
         return definitions
 
-    # try the other options, each less agressive than the last
+    # try the other options, each less aggressive than the last
     definitions = do_call(try_transform_reversed, definitions, False)
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
         kwargs["log"](
-            "Success with [abstract ...] admits on try_transform_reversed, agressive: False, definitions:\n%s"
+            "Success with [abstract ...] admits on try_transform_reversed, aggressive: False, definitions:\n%s"
             % new_definitions,
             level=3,
         )
@@ -1483,7 +1483,7 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
         kwargs["log"](
-            "Success with [abstract ...] admits on try_transform_each, agressive: True, definitions:\n%s"
+            "Success with [abstract ...] admits on try_transform_each, aggressive: True, definitions:\n%s"
             % new_definitions,
             level=3,
         )
@@ -1493,7 +1493,7 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
     new_definitions = join_definitions(definitions)
     if new_definitions != old_definitions:
         kwargs["log"](
-            "Success with [abstract ...] admits on try_transform_each, agressive: False, definitions:\n%s"
+            "Success with [abstract ...] admits on try_transform_each, aggressive: False, definitions:\n%s"
             % new_definitions,
             level=3,
         )
