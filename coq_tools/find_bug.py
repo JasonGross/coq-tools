@@ -1502,9 +1502,31 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
     return definitions
 
 
+def statements_are_only_admitted(statements):
+    proof_statements = [s.strip() for s in statements[1:]]
+    proof_statements = [s for s in proof_statements if s]
+    if len(proof_statements) == 0:
+        return False
+    if proof_statements[-1] == "Admitted.":
+        proof_statements = proof_statements[:-1]
+    elif len(proof_statements) >= 2 and tuple(proof_statements[-2:]) == ("admit.", "Defined."):
+        proof_statements = proof_statements[:-2]
+    else:
+        return False
+    if len(proof_statements) == 0:
+        return True
+    if len(proof_statements) == 1 and proof_statements[0] == "Proof.":
+        return True
+    return False
+
+
 def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
     def transformer(cur_definition, rest_definitions):
-        if len(cur_definition["statements"]) > 2 and matcher(cur_definition):
+        if (
+            len(cur_definition["statements"]) > 2
+            and matcher(cur_definition)
+            and not statements_are_only_admitted(cur_definition["statements"])
+        ):
             statements = (
                 (cur_definition["statements"][0], "Admitted.")
                 if use_admitted
