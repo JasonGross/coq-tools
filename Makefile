@@ -28,7 +28,7 @@ PYTHON?=python
 
 .PHONY: dist
 dist:
-	$(PYTHON) setup.py sdist bdist_wheel
+	$(PYTHON) -m build
 
 DOCTEST_MODULES := \
 	import_util \
