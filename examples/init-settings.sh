@@ -7,6 +7,8 @@ MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
 export MINIMIZE_REQUIRES_PY
 ABSOLUTIZE_IMPORTS_PY="$(cd "$DIR/.." && pwd)/absolutize-imports.py"
 export ABSOLUTIZE_IMPORTS_PY
+INLINE_IMPORTS_PY="$(cd "$DIR/.." && pwd)/inline-imports.py"
+export INLINE_IMPORTS_PY
 
 if [ -z "${PYTHON}" ]; then
     PYTHON=python3
@@ -54,3 +56,18 @@ else
 fi
 
 export -f absolutize_imports
+
+
+if [ -z "${INLINE_IMPORTS}" ]; then
+    function inline_imports() {
+        ${PYTHON} "${INLINE_IMPORTS_PY}" "$@"
+    }
+else
+    INLINE_IMPORTS="$(cd "$DIR" && realpath "$(which "${INLINE_IMPORTS}")")"
+    export INLINE_IMPORTS
+    function inline_imports() {
+        "${INLINE_IMPORTS}" "$@"
+    }
+fi
+
+export -f inline_imports
