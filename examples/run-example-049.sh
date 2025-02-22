@@ -87,10 +87,6 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 (\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
 
-Module Export AdmitTactic\.
-Module Import LocalFalse\.
-End LocalFalse\.
-End AdmitTactic\.
 Definition foo := True\.
 Fail Check example_${N}\.foo\.
 
