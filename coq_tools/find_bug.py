@@ -1339,7 +1339,7 @@ def try_remove_aborted(definitions, output_file_name, **kwargs):
     )
 
 
-LTAC_REG = re.compile(r"^\s*(?:Local\s+|Global\s+)?Ltac\s+([^\s]+)", flags=re.MULTILINE)
+LTAC_REG = re.compile(r"^\s*(?:Local\s+|Global\s+)?Ltac2?\s+([^\s]+)", flags=re.MULTILINE)
 
 
 def try_remove_ltac(definitions, output_file_name, **kwargs):
