@@ -41,7 +41,7 @@ def fill_kwargs(kwargs, for_makefile=True):
         "fast": False,
         "log": DEFAULT_LOG,
         "libnames": DEFAULT_LIBNAMES,
-        "non_recursive_libnames": tuple(),
+        "non_recursive_libnames": (),
         "coqc": ("coqc",),
         "coqtop": ("coqtop",),
         "absolutize": ALL_ABSOLUTIZE_TUPLE,
@@ -223,11 +223,7 @@ def recursively_get_requires_from_file(filename, **kwargs):
 def include_imports(
     filename,
     as_modules=True,
-    fast=False,
-    log=DEFAULT_LOG,
-    coqc="coqc",
     absolutize=ALL_ABSOLUTIZE_TUPLE,
-    coq_makefile="coq_makefile",
     **kwargs
 ):
     """Return the contents of filename, with any top-level imports inlined.
@@ -272,12 +268,14 @@ def include_imports(
     >>> names = [i for i in names if os.path.exists(i)]
     >>> for name in names: os.remove(name)
     """
+    kwargs = fill_kwargs(kwargs)
+    del kwargs["absolutize"]
     if "make_coqc" in kwargs.keys():
-        coqc = kwargs["make_coqc"]
+        kwargs["coqc"] = kwargs["make_coqc"]
     if filename[-2:] != ".v":
         filename += ".v"
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = recursively_get_imports(lib, fast=fast, log=log, coqc=coqc, coq_makefile=coq_makefile, **kwargs)
+    all_imports = recursively_get_imports(lib, **kwargs)
     remaining_imports = []
     rtn = ""
     imports_done = []
@@ -288,22 +286,20 @@ def include_imports(
                     contents_as_module(
                         import_name,
                         imports_done,
-                        log=log,
                         absolutize=absolutize,
                         without_require=True,
-                        coqc=coqc,
                         **kwargs,
                     )
                     + "\n"
                 )
             else:
-                rtn += contents_without_imports(import_name, log=log, absolutize=tuple(), **kwargs) + "\n"
+                rtn += contents_without_imports(import_name, absolutize=(), **kwargs) + "\n"
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)
     if len(remaining_imports) > 0:
-        log("remaining imports:", level=2)
-        log(remaining_imports, level=2)
+        kwargs["log"]("remaining imports:", level=2)
+        kwargs["log"](remaining_imports, level=2)
         if as_modules:
             pattern = "Require %s.\n%s"
         else:

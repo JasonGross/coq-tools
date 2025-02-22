@@ -81,17 +81,17 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default="coqc", nargs="*", help="The path to the coqc program."
+    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
 )
-parser.add_argument(
-    "--coqtop",
-    metavar="COQTOP",
-    dest="coqtop",
-    type=str,
-    default=DEFAULT_COQTOP,
-    nargs="*",
-    help=("The path to the coqtop program (default: %s)." % DEFAULT_COQTOP),
-)
+# parser.add_argument(
+#     "--coqtop",
+#     metavar="COQTOP",
+#     dest="coqtop",
+#     type=str,
+#     default=None,
+#     action="append",
+#     help=("The path to the coqtop program (default: %s)." % DEFAULT_COQTOP),
+# )
 parser.add_argument(
     "--coqc-args",
     metavar="ARG",
@@ -100,14 +100,14 @@ parser.add_argument(
     nargs="?",
     help='Arguments to pass to coqc; e.g., " -indices-matter" (leading and trailing spaces are stripped)',
 )
-parser.add_argument(
-    "--coqtop-args",
-    metavar="ARG",
-    dest="coqtop_args",
-    type=str,
-    nargs="?",
-    help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)',
-)
+# parser.add_argument(
+#     "--coqtop-args",
+#     metavar="ARG",
+#     dest="coqtop_args",
+#     type=str,
+#     nargs="?",
+#     help='Arguments to pass to coqtop; e.g., " -indices-matter" (leading and trailing spaces are stripped)',
+# )
 parser.add_argument(
     "--coq_makefile",
     metavar="COQ_MAKEFILE",
@@ -146,7 +146,7 @@ def main():
         "absolutize": args.absolutize,
         "as_modules": args.wrap_modules,
         "fast": args.fast_merge_imports,
-        "coq_makefile": args.coq_makefile,
+        "coq_makefile": prepend_coqbin(args.coq_makefile or "coq_makefile"),
         "use_coq_makefile_for_deps": args.use_coq_makefile_for_deps,
         "walk_tree": args.walk_tree,
         "cli_mapping": get_parser_name_mapping(parser),
