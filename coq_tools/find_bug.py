@@ -2515,6 +2515,7 @@ def main():
                             first_wrap_then_include=True,
                             without_require=True,
                             insert_at_top=False,
+                            extra_top_header=None,
                         ):
                             new_req_module = absolutize_and_mangle_libname(
                                 req_module, first_wrap_then_include=first_wrap_then_include, **env
@@ -2535,6 +2536,7 @@ def main():
                                     req_module,
                                     first_wrap_then_include=first_wrap_then_include,
                                     without_require=without_require,
+                                    extra_top_header=extra_top_header,
                                     **env,
                                 ).strip()
                                 + "\n"
@@ -2562,17 +2564,20 @@ def main():
                                     (" without Include" if not first_wrap_then_include else " via Include")
                                     + (", absolutizing mod references" if absolutize_mods else "")
                                     + (", stripping Requires" if without_require else ", with Requires")
+                                    + (f", with {extra_top_header} at the top" if extra_top_header else "")
                                 ),
                                 get_test_output(
                                     absolutize_mods=absolutize_mods,
                                     first_wrap_then_include=first_wrap_then_include,
                                     without_require=without_require,
                                     insert_at_top=insert_at_top,
+                                    extra_top_header=extra_top_header,
                                 ),
                             )
                             for absolutize_mods in (False, True)
                             for first_wrap_then_include in (True, False)
                             for without_require, insert_at_top in ((True, False), (False, True), (False, False))
+                            for extra_top_header in (None, "Import Coq.Init.Prelude.")
                         ]
                         (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
                     except IOError as e:
