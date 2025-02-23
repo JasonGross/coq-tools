@@ -143,7 +143,7 @@ def make_reg_string(output, strict_whitespace=False):
                 r"\\s+",
                 re.sub(r"(?:\\ )+", r"\\s+", re.sub(r"(\\n|\n)(?:\\ )+", r"\\s+", s.replace("\\\n", "\n"))),
             )
-            .replace("\n", "\s")
+            .replace("\n", r"\s")
             .replace(r"\s+\s", r"\s+")
             .replace(r"\s++", r"\s+")
         )
