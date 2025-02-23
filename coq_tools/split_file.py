@@ -161,7 +161,7 @@ def split_coq_file_contents(contents):
     the one that ProofGeneral and CoqIDE use.
 
     We additionally merge lines inside of quotations."""
-    return list(merge_quotations(re.split("(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s", strip_comments(contents))))
+    return list(merge_quotations(re.split(r"(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s", strip_comments(contents))))
 
 
 def split_coq_file_contents_with_comments(contents):
