@@ -2424,6 +2424,11 @@ def main():
                 )
             env[args_name] = tuple([arg for group in recognized_args for arg in group] + unrecognized_args)
 
+        if env["admit_transparent"] or env["admit_opaque"]:
+            add_admit_tactic_wrapper = add_admit_tactic
+        else:
+            add_admit_tactic_wrapper = lambda x, **kwargs: x
+
         if env["minimize_before_inlining"]:
             env["log"](
                 "\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s..."
@@ -2435,7 +2440,7 @@ def main():
                 for key in ("coqc_args", "coqtop_args", "passing_coqc_args", "passing_coqtop_args"):
                     env[key] = tuple(list(env[key]) + ["-noinit"])
                 inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
-            inlined_contents = add_admit_tactic(inlined_contents, **env)
+            inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
             write_to_file(output_file_name, inlined_contents)
         else:
             env["log"](
@@ -2445,7 +2450,7 @@ def main():
             inlined_contents = include_imports(bug_file_name, **env)
             args.bug_file.close()
             if inlined_contents:
-                inlined_contents = add_admit_tactic(inlined_contents, **env)
+                inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
                 env["log"]("Stripping trailing ends")
                 while re.search(r"End [^ \.]*\.\s*$", inlined_contents):
                     inlined_contents = re.sub(r"End [^ \.]*\.\s*$", "", inlined_contents)
@@ -2477,7 +2482,7 @@ def main():
             last_output = get_file(output_file_name, **env)
             clear_libimport_cache(lib_of_filename(output_file_name, **env))
             cur_output_gen = (
-                lambda mod_remap: add_admit_tactic(
+                lambda mod_remap: add_admit_tactic_wrapper(
                     get_file(output_file_name, mod_remap=mod_remap, **env), **env
                 ).strip()
                 + "\n"
@@ -2541,7 +2546,7 @@ def main():
                                 replacement = "\n" + "".join("Require %s.\n" % i for i in all_imports) + replacement
                             if insert_at_top:
                                 header, test_output = split_leading_comments_and_whitespace(test_output)
-                                return add_admit_tactic(
+                                return add_admit_tactic_wrapper(
                                     (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip()
                                     + "\n",
                                     **env,
