@@ -607,6 +607,19 @@ parser.add_argument(
     default=None,
     help="Prefer inlining dependencies via Include.",
 )
+parser.add_argument("--add-proof-using", action=BooleanOptionalAction, default=True, help="Add Proof using.")
+parser.add_argument(
+    "--add-proof-using-before-admit",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Add Proof using before first attempting to admit lemmas.",
+)
+parser.add_argument(
+    "--prefer-final-proof-using",
+    action=BooleanOptionalAction,
+    default=False,
+    help="Use the final Proof using suggestion from Set Suggest Proof Using rather than the first.",
+)
 
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
@@ -629,6 +642,9 @@ def adjust_no_error_defaults(args: argparse.Namespace):
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
+    for arg in ("add_proof_using_before_admit",):
+        if getattr(args, arg) is None:
+            setattr(args, arg, args.should_succeed)
 
     return args
 
@@ -889,7 +905,7 @@ def classify_contents_change(
     ignore_coq_output_cache=False,
     reset_timeout=False,
     should_succeed: bool = False,
-    **kwargs
+    **kwargs,
 ):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE, RUNTIME, EXTRA_VERBOSE_DESCRIPTION_OF_FAILURE_MODE_TUPLE_LIST)
     kwargs["header_dict"] = kwargs.get(
@@ -1007,7 +1023,7 @@ def check_change_and_write_to_file(
     extra_verbose_prefix="",
     extra_verbose_newline="\n",
     skip_extra_verbose_error_state=set(),
-    **kwargs
+    **kwargs,
 ):
     kwargs["log"]('Running coq on the file\n"""\n%s\n"""' % new_contents, level=2 + verbose_base)
     change_result, contents, outputs, output_i, error_desc, runtime, error_desc_verbose_list = classify_contents_change(
@@ -1634,18 +1650,37 @@ def statements_are_only_admitted(statements):
         return False
     if len(proof_statements) == 0:
         return True
-    if len(proof_statements) == 1 and proof_statements[0] == "Proof.":
+    if len(proof_statements) == 1 and proof_statements[0].replace(" ", "") == "Proof.":
+        return True
+    if len(proof_statements) == 1 and re.match(r"^\s*Proof\s+using\s+", proof_statements[0]):
         return True
     return False
 
-def extract_proof_using(statements):
-    if len(statements) < 2:
-        return []
-    if re.match(r"^\s*Proof\s+using\s+", statements[1]):
+
+def extract_existing_proof_using(statements):
+    if len(statements) >= 2 and re.match(r"^\s*Proof\s+using\s+", statements[1]):
         return [statements[1]]
     return []
 
-def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
+
+def extract_proof_using(cur_definition, **kwargs):
+    proof_using = extract_existing_proof_using(cur_definition["statements"])
+    if (
+        (kwargs["add_proof_using_before_admit"] or kwargs["add_proof_using"])
+        and not proof_using
+        and cur_definition["proof_using_options"]
+    ):
+        proof_using_list = (
+            cur_definition["proof_using_options"][0]
+            if not kwargs["prefer_final_proof_using"]
+            else cur_definition["proof_using_options"][-1]
+        ).strip()
+        proof_using = [f"Proof using {proof_using_list}."]
+
+    return proof_using
+
+
+def make_try_admit_matching_definitions(matcher, use_admitted=False, suppress_proof_using=False, **kwargs):
     def transformer(cur_definition, rest_definitions):
         if (
             len(cur_definition["statements"]) > 2
@@ -1653,15 +1688,18 @@ def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
             and not statements_are_only_admitted(cur_definition["statements"])
         ):
 
+            proof_using_block = extract_proof_using(cur_definition, **kwargs) if not suppress_proof_using else []
             statements = (
-                (cur_definition["statements"][0], *extract_proof_using(cur_definition["statements"]), "Admitted.")
-                if use_admitted
-                else (cur_definition["statements"][0], *extract_proof_using(cur_definition["statements"]), "admit.", "Defined.")
+                cur_definition["statements"][0],
+                *proof_using_block,
+                *(("Admitted.",) if use_admitted else ("admit.", "Defined.")),
             )
             return {
                 "statements": statements,
                 "statement": "\n".join(statements),
                 "terms_defined": cur_definition["terms_defined"],
+                "proof_using_options": cur_definition["proof_using_options"],
+                "proof_using_options_map": cur_definition["proof_using_options_map"],
             }
         else:
             return cur_definition
@@ -1704,6 +1742,50 @@ def make_try_admit_definitions(**kwargs):
         (lambda definition: True),
         noun_description="Admitting definitions",
         verb_description="admit definitions",
+        **kwargs,
+    )
+
+
+def try_add_proof_using(
+    definitions,
+    output_file_name,
+    **kwargs,
+):
+    def transformer(cur_definition, rest_definitions):
+        if (
+            len(cur_definition["statements"]) > 2
+            # and matcher(cur_definition)
+            and cur_definition["proof_using_options"]
+            and not extract_existing_proof_using(cur_definition["statements"])
+        ):
+            proof_using = (
+                cur_definition["proof_using_options"][0]
+                if not kwargs["prefer_final_proof_using"]
+                else cur_definition["proof_using_options"][-1]
+            )
+            rest_statements = (
+                cur_definition["statements"][2:]
+                if cur_definition["statements"][1].strip().replace(" ", "") == "Proof."
+                else cur_definition["statements"][1:]
+            )
+            statements = (cur_definition["statements"][0], f"Proof using {proof_using}.", *rest_statements)
+            return {
+                "statements": statements,
+                "statement": "\n".join(statements),
+                "terms_defined": cur_definition["terms_defined"],
+                "proof_using_options": cur_definition["proof_using_options"],
+                "proof_using_options_map": cur_definition["proof_using_options_map"],
+            }
+        else:
+            return cur_definition
+
+    # def try_add_proof_using(definitions, output_file_name, **kwargs2):
+    return try_transform_reversed_or_else_each(
+        definitions,
+        output_file_name,
+        transformer,
+        noun_description="Adding Proof using lines",
+        verb_description="add Proof using lines",
         **kwargs,
     )
 
@@ -1753,6 +1835,8 @@ def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwa
                 "statements": statements,
                 "statement": "\n".join(statements),
                 "terms_defined": cur_definition["terms_defined"],
+                "proof_using_options": (),
+                "proof_using_options_map": (),
             }
         else:
             return cur_definition
@@ -2268,15 +2352,28 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         )
 
     tasks = recursive_tasks
+    if env["add_proof_using_before_admit"] and not (env["admit_opaque"] and env["admit_transparent"]):
+        tasks += (("add Proof using lines", try_add_proof_using),)
     if env["admit_opaque"]:
         if env["admit_obligations"]:
             tasks += (("replace Qed Obligation with Admit Obligations", try_admit_qed_obligations),)
-        tasks += (
-            (
-                ("replace Qeds with Admitteds", make_try_admit_qeds(use_admitted=True)),
-                ("replace Qeds with admit. Defined.", make_try_admit_qeds(use_admitted=False)),
+        for suppress_proof_using in (False,) if env["add_proof_using_before_admit"] else (True, False):
+            with_proof_using_suffix = (
+                ""
+                if suppress_proof_using or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
+                else " with Proof using"
             )
-            +
+            tasks += (
+                (
+                    f"replace Qeds with Admitteds{with_proof_using_suffix}",
+                    make_try_admit_qeds(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                ),
+                (
+                    f"replace Qeds with admit. Defined.{with_proof_using_suffix}",
+                    make_try_admit_qeds(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                ),
+            )
+        tasks += (
             # we've probably just removed a lot, so try to remove definitions again
             recursive_tasks
             + (("admit [abstract ...]s", try_admit_abstracts),)
@@ -2291,12 +2388,33 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
     if env["admit_transparent"]:
         if env["admit_obligations"]:
             tasks += (("replace Obligation with Admit Obligations", try_admit_obligations),)
-        tasks += (
-            ("admit lemmas with Admitted", make_try_admit_lemmas(use_admitted=True)),
-            ("admit definitions with Admitted", make_try_admit_definitions(use_admitted=True)),
-            ("admit lemmas with admit. Defined", make_try_admit_lemmas(use_admitted=False)),
-            ("admit definitions with admit. Defined", make_try_admit_definitions(use_admitted=False)),
-        )
+        for suppress_proof_using in (False,) if env["add_proof_using_before_admit"] else (True, False):
+            proof_using_suffix = (
+                ""
+                if suppress_proof_using or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
+                else " with Proof using"
+            )
+            tasks += (
+                (
+                    f"admit lemmas with Admitted{proof_using_suffix}",
+                    make_try_admit_lemmas(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                ),
+                (
+                    f"admit definitions with Admitted{proof_using_suffix}",
+                    make_try_admit_definitions(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                ),
+                (
+                    f"admit lemmas with admit. Defined{proof_using_suffix}",
+                    make_try_admit_lemmas(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                ),
+                (
+                    f"admit definitions with admit. Defined{proof_using_suffix}",
+                    make_try_admit_definitions(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                ),
+            )
+
+    if env["add_proof_using"]:
+        tasks += (("add Proof using lines", try_add_proof_using),)
 
     if not env["aggressive"] and not env["save_typeclasses"] and env["remove_hints"]:
         tasks += (("remove hints", try_remove_hints),)
@@ -2482,6 +2600,9 @@ def main():
         "prefer_inline_via_include": args.prefer_inline_via_include,
         "export_modules": args.export_modules,
         "split_imports": args.split_imports,
+        "add_proof_using": args.add_proof_using,
+        "add_proof_using_before_admit": args.add_proof_using_before_admit,
+        "prefer_final_proof_using": args.prefer_final_proof_using,
     }
 
     try:
