@@ -1,4 +1,7 @@
 import os, sys, re
+from difflib import SequenceMatcher
+from typing import List
+from .argparse_compat import argparse
 
 __all__ = [
     "prompt",
@@ -7,6 +10,8 @@ __all__ = [
     "s",
     "cmp_compat",
     "PY3",
+    "BooleanOptionalAction",
+    "argparse",
     "raw_input",
     "re_escape",
     "slice_string_at_bytes",
@@ -16,6 +21,8 @@ __all__ = [
     "resource_path",
     "group_by",
 ]
+
+BooleanOptionalAction = argparse.BooleanOptionalAction
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -228,6 +235,55 @@ def group_by(ls, f):
         [[1, 2, 3, 4, 5], [7, 8], [10]]
     """
     return list(group_by_iter(ls, f))
+
+
+def list_diff(old_strs: List[str], new_strs: List[str], *, autojunk: bool = False) -> str:
+    """
+    >>> old = ["line1", "line2", "line3", "line4"]
+    >>> new = ["line1", "line3", "line4", "line5"]
+    >>> print(list_diff(old, new))
+      line1
+    - line2
+      line3
+      line4
+    + line5
+    """
+    # Create a SequenceMatcher object
+    sm = SequenceMatcher(None, old_strs, new_strs, autojunk=autojunk)
+    opcodes = sm.get_opcodes()
+    diff_lines = []
+
+    # Threshold for eliding long equal blocks (if more than this many lines, collapse)
+    ELIDE_THRESHOLD = 3
+
+    for tag, i1, i2, j1, j2 in opcodes:
+        if tag == "equal":
+            block_length = i2 - i1
+            if block_length > ELIDE_THRESHOLD:
+                # Show the first line, an ellipsis, then the last line of the block.
+                diff_lines.append("  " + old_strs[i1])
+                diff_lines.append("  ...")
+                diff_lines.append("  " + old_strs[i2 - 1])
+            else:
+                for i in range(i1, i2):
+                    diff_lines.append("  " + old_strs[i])
+        elif tag == "delete":
+            # Lines in old_strs that were removed.
+            for i in range(i1, i2):
+                diff_lines.append("- " + old_strs[i])
+        elif tag == "insert":
+            # Lines added in new_strs.
+            for j in range(j1, j2):
+                diff_lines.append("+ " + new_strs[j])
+        elif tag == "replace":
+            # Show removed lines
+            for i in range(i1, i2):
+                diff_lines.append("- " + old_strs[i])
+            # Then show inserted lines
+            for j in range(j1, j2):
+                diff_lines.append("+ " + new_strs[j])
+
+    return "\n".join(diff_lines)
 
 
 if __name__ == "__main__":
