@@ -1519,6 +1519,12 @@ def statements_are_only_admitted(statements):
         return True
     return False
 
+def extract_proof_using(statements):
+    if len(statements) < 2:
+        return []
+    if re.match(r"^\s*Proof\s+using\s+", statements[1]):
+        return [statements[1]]
+    return []
 
 def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
     def transformer(cur_definition, rest_definitions):
@@ -1527,10 +1533,11 @@ def make_try_admit_matching_definitions(matcher, use_admitted=False, **kwargs):
             and matcher(cur_definition)
             and not statements_are_only_admitted(cur_definition["statements"])
         ):
+
             statements = (
-                (cur_definition["statements"][0], "Admitted.")
+                (cur_definition["statements"][0], *extract_proof_using(cur_definition["statements"]), "Admitted.")
                 if use_admitted
-                else (cur_definition["statements"][0], "admit.", "Defined.")
+                else (cur_definition["statements"][0], *extract_proof_using(cur_definition["statements"]), "admit.", "Defined.")
             )
             return {
                 "statements": statements,
