@@ -150,7 +150,7 @@ def absolutize_and_mangle_libname(lib, first_wrap_then_include=False, **kwargs):
     return full_module_name
 
 
-def contents_as_module(lib, other_imports, first_wrap_then_include=False, export=False, without_require=True, **kwargs):
+def contents_as_module(lib, other_imports, first_wrap_then_include=False, export=False, without_require=True, extra_top_header=None, **kwargs):
     import_all_directories = not absolutize_has_all_constants(kwargs["absolutize"])
     if import_all_directories and not export:
         # N.B. This strategy does not work with the Include strategy
@@ -175,6 +175,9 @@ def contents_as_module(lib, other_imports, first_wrap_then_include=False, export
             construct_import_list(other_imports, import_all_directories=import_all_directories, **kwargs)
         ):
             contents = "Import %s.\n%s" % (imp, contents)
+    # insert extra_top_header, e.g., Import Coq.Init.Prelude., at the top of the file
+    if extra_top_header:
+        contents = extra_top_header + "\n" + contents
     # wrap the contents in directory modules
     maybe_export = "Export " if export else ""
     early_contents = ""
