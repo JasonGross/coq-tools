@@ -4,9 +4,22 @@ FULL_FIND_BUG:=$(abspath $(shell which '$(FIND_BUG)'))
 else
 FULL_FIND_BUG=$(FIND_BUG)
 endif
+MINIMIZE_REQUIRES?=
+ifneq (,$(strip $(MINIMIZE_REQUIRES)))
+FULL_MINIMIZE_REQUIRES:=$(abspath $(shell which '$(MINIMIZE_REQUIRES)'))
+else
+FULL_MINIMIZE_REQUIRES=$(MINIMIZE_REQUIRES)
+endif
+INLINE_IMPORTS?=
+ifneq (,$(strip $(INLINE_IMPORTS)))
+FULL_INLINE_IMPORTS:=$(abspath $(shell which '$(INLINE_IMPORTS)'))
+else
+FULL_INLINE_IMPORTS=$(INLINE_IMPORTS)
+endif
 
 has-all-tests check print-support::
-	$(MAKE) -C examples $@ FIND_BUG='$(FULL_FIND_BUG)'
+	$(MAKE) -C examples $@ FIND_BUG='$(FULL_FIND_BUG)' MINIMIZE_REQUIRES='$(FULL_MINIMIZE_REQUIRES)' INLINE_IMPORTS='$(FULL_INLINE_IMPORTS)'
+
 
 .PHONY: has-all-tests check print-support
 
@@ -15,7 +28,7 @@ PYTHON?=python
 
 .PHONY: dist
 dist:
-	$(PYTHON) setup.py sdist bdist_wheel
+	$(PYTHON) -m build
 
 DOCTEST_MODULES := \
 	import_util \

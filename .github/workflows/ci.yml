@@ -60,7 +60,7 @@ jobs:
       if: ${{ matrix.python-version != '2.7' }}
     - name: install package building deps (pip)
       run: |
-        python -m pip install setuptools wheel twine
+        python -m pip install build wheel twine
       if: ${{ matrix.test-location == 'installed' }}
     - name: install package building deps (standalone)
       run: |
@@ -131,7 +131,7 @@ jobs:
           echo '::remove-matcher owner=coq-problem-matcher::'
           if [ "${{ matrix.test-location }}" == "installed" ]; then
             startGroup 'install package building deps'
-            python -m pip install setuptools wheel twine
+            python -m pip install build wheel twine
             endGroup
             startGroup 'Build package'
             make dist
@@ -206,7 +206,7 @@ jobs:
       run: make doctests PYTHON3=python
       if: ${{ matrix.python-version != '2.7' }}
     - name: install package building deps (pip)
-      run: python -m pip install setuptools wheel twine
+      run: python -m pip install build wheel twine
       if: ${{ matrix.test-location == 'installed' }}
     - name: install package building deps (standalone)
       run: python -m pip install pyinstaller
@@ -224,9 +224,9 @@ jobs:
     - run: opam exec -- make has-all-tests
     - run: opam exec -- make check PYTHON=python CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'local' }}
-    - run: opam exec -- make check PYTHON=python FIND_BUG=coq-bug-minimizer CAT_ALL_LOGS=1
+    - run: opam exec -- make check PYTHON=python FIND_BUG=coq-bug-minimizer MINIMIZE_REQUIRES=coq-require-minimizer INLINE_IMPORTS=coq-import-inliner CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'installed' }}
-    - run: opam exec -- make check PYTHON=python FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer CAT_ALL_LOGS=1
+    - run: opam exec -- make check PYTHON=python FIND_BUG=dist/coq-bug-minimizer/coq-bug-minimizer MINIMIZE_REQUIRES=dist/coq-bug-minimizer/coq-require-minimizer INLINE_IMPORTS=dist/coq-bug-minimizer/coq-import-inliner CAT_ALL_LOGS=1
       if: ${{ matrix.test-location == 'standalone' }}
 
 
