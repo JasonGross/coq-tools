@@ -100,7 +100,7 @@ def split_statements_to_definitions(
     fallback_coqtop=None,
     fallback_coqtop_args=None,
     preference_key=DEFAULT_PREFERENCE_KEY,
-    **kwargs
+    **kwargs,
 ):
     """Splits a list of statements into chunks which make up
     independent definitions/hints/etc."""
@@ -166,9 +166,15 @@ def split_statements_to_definitions(
     prompt_reg = re.compile(
         r"^(.*)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*)$".replace(" ", r"\s*"), flags=re.DOTALL
     )
-    defined_reg = re.compile(r"^(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$", re.MULTILINE)
+    defined_reg = re.compile(r"^\s*(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$", re.MULTILINE)
+    proof_using_reg = re.compile(
+        r"^\s*<infomsg>\s*The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+)</infomsg>".replace(
+            " ", r"\s+"
+        ),
+        flags=re.MULTILINE | re.DOTALL,
+    )
     # goals and definitions are on stdout, prompts are on stderr
-    statements_string = "\n".join(statements) + "\n\n"
+    statements_string = "Set Suggest Proof Using.\n" + "\n".join(statements) + "\n\n"
     statements_bytes = statements_string.encode("utf-8")
     log("Sending statements to coqtop...")
     log(statements_string, level=3)
@@ -200,6 +206,22 @@ def split_statements_to_definitions(
         elif len(times) > 1:
             log("Warning: found multiple timing info in %s: %s" % (repr(prompt), repr(times)), level=1)
         full_response_text = chars_time_reg.sub(" ", prompt)
+        proof_using_match = proof_using_reg.findall(full_response_text)
+        proof_using_options = []
+        proof_using_thm_name = None
+        if proof_using_match:
+            full_response_text = proof_using_reg.sub(" ", full_response_text)
+            if len(proof_using_match) > 1:
+                log(
+                    "Warning: found multiple proof using info in %s: %s" % (prompt, str(proof_using_match)),
+                    level=LOG_ALWAYS,
+                )
+            proof_using_thm_name, proof_using_cmds = proof_using_match[0]
+            proof_using_options = [s.strip() for s in proof_using_cmds.split("Proof using") if s.strip()]
+            proof_using_options = [s.split(".")[0].strip() for s in proof_using_options]
+            # log("Warning: found proof using info in %s: %s" % (repr(prompt), repr(proof_using_match)), level=1)
+            # continue
+        proof_using_options_used = False
         for char_start, char_end in times:
             char_start, char_end = int(char_start), int(char_end)
             # if we've travelled backwards in time, as in
@@ -227,13 +249,20 @@ def split_statements_to_definitions(
             # first, to be on the safe side, we add the new
             # definitions key to the dict, if it wasn't already there.
             if cur_definition_names.strip("|") and cur_definition_names not in cur_definition:
-                cur_definition[cur_definition_names] = {"statements": [], "terms_defined": []}
+                cur_definition[cur_definition_names] = {
+                    "statements": [],
+                    "terms_defined": [],
+                    "proof_using_options_map": [],
+                    "proof_using_options": [],
+                }
 
             log(
                 (
                     statement,
                     (char_start, char_end),
                     definitions_removed,
+                    proof_using_thm_name,
+                    proof_using_options,
                     terms_defined,
                     "last_definitions:",
                     last_definitions,
@@ -257,6 +286,12 @@ def split_statements_to_definitions(
             if definitions_removed:
                 cur_definition[last_definitions]["statements"].append(statement)
                 cur_definition[last_definitions]["terms_defined"] += terms_defined
+                if proof_using_options:
+                    cur_definition[last_definitions]["proof_using_options_map"].append(
+                        (proof_using_thm_name, tuple(proof_using_options))
+                    )
+                    cur_definition[last_definitions]["proof_using_options"] += proof_using_options
+                    proof_using_options = []
                 if cur_definition_names.strip("|"):
                     # we are still inside a definition.  For now, we
                     # flatten all definitions.
@@ -267,6 +302,12 @@ def split_statements_to_definitions(
                     cur_definition[cur_definition_names]["terms_defined"] += cur_definition[last_definitions][
                         "terms_defined"
                     ]
+                    cur_definition[cur_definition_names]["proof_using_options_map"] += cur_definition[last_definitions][
+                        "proof_using_options_map"
+                    ]
+                    cur_definition[cur_definition_names]["proof_using_options"] += cur_definition[last_definitions][
+                        "proof_using_options"
+                    ]
                     del cur_definition[last_definitions]
                 else:
                     # we're at top-level, so add this as a new
@@ -276,6 +317,10 @@ def split_statements_to_definitions(
                             "statements": tuple(cur_definition[last_definitions]["statements"]),
                             "statement": "\n".join(cur_definition[last_definitions]["statements"]),
                             "terms_defined": tuple(cur_definition[last_definitions]["terms_defined"]),
+                            "proof_using_options_map": tuple(
+                                cur_definition[last_definitions]["proof_using_options_map"]
+                            ),
+                            "proof_using_options": tuple(cur_definition[last_definitions]["proof_using_options"]),
                         }
                     )
                     del cur_definition[last_definitions]
@@ -294,8 +339,15 @@ def split_statements_to_definitions(
                     # we're at top level, so add this as a new
                     # definition
                     rtn.append(
-                        {"statements": (statement,), "statement": statement, "terms_defined": tuple(terms_defined)}
+                        {
+                            "statements": (statement,),
+                            "statement": statement,
+                            "terms_defined": tuple(terms_defined),
+                            "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options else (),
+                            "proof_using_options": tuple(proof_using_options),
+                        }
                     )
+                    proof_using_options_used = True
 
             # now we handle the case where we have just opened a fresh
             # definition.  We've already added the key to the
@@ -310,10 +362,20 @@ def split_statements_to_definitions(
                 if cur_definition_names.strip("|"):
                     cur_definition[cur_definition_names]["statements"].append(statement)
                 else:
-                    rtn.append({"statements": (statement,), "statement": statement, "terms_defined": tuple()})
+                    rtn.append(
+                        {
+                            "statements": (statement,),
+                            "statement": statement,
+                            "terms_defined": (),
+                            "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options else (),
+                            "proof_using_options": tuple(proof_using_options),
+                        }
+                    )
+                    proof_using_options_used = True
 
             last_definitions = cur_definition_names
-
+        if proof_using_options and not proof_using_options_used:
+            log("Warning: Unused proof using options: %s in %s" % (str(proof_using_options), prompt), level=LOG_ALWAYS)
     log((last_definitions, cur_definition_names), level=2)
     if last_definitions.strip("||"):
         rtn.append(
@@ -321,6 +383,8 @@ def split_statements_to_definitions(
                 "statements": tuple(cur_definition[cur_definition_names]["statements"]),
                 "statement": "\n".join(cur_definition[cur_definition_names]["statements"]),
                 "terms_defined": tuple(cur_definition[cur_definition_names]["terms_defined"]),
+                "proof_using_options_map": tuple(cur_definition[cur_definition_names]["proof_using_options_map"]),
+                "proof_using_options": tuple(cur_definition[cur_definition_names]["proof_using_options"]),
             }
         )
         del cur_definition[last_definitions]
@@ -335,9 +399,14 @@ def split_statements_to_definitions(
                     last_statement,
                 ),
                 "statement": last_statement,
-                "terms_defined": tuple(),
+                "terms_defined": (),
+                "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options and not proof_using_options_used else (),
+                "proof_using_options": tuple(proof_using_options) if proof_using_options and not proof_using_options_used else (),
             }
         )
+    input(rtn)
+    if rtn[0]["statement"].strip() == "Set Suggest Proof Using.":
+        rtn = rtn[1:]
 
     return rtn
 

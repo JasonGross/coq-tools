@@ -13,7 +13,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=(-R . Foo --no-admit-transparent --no-admit-opaque "$@")
+EXTRA_ARGS=("$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -44,15 +44,16 @@ set -x
 #
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
-# In this file, character 31 is the end character for 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line \(9\|1[0-9]\), characters 6-\(25\|31\):
-Error:[
- ]The term "(bar, npp, A\.a)" has type
- "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*
-   Set)%type"[
- ]while it is expected to have type "Set"\.\?
+File "/[A-Za-z0-9_/]\+\.v", line 16, characters 0-15:
+Error: The command has not failed\s\?!
+
+.\?Does this output display the correct error? \[(y)es/(n)o\]\s
+I think the error is 'Error: The command has not failed\s\?!
+.\?'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+The\\\\s+command\\\\s+has\\\\s+not\\\\s+failed.*
 EOF
+
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
@@ -86,37 +87,18 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
-(\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\?\( "-native-compiler" "ondemand"\)\? "-R" "\." "Top"\( "-top" "Top\.example_[0-9]\+"\)\?) -\*- \*)
+(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
 (\* coqc version [^\*]*\*)
-Definition foo : 1 = 2 -> forall P, ~~P -> P\.
-Proof\( using \)\?\.
-  intros\.
-  try tauto\.
 
-  congruence\.
-Defined\.
-
-Module Export Foo_DOT_A_WRAPPED\.
-Module Export A\.
-Axiom a : Set\.
-
-End A\.
-Module Export Foo\.
-Module A\.
-Include Foo_DOT_A_WRAPPED\.A\.
-End A\.
-Require \(Coq\|Stdlib\)\.\(Logic\|Logic\.Classical\.Stdlib\.Logic\)\.Classical_Prop\.
-
-Lemma npp : forall P, ~~P -> P\.
-Proof\( using \)\?\.
-tauto\.
-Qed\.
-
-Definition bar := Eval unfold foo in foo\.
-
-Check (bar, npp, Foo\.A\.a) : Set\.
-
+Section foo\.
+    Context (x y : nat) (p q : x = y)\.
+    Lemma silly : True -> x = y\.
+Proof using p\.
+Admitted\.
+End foo\.
+Definition bar := @silly 0 0 eq_refl I\.
+Fail Check bar\.
 EOF
 
 EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"

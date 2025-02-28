@@ -10,6 +10,7 @@ CONDITIONAL_TESTS = 006 018
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 010 026
 ONLY_IF_TOP_TESTS = 063
+ONLY_IF_PROOF_USING_TESTS = 067
 ONLY_IF_W_TESTS = 044
 ONLY_IF_W_AND_GE_815_TESTS = 046
 ONLY_IF_W_AND_UNSET_TESTS = 057 058
@@ -25,6 +26,7 @@ ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_TOP_TESTS) \
+	$(ONLY_IF_PROOF_USING_TESTS) \
 	$(ONLY_IF_W_TESTS) \
 	$(ONLY_IF_W_AND_GE_815_TESTS) \
 	$(ONLY_IF_W_AND_UNSET_TESTS) \
@@ -50,6 +52,7 @@ ALL_LOGS = $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) $(BROKEN_LOGS)
 ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
 ONLY_IF_TOP_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_TOP_TESTS))
+ONLY_IF_PROOF_USING_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_PROOF_USING_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
 ONLY_IF_W_AND_GE_815_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_GE_815_TESTS))
 ONLY_IF_W_AND_UNSET_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_AND_UNSET_TESTS))
@@ -104,6 +107,8 @@ COQC_SUPPORTS_TOP:=$(shell { $(COQBIN)coqc -top foo empty.v 2>&1 | grep -q -- "-
 COQTOP_SUPPORTS_TOP:=$(shell { true | $(COQBIN)coqtop -top foo 2>&1 | grep -q -- "-top: no such file or directory"; } && echo 0 || echo 1)
 COQTOP_SUPPORTS_COMPILE:=$(shell $(COQBIN)coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
+COQC_SUPPORTS_PROOF_USING:=$(shell printf "Section foo.\nVariable x : nat.\nDefinition bar : nat.\nProof using x.\nAdmitted.\nEnd foo.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
+COQC_SUPPORTS_SUGGEST_PROOF_USING:=$(shell printf "Set Suggest Proof Using.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'There is no option Suggest Proof Using.'; echo $$?)
 COQC_SUPPORTS_IMPORT_CATEGORIES:=$(shell echo "Require Import (hints) Coq.Init.Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
 COQC_SUPPORTS_W:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-w ')
 COQC_SUPPORTS_VOS:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- '-vos ')
@@ -156,6 +161,23 @@ print-support::
 else
 print-support::
 	@printf "coqc supports -Q:\t\t\t\tNo\n"
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_PROOF_USING)))
+print-support::
+	@printf "coqc supports Proof using:\t\t\tYes\n"
+ifneq (0,$(strip $(COQC_SUPPORTS_SUGGEST_PROOF_USING)))
+test-suite: $(ONLY_IF_PROOF_USING_LOGS)
+ENABLED_LOGS += $(ONLY_IF_PROOF_USING_LOGS)
+print-support::
+	@printf "coqc supports Set Suggest Proof using:\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports Set Suggest Proof using:\t\tNo\n"
+endif
+else
+print-support::
+	@printf "coqc supports Proof using:\t\t\tNo\n"
 endif
 
 ifneq (0,$(strip $(COQTOP_SUPPORTS_TOP)))
