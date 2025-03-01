@@ -404,7 +404,6 @@ def split_statements_to_definitions(
                 "proof_using_options": tuple(proof_using_options) if proof_using_options and not proof_using_options_used else (),
             }
         )
-    input(rtn)
     if rtn[0]["statement"].strip() == "Set Suggest Proof Using.":
         rtn = rtn[1:]
 
