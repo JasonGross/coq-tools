@@ -620,6 +620,12 @@ parser.add_argument(
     default=False,
     help="Use the final Proof using suggestion from Set Suggest Proof Using rather than the first.",
 )
+parser.add_argument(
+    "--remove-non-definitions",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Remove all statements that don't add constants to the global environment, where possible.",
+)
 
 add_libname_arguments(parser)
 add_passing_libname_arguments(parser)
@@ -642,7 +648,7 @@ def adjust_no_error_defaults(args: argparse.Namespace):
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
-    for arg in ("add_proof_using_before_admit",):
+    for arg in ("add_proof_using_before_admit", "remove_non_definitions"):
         if getattr(args, arg) is None:
             setattr(args, arg, args.should_succeed)
 
@@ -1456,6 +1462,59 @@ def try_remove_each_and_every_line(definitions, output_file_name, **kwargs):
         (lambda cur_definition, rest_definitions: False),
         noun_description="Line removal",
         verb_description="remove lines",
+        **kwargs,
+    )
+
+
+EXTRA_DEFINITION_ISH = "|".join(
+    ["Theorem", "Lemma", "Fact", "Remark", "Corollary", "Proposition", "Property"]
+    + ["Definition", "Example", "SubClass"]
+    + ["Inductive", "CoInductive"]
+    + ["Variant", "Record", "Structure", "Class"]
+    + ["Fixpoint", "CoFixpoint"]
+    + ["Axiom", "Axioms", "Symbol", "Symbols", "Primitive"]
+    + ["Variables", "Variable", "Hypotheses", "Hypothesis", "Parameters", "Parameter", "Conjectures", "Conjecture"]
+    + ["Instance", "Derive", "Declare"]
+)
+
+EXTRA_DEFINITION_ISH_REG = re.compile(
+    r"^\s*"
+    + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*"
+    + r"(?:"
+    + EXTRA_DEFINITION_ISH
+    + r"|Set\s+Universe\s+Polymorphism"
+    + r"|Unet\s+Universe\s+Polymorphism"
+    + r"|Require|Import|Export|Include"
+    + r"|Section|Module|End"
+    + r"|Set"
+    + r")(?:\.\s+|\.$|\s+|$)",
+    flags=re.MULTILINE,
+)
+
+SECTION_REG = re.compile(r"^\s*(?:Section|Module|End)(?:\s+|$)", flags=re.MULTILINE)
+
+
+def try_remove_each_and_every_non_definition_line(definitions, output_file_name, **kwargs):
+    def transformer(cur_definition, rest_definitions):
+        if (
+            cur_definition["terms_defined"]
+            or SECTION_REG.search(cur_definition["statement"])
+            or EXTRA_DEFINITION_ISH_REG.search(cur_definition["statement"])
+        ):
+            return cur_definition
+        else:
+            kwargs["log"](
+                "Attempting to remove non-definition line: %s" % cur_definition["statement"],
+                level=4,
+            )
+            return False
+
+    return try_transform_each(
+        definitions,
+        output_file_name,
+        transformer,
+        noun_description="Non-definition line removal",
+        verb_description="remove non-definition lines",
         **kwargs,
     )
 
@@ -2436,6 +2495,19 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
             recursive_tasks
         )
 
+    if env["remove_non_definitions"]:
+        tasks += (
+            (
+                (
+                    "remove all lines that don't add constants to the global environment, one at a time",
+                    try_remove_each_and_every_non_definition_line,
+                ),
+            )
+            +
+            # we've probably just removed a lot, so try to remove definitions again
+            recursive_tasks
+        )
+
     if env["remove_modules"]:
         tasks += (("remove modules", try_remove_modules),)
     if env["remove_sections"]:
@@ -2603,6 +2675,7 @@ def main():
         "add_proof_using": args.add_proof_using,
         "add_proof_using_before_admit": args.add_proof_using_before_admit,
         "prefer_final_proof_using": args.prefer_final_proof_using,
+        "remove_non_definitions": args.remove_non_definitions,
     }
 
     try:
