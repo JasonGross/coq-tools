@@ -329,13 +329,12 @@ parser.add_argument(
     help=("Like --timeout, but only for the non-passing Coq"),
 )
 parser.add_argument(
-    "--no-minimize-before-inlining",
+    "--minimize-before-inlining",
     dest="minimize_before_inlining",
-    action="store_const",
-    const=False,
+    action=BooleanOptionalAction,
     default=True,
     help=(
-        "Don't run the full minimization script before inlining [Requires], "
+        "(Don't) run the full minimization script before inlining [Requires], "
         + "and between the inlining of every individual [Require].\n\n"
         + "Note that this option will not work well in conjunction with "
         + "--passing-coqc.\n"
@@ -2286,7 +2285,7 @@ def default_on_fatal(message, log=DEFAULT_LOG, **env):
     sys.exit(1)
 
 
-def minimize_file(output_file_name, die=default_on_fatal, **env):
+def minimize_file(output_file_name, die=default_on_fatal, return_after_requires=False, return_after_splitting=False, **env):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
@@ -2330,6 +2329,9 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         if env["split_requires"]:
             env["log"]("\nNow, I will attempt to split up [Require] statements...")
             try_split_requires(output_file_name, **env)
+
+    if return_after_requires:
+        return True
 
     contents = read_from_file(output_file_name)
     env["log"](
@@ -2395,6 +2397,9 @@ def minimize_file(output_file_name, die=default_on_fatal, **env):
         env["log"]("I will not be able to proceed.")
         env["log"]("re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2)
         return die(None, **env)
+
+    if return_after_splitting:
+        return True
 
     recursive_tasks = ()
     if env["remove_abort"]:
@@ -2543,6 +2548,219 @@ def add_coqlib_prelude_import(contents, **env):
     return "Require Coq.Init.Prelude.\nImport Coq.Init.Prelude.\n" + contents
 
 
+def make_cur_output_gen(output_file_name, **kwargs):
+    if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
+        add_admit_tactic_wrapper = add_admit_tactic
+    else:
+        add_admit_tactic_wrapper = lambda x, **kwargs: x
+
+    return (
+        lambda mod_remap: add_admit_tactic_wrapper(
+            get_file(output_file_name, mod_remap=mod_remap, **kwargs), **kwargs
+        ).strip()
+        + "\n"
+    )
+
+
+def inline_one_require(output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs):
+    if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
+        add_admit_tactic_wrapper = add_admit_tactic
+    else:
+        add_admit_tactic_wrapper = lambda x, **kwargs: x
+    cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
+    requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **kwargs)
+
+    for req_module in reversed(requires):
+        if req_module in libname_blacklist:
+            continue
+        else:
+            libname_blacklist.append(req_module)
+        rep = "\nRequire %s.\n" % req_module
+        if rep not in "\n" + cur_output:
+            kwargs["log"]("\nWarning: I cannot find Require %s." % req_module)
+            kwargs["log"]("in contents:\n" + cur_output, level=3)
+            continue
+        try:
+            # we prefer wrapping modules via Include,
+            # because this is a bit more robust against
+            # future module inlining (see example test 45)
+            def get_test_output(
+                absolutize_mods=False,
+                first_wrap_then_include=True,
+                without_require=True,
+                insert_at_top=False,
+                extra_top_header=None,
+            ):
+                new_req_module = absolutize_and_mangle_libname(
+                    req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
+                )
+                test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
+                if not absolutize_mods:
+                    cur_rep = rep
+                else:
+                    cur_rep = "\nRequire %s.\n" % new_req_module
+                if cur_rep not in "\n" + test_output:
+                    kwargs["log"]("\nWarning: I cannot find Require %s." % new_req_module)
+                    kwargs["log"]("in contents:\n" + test_output, level=3)
+                replacement = (
+                    "\n"
+                    + get_required_contents(
+                        req_module,
+                        first_wrap_then_include=first_wrap_then_include,
+                        without_require=without_require,
+                        extra_top_header=extra_top_header,
+                        **kwargs,
+                    ).strip()
+                    + "\n"
+                )
+                if without_require:
+                    all_imports = get_recursive_require_names(
+                        req_module, reverse=False, **kwargs
+                    )  # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
+                    replacement = "\n" + "".join("Require %s.\n" % i for i in all_imports) + replacement
+                if insert_at_top:
+                    header, test_output = split_leading_comments_and_whitespace(test_output)
+                    return add_admit_tactic_wrapper(
+                        (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n",
+                        **kwargs,
+                    )
+                else:
+                    return ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
+
+            test_output_alts = [
+                (
+                    (
+                        (" without Include" if not first_wrap_then_include else " via Include")
+                        + (", absolutizing mod references" if absolutize_mods else "")
+                        + (", stripping Requires" if without_require else ", with Requires")
+                        + (f", with {extra_top_header} at the top" if extra_top_header else "")
+                    ),
+                    get_test_output(
+                        absolutize_mods=absolutize_mods,
+                        first_wrap_then_include=first_wrap_then_include,
+                        without_require=without_require,
+                        insert_at_top=insert_at_top,
+                        extra_top_header=extra_top_header,
+                    ),
+                )
+                for absolutize_mods in (False, True)
+                for first_wrap_then_include in ((True, False) if kwargs["prefer_inline_via_include"] else (False, True))
+                for without_require, insert_at_top in ((True, False), (False, True), (False, False))
+                for extra_top_header in (None, "Import Coq.Init.Prelude.")
+            ]
+            (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
+        except IOError as e:
+            kwargs["log"](
+                "\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s"
+                % (
+                    req_module,
+                    str(e),
+                    str(tuple(kwargs["libnames"])),
+                    str(tuple(kwargs["non_recursive_libnames"])),
+                )
+            )
+            continue
+
+        if not check_change_and_write_to_file(
+            cur_output,
+            test_output,
+            output_file_name,
+            unchanged_message="Invalid empty file!",
+            success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
+            failure_description=("inline %s%s" % (req_module, test_output_descr)),
+            changed_description="File",
+            reset_timeout=True,
+            timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
+            display_source_to_error=False,
+            display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
+            **kwargs,
+        ):
+            # any lazily evaluates the iterator, so we'll
+            # only run the check up to the point of the
+            # first success
+            if not any(
+                check_change_and_write_to_file(
+                    cur_output,
+                    test_output_alt,
+                    output_file_name,
+                    unchanged_message="Invalid empty file!",
+                    success_message=("Inlining %s%s succeeded." % (req_module, descr)),
+                    failure_description=("inline %s%s" % (req_module, descr)),
+                    changed_description="File",
+                    timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
+                    # reset the timeout on each different
+                    # way of inlining, so that an earlier
+                    # one failing doesn't hobble the
+                    # ability of a later one to succeed
+                    reset_timeout=True,
+                    display_source_to_error=True,
+                    display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
+                    **kwargs,
+                )
+                for descr, test_output_alt in test_output_alts
+            ):
+                # let's also display the error and source
+                # for the original failure to inline,
+                # without the Include, so we can see
+                # what's going wrong in both cases
+                check_change_and_write_to_file(
+                    cur_output,
+                    test_output,
+                    output_file_name,
+                    unchanged_message="Invalid empty file!",
+                    success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
+                    failure_description=("inline %s%s" % (req_module, test_output_descr)),
+                    changed_description="File",
+                    timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
+                    reset_timeout=True,
+                    display_source_to_error=True,
+                    display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
+                    write_to_temp_file=True,
+                    **kwargs,
+                )
+
+                extra_blacklist = [
+                    r for r in get_recursive_require_names(req_module, **kwargs) if r not in libname_blacklist
+                ]
+                if extra_blacklist:
+                    kwargs["log"](
+                        "\nWarning: Preemptively skipping recursive dependency module%s: %s\n"
+                        % (("" if len(extra_blacklist) == 1 else "s"), ", ".join(extra_blacklist))
+                    )
+                libname_blacklist.extend(extra_blacklist)
+                kwargs["inline_failure_libnames"].append(req_module)
+                continue
+
+        if check_should_break():
+            break
+
+    clear_libimport_cache(
+        lib_of_filename(
+            output_file_name,
+            libnames=tuple(kwargs["libnames"]),
+            non_recursive_libnames=tuple(kwargs["non_recursive_libnames"]),
+        )
+    )
+
+
+def inline_all_requires(output_file_name, check_should_break, **kwargs):
+    # so long as we keep changing, we will pull all the
+    # requires to the top, then try to replace them in reverse
+    # order.  As soon as we succeed, we reset the list
+    last_output = get_file(output_file_name, **kwargs)
+    clear_libimport_cache(lib_of_filename(output_file_name, **kwargs))
+    cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
+    cur_output = cur_output_gen(dict())
+    # keep a list of libraries we've already tried to inline, and don't try them again
+    libname_blacklist = []
+    first_run = True
+    while cur_output != last_output or first_run:
+        first_run = False
+        last_output = cur_output
+        inline_one_require(output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs)
+        cur_output = cur_output_gen(dict())
+
+
 def main():
     try:
         args = process_logging_arguments(parser.parse_args())
@@ -2657,6 +2875,7 @@ def main():
         "color_on": args.color_on,
         "inline_failure_libnames": [],
         "parse_with": args.parse_with,
+        "verbose_include_failure_warning": args.verbose_include_failure_warning,
         "extra_verbose_prefix": args.verbose_include_failure_warning_prefix,
         "extra_verbose_newline": args.verbose_include_failure_warning_newline,
         "cli_mapping": get_parser_name_mapping(parser),
@@ -2895,35 +3114,19 @@ def main():
         else:
             add_admit_tactic_wrapper = lambda x, **kwargs: x
 
-        if env["minimize_before_inlining"]:
-            env["log"](
-                "\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s..."
-                % (bug_file_name, output_file_name)
-            )
-            inlined_contents = get_file(bug_file_name, update_globs=True, **env)
-            args.bug_file.close()
-            if args.inline_prelude:
-                for key in ("coqc_args", "coqtop_args", "passing_coqc_args", "passing_coqtop_args"):
-                    env[key] = tuple(list(env[key]) + ["-noinit"])
-                inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
-            inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
-            write_to_file(output_file_name, inlined_contents)
-        else:
-            env["log"](
-                "\nFirst, I will attempt to inline all of the inputs in %s, and store the result in %s..."
-                % (bug_file_name, output_file_name)
-            )
-            inlined_contents = include_imports(bug_file_name, **env)
-            args.bug_file.close()
-            if inlined_contents:
-                inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
-                env["log"]("Stripping trailing ends")
-                while re.search(r"End [^ \.]*\.\s*$", inlined_contents):
-                    inlined_contents = re.sub(r"End [^ \.]*\.\s*$", "", inlined_contents)
-                write_to_file(output_file_name, inlined_contents)
-            else:
-                env["log"]("Failed to inline inputs.")
-                sys.exit(1)
+        # if env["minimize_before_inlining"] and not env["inline_one_at_a_time"]:
+        env["log"](
+            "\nFirst, I will attempt to absolutize relevant [Require]s in %s, and store the result in %s..."
+            % (bug_file_name, output_file_name)
+        )
+        inlined_contents = get_file(bug_file_name, update_globs=True, **env)
+        args.bug_file.close()
+        if args.inline_prelude:
+            for key in ("coqc_args", "coqtop_args", "passing_coqc_args", "passing_coqtop_args"):
+                env[key] = tuple(list(env[key]) + ["-noinit"])
+            inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
+        inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
+        write_to_file(output_file_name, inlined_contents)
 
         if not env["should_succeed"]:
             env["log"]("\nNow, I will attempt to coq the file, and find the error...")
@@ -2939,209 +3142,50 @@ def main():
                     os.remove(output_file_name)
                     default_on_fatal("The computed error message was not present in the given error log.", **env)
 
+        if not env["minimize_before_inlining"]:
+            env["log"](
+                "Now, I will attempt to inline all of the inputs in %s, and store the result in %s..."
+                % (bug_file_name, output_file_name)
+            )
+            inlined_contents = include_imports(output_file_name, **env)
+            if inlined_contents:
+                inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
+                env["log"]("Stripping trailing ends")
+                while re.search(r"End [^ \.]*\.\s*$", inlined_contents):
+                    inlined_contents = re.sub(r"End [^ \.]*\.\s*$", "", inlined_contents)
+                if not check_change_and_write_to_file(
+                    "",
+                    inlined_contents,
+                    output_file_name,
+                    unchanged_message="Invalid empty file!",
+                    success_message="Requires inlined.",
+                    failure_description="inline all requires",
+                    changed_description="File",
+                    timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
+                    write_to_temp_file=True,
+                    **env,
+                ):
+                    env["log"]("Failed to inline requires all at once, trying one by one...")
+                    inline_all_requires(output_file_name,
+                                        (lambda: minimize_file(output_file_name, return_after_requires=True, die=(lambda *args, **kargs: False), **env)),
+                                         **env)
+            else:
+                env["log"]("Failed to inline inputs.")
+                sys.exit(1)
+
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)
 
-        if env["minimize_before_inlining"]:  # if we've not already inlined everything
+        if env["minimize_before_inlining"]:
+            # if we've not already inlined everything
             # so long as we keep changing, we will pull all the
             # requires to the top, then try to replace them in reverse
             # order.  As soon as we succeed, we reset the list
-            last_output = get_file(output_file_name, **env)
-            clear_libimport_cache(lib_of_filename(output_file_name, **env))
-            cur_output_gen = (
-                lambda mod_remap: add_admit_tactic_wrapper(
-                    get_file(output_file_name, mod_remap=mod_remap, **env), **env
-                ).strip()
-                + "\n"
+            inline_all_requires(
+                output_file_name,
+                (lambda: minimize_file(output_file_name, die=(lambda *args, **kargs: False), **env)),
+                **env,
             )
-            cur_output = cur_output_gen(dict())
-            # keep a list of libraries we've already tried to inline, and don't try them again
-            libname_blacklist = []
-            first_run = True
-            while cur_output != last_output or first_run:
-                first_run = False
-                last_output = cur_output
-                requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **env)
-
-                for req_module in reversed(requires):
-                    if req_module in libname_blacklist:
-                        continue
-                    else:
-                        libname_blacklist.append(req_module)
-                    rep = "\nRequire %s.\n" % req_module
-                    if rep not in "\n" + cur_output:
-                        env["log"]("\nWarning: I cannot find Require %s." % req_module)
-                        env["log"]("in contents:\n" + cur_output, level=3)
-                        continue
-                    try:
-                        # we prefer wrapping modules via Include,
-                        # because this is a bit more robust against
-                        # future module inlining (see example test 45)
-                        def get_test_output(
-                            absolutize_mods=False,
-                            first_wrap_then_include=True,
-                            without_require=True,
-                            insert_at_top=False,
-                            extra_top_header=None,
-                        ):
-                            new_req_module = absolutize_and_mangle_libname(
-                                req_module, first_wrap_then_include=first_wrap_then_include, **env
-                            )
-                            test_output = (
-                                cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
-                            )
-                            if not absolutize_mods:
-                                cur_rep = rep
-                            else:
-                                cur_rep = "\nRequire %s.\n" % new_req_module
-                            if cur_rep not in "\n" + test_output:
-                                env["log"]("\nWarning: I cannot find Require %s." % new_req_module)
-                                env["log"]("in contents:\n" + test_output, level=3)
-                            replacement = (
-                                "\n"
-                                + get_required_contents(
-                                    req_module,
-                                    first_wrap_then_include=first_wrap_then_include,
-                                    without_require=without_require,
-                                    extra_top_header=extra_top_header,
-                                    **env,
-                                ).strip()
-                                + "\n"
-                            )
-                            if without_require:
-                                all_imports = get_recursive_require_names(
-                                    req_module, reverse=False, **env
-                                )  # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
-                                replacement = "\n" + "".join("Require %s.\n" % i for i in all_imports) + replacement
-                            if insert_at_top:
-                                header, test_output = split_leading_comments_and_whitespace(test_output)
-                                return add_admit_tactic_wrapper(
-                                    (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip()
-                                    + "\n",
-                                    **env,
-                                )
-                            else:
-                                return ("\n" + test_output).replace(cur_rep, replacement, 1).replace(
-                                    cur_rep, "\n"
-                                ).strip() + "\n"
-
-                        test_output_alts = [
-                            (
-                                (
-                                    (" without Include" if not first_wrap_then_include else " via Include")
-                                    + (", absolutizing mod references" if absolutize_mods else "")
-                                    + (", stripping Requires" if without_require else ", with Requires")
-                                    + (f", with {extra_top_header} at the top" if extra_top_header else "")
-                                ),
-                                get_test_output(
-                                    absolutize_mods=absolutize_mods,
-                                    first_wrap_then_include=first_wrap_then_include,
-                                    without_require=without_require,
-                                    insert_at_top=insert_at_top,
-                                    extra_top_header=extra_top_header,
-                                ),
-                            )
-                            for absolutize_mods in (False, True)
-                            for first_wrap_then_include in (
-                                (True, False) if env["prefer_inline_via_include"] else (False, True)
-                            )
-                            for without_require, insert_at_top in ((True, False), (False, True), (False, False))
-                            for extra_top_header in (None, "Import Coq.Init.Prelude.")
-                        ]
-                        (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
-                    except IOError as e:
-                        env["log"](
-                            "\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s"
-                            % (
-                                req_module,
-                                str(e),
-                                str(tuple(env["libnames"])),
-                                str(tuple(env["non_recursive_libnames"])),
-                            )
-                        )
-                        continue
-
-                    if not check_change_and_write_to_file(
-                        cur_output,
-                        test_output,
-                        output_file_name,
-                        unchanged_message="Invalid empty file!",
-                        success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
-                        failure_description=("inline %s%s" % (req_module, test_output_descr)),
-                        changed_description="File",
-                        reset_timeout=True,
-                        timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
-                        display_source_to_error=False,
-                        display_extra_verbose_on_error=args.verbose_include_failure_warning,
-                        **env,
-                    ):
-                        # any lazily evaluates the iterator, so we'll
-                        # only run the check up to the point of the
-                        # first success
-                        if not any(
-                            check_change_and_write_to_file(
-                                cur_output,
-                                test_output_alt,
-                                output_file_name,
-                                unchanged_message="Invalid empty file!",
-                                success_message=("Inlining %s%s succeeded." % (req_module, descr)),
-                                failure_description=("inline %s%s" % (req_module, descr)),
-                                changed_description="File",
-                                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
-                                # reset the timeout on each different
-                                # way of inlining, so that an earlier
-                                # one failing doesn't hobble the
-                                # ability of a later one to succeed
-                                reset_timeout=True,
-                                display_source_to_error=True,
-                                display_extra_verbose_on_error=args.verbose_include_failure_warning,
-                                **env,
-                            )
-                            for descr, test_output_alt in test_output_alts
-                        ):
-                            # let's also display the error and source
-                            # for the original failure to inline,
-                            # without the Include, so we can see
-                            # what's going wrong in both cases
-                            check_change_and_write_to_file(
-                                cur_output,
-                                test_output,
-                                output_file_name,
-                                unchanged_message="Invalid empty file!",
-                                success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
-                                failure_description=("inline %s%s" % (req_module, test_output_descr)),
-                                changed_description="File",
-                                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
-                                reset_timeout=True,
-                                display_source_to_error=True,
-                                display_extra_verbose_on_error=args.verbose_include_failure_warning,
-                                write_to_temp_file=True,
-                                **env,
-                            )
-
-                            extra_blacklist = [
-                                r for r in get_recursive_require_names(req_module, **env) if r not in libname_blacklist
-                            ]
-                            if extra_blacklist:
-                                env["log"](
-                                    "\nWarning: Preemptively skipping recursive dependency module%s: %s\n"
-                                    % (("" if len(extra_blacklist) == 1 else "s"), ", ".join(extra_blacklist))
-                                )
-                            libname_blacklist.extend(extra_blacklist)
-                            env["inline_failure_libnames"].append(req_module)
-                            continue
-
-                    if minimize_file(output_file_name, die=(lambda *args, **kargs: False), **env):
-                        break
-
-                clear_libimport_cache(
-                    lib_of_filename(
-                        output_file_name,
-                        libnames=tuple(env["libnames"]),
-                        non_recursive_libnames=tuple(env["non_recursive_libnames"]),
-                    )
-                )
-                cur_output = cur_output_gen(dict())
 
             # and we make one final run, or, in case there are no requires, one run
             minimize_file(output_file_name, **env)
