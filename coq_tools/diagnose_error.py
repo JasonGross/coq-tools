@@ -247,7 +247,7 @@ COQ_OUTPUT = {}
 
 
 def sanitize_cmd(cmd):
-    return re.sub(r'("/tmp/tmp)[^/"]*?((?:/[^"]*?)?(?:\.v)?")', r"\1XXXXXXXX\2", cmd)
+    return re.sub(r'("/tmp/tmp|"/var/folders/.*?tmp)[^/"]*?((?:/[^"]*?)?(?:\.v)?")', r"\1XXXXXXXX\2", cmd)
 
 
 def get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs):
