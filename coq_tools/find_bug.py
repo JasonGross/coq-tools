@@ -2118,7 +2118,9 @@ def try_strip_extra_lines(output_file_name, statements, line_num, **kwargs):
 
 def try_remove_section_module_transformer(*, remove_section: bool = True, remove_module: bool = True, **kwargs):
     SECTION_BEGIN_REG = re.compile(r"^\s*Section\s+([^\.\s]+)\s*\.\s*$", flags=re.DOTALL)
-    MODULE_BEGIN_REG = re.compile(r"^\s*Module\s+(?:(?:Import|Export|Type)\s+)?([^\.\s\(:=]+)\s*\.\s*$", flags=re.DOTALL)
+    MODULE_BEGIN_REG = re.compile(
+        r"^\s*Module\s+(?:(?:Import|Export|Type)\s+)?([^\.\s\(:=]+)\s*\.\s*$", flags=re.DOTALL
+    )
     MODULE_SECTION_BEGIN_REG = re.compile(
         r"^\s*(?:Section|Module(?:\s+(?:Import|Export|Type))?)\s+([^\.\s\(:=]+)", flags=re.DOTALL
     )
