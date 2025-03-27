@@ -2285,7 +2285,9 @@ def default_on_fatal(message, log=DEFAULT_LOG, **env):
     sys.exit(1)
 
 
-def minimize_file(output_file_name, die=default_on_fatal, return_after_requires=False, return_after_splitting=False, **env):
+def minimize_file(
+    output_file_name, die=default_on_fatal, return_after_requires=False, return_after_splitting=False, **env
+):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
@@ -3166,9 +3168,15 @@ def main():
                     **env,
                 ):
                     env["log"]("Failed to inline requires all at once, trying one by one...")
-                    inline_all_requires(output_file_name,
-                                        (lambda: minimize_file(output_file_name, return_after_requires=True, die=(lambda *args, **kargs: False), **env)),
-                                         **env)
+                    inline_all_requires(
+                        output_file_name,
+                        (
+                            lambda: minimize_file(
+                                output_file_name, return_after_requires=True, die=(lambda *args, **kargs: False), **env
+                            )
+                        ),
+                        **env,
+                    )
             else:
                 env["log"]("Failed to inline inputs.")
                 sys.exit(1)
