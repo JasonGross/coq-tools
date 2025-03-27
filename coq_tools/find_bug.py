@@ -573,7 +573,7 @@ parser.add_argument(
     help="Require that the file succeed rather than failing.  Incompatible with --passing-* arguments, among others.",
 )
 parser.add_argument("--export-modules", action=BooleanOptionalAction, default=True, help="Export all Modules.")
-parser.add_argument("--split-imports", action=BooleanOptionalAction, default=None, help="Split imports.")
+parser.add_argument("--split-imports", action=BooleanOptionalAction, default=True, help="Split imports.")
 parser.add_argument(
     "--remove-modules",
     dest="remove_modules",
@@ -589,7 +589,7 @@ parser.add_argument(
     help="Remove all sections. Only relevant if --no-error is passed.",
 )
 parser.add_argument("--remove-comments", action=BooleanOptionalAction, default=None, help="Remove all comments.")
-parser.add_argument("--normalize-requires", action=BooleanOptionalAction, default=True, help="Normalize requires.")
+parser.add_argument("--normalize-requires", action=BooleanOptionalAction, default=None, help="Normalize requires.")
 parser.add_argument("--split-requires", action=BooleanOptionalAction, default=True, help="Split requires.")
 parser.add_argument("--remove-hints", action=BooleanOptionalAction, default=None, help="Remove all hints.")
 parser.add_argument(
@@ -643,7 +643,7 @@ def adjust_no_error_defaults(args: argparse.Namespace):
         "admit_opaque",
         "admit_transparent",
         "admit_obligations",
-        "split_imports",
+        "normalize_requires",
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
