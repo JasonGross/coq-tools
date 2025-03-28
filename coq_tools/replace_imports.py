@@ -7,6 +7,7 @@ from .import_util import (
     lib_of_filename,
     get_file,
     run_recursively_get_imports,
+    run_maybe_recursively_get_imports,
     recursively_get_imports,
     absolutize_has_all_constants,
     is_local_import,
@@ -150,7 +151,15 @@ def absolutize_and_mangle_libname(lib, first_wrap_then_include=False, **kwargs):
     return full_module_name
 
 
-def contents_as_module(lib, other_imports, first_wrap_then_include=False, export=False, without_require=True, extra_top_header=None, **kwargs):
+def contents_as_module(
+    lib,
+    other_imports,
+    first_wrap_then_include=False,
+    export=False,
+    without_require=True,
+    extra_top_header=None,
+    **kwargs,
+):
     import_all_directories = not absolutize_has_all_constants(kwargs["absolutize"])
     if import_all_directories and not export:
         # N.B. This strategy does not work with the Include strategy
@@ -192,7 +201,7 @@ def contents_as_module(lib, other_imports, first_wrap_then_include=False, export
     return early_contents + contents
 
 
-def normalize_requires(filename, **kwargs):
+def normalize_requires(filename, recursive_requires_explicit: bool = True, **kwargs):
     """Return the contents of filename, with all [Require]s split out and ordered at the top.
 
     Preserve any leading whitespace/comments.
@@ -201,7 +210,7 @@ def normalize_requires(filename, **kwargs):
         filename += ".v"
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = run_recursively_get_imports(lib, **kwargs)
+    all_imports = run_maybe_recursively_get_imports(lib, recursively=recursive_requires_explicit, **kwargs)
 
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_name, **kwargs)
@@ -223,12 +232,7 @@ def recursively_get_requires_from_file(filename, **kwargs):
     return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
 
 
-def include_imports(
-    filename,
-    as_modules=True,
-    absolutize=ALL_ABSOLUTIZE_TUPLE,
-    **kwargs
-):
+def include_imports(filename, as_modules=True, absolutize=ALL_ABSOLUTIZE_TUPLE, **kwargs):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
