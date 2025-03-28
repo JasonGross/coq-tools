@@ -10,7 +10,7 @@ from .replace_imports import (
     recursively_get_requires_from_file,
     absolutize_and_mangle_libname,
 )
-from .import_util import get_file, get_recursive_require_names, run_recursively_get_imports
+from .import_util import get_file, get_recursive_require_names
 from .strip_comments import strip_comments
 from .strip_newlines import strip_newlines
 from .split_file import split_coq_file_contents, split_leading_comments_and_whitespace
@@ -19,7 +19,6 @@ from .split_definitions import (
     split_statements_to_definitions,
     join_definitions,
     get_preferred_passing,
-    get_fallback_passing,
 )
 from .admit_abstract import transform_abstract_to_admit
 from .import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
@@ -51,8 +50,8 @@ from .custom_arguments import (
     LOG_ALWAYS,
 )
 from .binding_util import process_maybe_list
-from .file_util import clean_v_file, read_from_file, write_to_file, restore_file
-from .util import yes_no_prompt, PY3, shlex_join, list_diff, BooleanOptionalAction
+from .file_util import clean_v_file, read_from_file, write_to_file
+from .util import yes_no_prompt, PY3, list_diff, BooleanOptionalAction
 from . import util
 
 if PY3:
