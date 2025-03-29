@@ -589,6 +589,12 @@ parser.add_argument(
 )
 parser.add_argument("--remove-comments", action=BooleanOptionalAction, default=None, help="Remove all comments.")
 parser.add_argument("--normalize-requires", action=BooleanOptionalAction, default=True, help="Normalize requires.")
+parser.add_argument(
+    "--recursive-requires-explicit",
+    action=BooleanOptionalAction,
+    default=None,
+    help="When normalizing requires, include all recursive requires explicitly.  This is useful for removing unneeded intermediate requires rather than inlining them, but causes issues with minimization when requires are not pre-emptively removed if any require fails to inline.",
+)
 parser.add_argument("--split-requires", action=BooleanOptionalAction, default=True, help="Split requires.")
 parser.add_argument("--remove-hints", action=BooleanOptionalAction, default=None, help="Remove all hints.")
 parser.add_argument(
@@ -643,6 +649,7 @@ def adjust_no_error_defaults(args: argparse.Namespace):
         "admit_transparent",
         "admit_obligations",
         "split_imports",
+        "recursive_requires_explicit",
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
@@ -2886,6 +2893,7 @@ def main():
         "remove_sections": args.remove_sections,
         "remove_comments": args.remove_comments,
         "normalize_requires": args.normalize_requires,
+        "recursive_requires_explicit": args.recursive_requires_explicit,
         "split_requires": args.split_requires,
         "remove_hints": args.remove_hints,
         "remove_empty_sections": args.remove_empty_sections,
