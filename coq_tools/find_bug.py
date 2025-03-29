@@ -1561,8 +1561,9 @@ HINT_REG = re.compile(
     + r"(?:"
     + r"Definition|Fixpoint|Record|Inductive"
     + r"|Coinductive|CoFixpoint"
-    + r"|Set\s+Universe\s+Polymorphism"
-    + r"|Unet\s+Universe\s+Polymorphism"
+    + r"|(?:Set|Unset)\s+(?:Universe\s+Polymorphism|Implicit\s+Arguments|Inductive|Polymorphic)"
+    + r"|Notation|Reserved\s+Notation"
+    + r"|Arguments|Implicit\s+Arguments"
     + r"|"
     + DEFINITION_ISH
     + r")\.?(?:\s+|$)"
