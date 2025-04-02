@@ -1,4 +1,3 @@
-from typing import Iterable, Tuple
 from .util import group_by
 
 __all__ = ["strip_comments", "strip_trailing_comments"]

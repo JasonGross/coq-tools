@@ -10,7 +10,6 @@ from .custom_arguments import (
     get_parser_name_mapping,
     LOG_ALWAYS,
 )
-from .memoize import memoize
 from .file_util import read_from_file, write_to_file
 
 __all__ = ["main"]

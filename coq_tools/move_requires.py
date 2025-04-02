@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import with_statement
-import os, sys, shutil, re
+import os, sys, re
 from .argparse_compat import argparse
 from .custom_arguments import get_parser_name_mapping
 

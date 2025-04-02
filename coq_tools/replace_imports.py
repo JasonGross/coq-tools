@@ -1,6 +1,5 @@
 from __future__ import with_statement, print_function
-import os, subprocess, re, sys, glob, os.path
-from .memoize import memoize
+import re
 from .split_file import split_leading_comments_and_whitespace
 from .import_util import (
     filename_of_lib,
@@ -12,7 +11,6 @@ from .import_util import (
     absolutize_has_all_constants,
     is_local_import,
     ALL_ABSOLUTIZE_TUPLE,
-    IMPORT_ABSOLUTIZE_TUPLE,
 )
 from .custom_arguments import DEFAULT_LOG
 from .coq_running_support import get_reserved_modnames

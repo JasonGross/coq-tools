@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import shutil, os, os.path, sys
+import os, os.path
 from .argparse_compat import argparse
 from .import_util import IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from .custom_arguments import (
@@ -10,7 +10,7 @@ from .custom_arguments import (
     process_logging_arguments,
     get_parser_name_mapping,
 )
-from .coq_version import get_coqc_coqlib, DEFAULT_COQTOP
+from .coq_version import get_coqc_coqlib
 from .replace_imports import include_imports
 
 __all__ = ["main"]

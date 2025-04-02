@@ -1,4 +1,4 @@
-import re, time
+import re
 from subprocess import Popen, PIPE, STDOUT
 from . import split_definitions_old
 from .split_file import postprocess_split_proof_term
