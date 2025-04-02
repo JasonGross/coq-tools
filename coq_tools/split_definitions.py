@@ -166,7 +166,9 @@ def split_statements_to_definitions(
     prompt_reg = re.compile(
         r"^(.*)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*)$".replace(" ", r"\s*"), flags=re.DOTALL
     )
-    defined_reg = re.compile(r"^\s*(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$", re.MULTILINE)
+    defined_reg = re.compile(
+        r"^\s*(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$", re.MULTILINE
+    )
     proof_using_reg = re.compile(
         r"^\s*<infomsg>\s*The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+)</infomsg>".replace(
             " ", r"\s+"
@@ -343,7 +345,9 @@ def split_statements_to_definitions(
                             "statements": (statement,),
                             "statement": statement,
                             "terms_defined": tuple(terms_defined),
-                            "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options else (),
+                            "proof_using_options_map": (
+                                ((proof_using_thm_name, tuple(proof_using_options)),) if proof_using_options else ()
+                            ),
                             "proof_using_options": tuple(proof_using_options),
                         }
                     )
@@ -367,7 +371,9 @@ def split_statements_to_definitions(
                             "statements": (statement,),
                             "statement": statement,
                             "terms_defined": (),
-                            "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options else (),
+                            "proof_using_options_map": (
+                                ((proof_using_thm_name, tuple(proof_using_options)),) if proof_using_options else ()
+                            ),
                             "proof_using_options": tuple(proof_using_options),
                         }
                     )
@@ -400,8 +406,14 @@ def split_statements_to_definitions(
                 ),
                 "statement": last_statement,
                 "terms_defined": (),
-                "proof_using_options_map": ((proof_using_thm_name, tuple(proof_using_options)), ) if proof_using_options and not proof_using_options_used else (),
-                "proof_using_options": tuple(proof_using_options) if proof_using_options and not proof_using_options_used else (),
+                "proof_using_options_map": (
+                    ((proof_using_thm_name, tuple(proof_using_options)),)
+                    if proof_using_options and not proof_using_options_used
+                    else ()
+                ),
+                "proof_using_options": (
+                    tuple(proof_using_options) if proof_using_options and not proof_using_options_used else ()
+                ),
             }
         )
     if rtn[0]["statement"].strip() == "Set Suggest Proof Using.":

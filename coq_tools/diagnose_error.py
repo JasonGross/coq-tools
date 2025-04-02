@@ -350,7 +350,7 @@ def reset_coq_output_cache(
     pass_on_stdin=False,
     verbose_base=1,
     ocamlpath=None,
-    **kwargs
+    **kwargs,
 ):
     key, file_name, cmds, input_val, cleaner, env = prepare_cmds_for_coq_output(
         coqc_prog,
@@ -381,7 +381,7 @@ def get_coq_output(
     verbose_base=1,
     retry_with_debug_when=(lambda output: "is not a compiled interface for this version of OCaml" in output),
     ocamlpath=None,
-    **kwargs
+    **kwargs,
 ):
     """Returns the coqc output of running through the given
     contents.  Pass timeout_val = None for no timeout."""
