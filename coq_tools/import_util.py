@@ -43,6 +43,7 @@ __all__ = [
     "ALL_ABSOLUTIZE_TUPLE",
     "absolutize_has_all_constants",
     "run_recursively_get_imports",
+    "run_maybe_recursively_get_imports",
     "clear_libimport_cache",
     "get_byte_references_for",
     "sort_files_by_dependency",
@@ -1255,6 +1256,16 @@ def run_recursively_get_imports(lib, recur=recursively_get_imports, fast=False, 
         imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
         return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
     return [lib]
+
+
+def run_maybe_recursively_get_imports(lib, recursively: bool = True, **kwargs):
+    recursive_imports = run_recursively_get_imports(lib, **kwargs)
+    if recursively:
+        return recursive_imports
+    else:
+        # keep the order of the recursive version, but only keep the elements in the non-recursive list
+        direct_imports = run_recursively_get_imports(lib, recur=lambda lib, **_kwargs: [lib], **kwargs)
+        return [lib for lib in recursive_imports if lib in direct_imports]
 
 
 if __name__ == "__main__":
