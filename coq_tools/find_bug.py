@@ -37,7 +37,7 @@ from .coq_version import (
     get_coq_accepts_compile,
     DEFAULT_COQTOP,
 )
-from .coq_running_support import get_ltac_support_snippet
+from .coq_running_support import get_ltac_support_snippet, get_default_options_settings
 from .custom_arguments import (
     add_libname_arguments,
     add_passing_libname_arguments,
@@ -2579,6 +2579,64 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
     cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
     requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **kwargs)
 
+    def get_test_output(
+        req_module: str,
+        absolutize_mods=False,
+        first_wrap_then_include=True,
+        without_require=True,
+        insert_at_top=False,
+        extra_top_header=None,
+        include_options_settings=False,
+    ):
+        new_req_module = absolutize_and_mangle_libname(
+            req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
+        )
+        test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
+        if not absolutize_mods:
+            cur_rep = rep
+        else:
+            cur_rep = "\nRequire %s.\n" % new_req_module
+        if cur_rep not in "\n" + test_output:
+            kwargs["log"]("\nWarning: I cannot find Require %s." % new_req_module)
+            kwargs["log"]("in contents:\n" + test_output, level=3)
+        extra_contents_inside_module = ""
+        require_statements_before_replacement = ""
+        if include_options_settings or without_require:
+            all_imports = get_recursive_require_names(
+                req_module, reverse=False, **kwargs
+            )  # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
+            require_statements = "".join("Require %s.\n" % i for i in all_imports)
+            if without_require:
+                require_statements_before_replacement = "\n" + require_statements
+            if include_options_settings:
+                extra_contents_inside_module = get_default_options_settings(
+                    kwargs["coqc"],
+                    after_contents=require_statements,
+                    prefix="Local ",
+                    **kwargs,
+                )
+        replacement = (
+            require_statements_before_replacement
+            + "\n"
+            + get_required_contents(
+                req_module,
+                first_wrap_then_include=first_wrap_then_include,
+                without_require=without_require,
+                extra_top_header=extra_top_header,
+                extra_contents_inside_module=extra_contents_inside_module,
+                **kwargs,
+            ).strip()
+            + "\n"
+        )
+        if insert_at_top:
+            header, test_output = split_leading_comments_and_whitespace(test_output)
+            return add_admit_tactic_wrapper(
+                (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n",
+                **kwargs,
+            )
+        else:
+            return ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
+
     for req_module in reversed(requires):
         if req_module in libname_blacklist:
             continue
@@ -2593,49 +2651,7 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
             # we prefer wrapping modules via Include,
             # because this is a bit more robust against
             # future module inlining (see example test 45)
-            def get_test_output(
-                absolutize_mods=False,
-                first_wrap_then_include=True,
-                without_require=True,
-                insert_at_top=False,
-                extra_top_header=None,
-            ):
-                new_req_module = absolutize_and_mangle_libname(
-                    req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
-                )
-                test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
-                if not absolutize_mods:
-                    cur_rep = rep
-                else:
-                    cur_rep = "\nRequire %s.\n" % new_req_module
-                if cur_rep not in "\n" + test_output:
-                    kwargs["log"]("\nWarning: I cannot find Require %s." % new_req_module)
-                    kwargs["log"]("in contents:\n" + test_output, level=3)
-                replacement = (
-                    "\n"
-                    + get_required_contents(
-                        req_module,
-                        first_wrap_then_include=first_wrap_then_include,
-                        without_require=without_require,
-                        extra_top_header=extra_top_header,
-                        **kwargs,
-                    ).strip()
-                    + "\n"
-                )
-                if without_require:
-                    all_imports = get_recursive_require_names(
-                        req_module, reverse=False, **kwargs
-                    )  # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
-                    replacement = "\n" + "".join("Require %s.\n" % i for i in all_imports) + replacement
-                if insert_at_top:
-                    header, test_output = split_leading_comments_and_whitespace(test_output)
-                    return add_admit_tactic_wrapper(
-                        (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n",
-                        **kwargs,
-                    )
-                else:
-                    return ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
-
+            # we try option settings before trying anything else because option settings are the most robust to future changes
             test_output_alts = [
                 (
                     (
@@ -2643,19 +2659,23 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         + (", absolutizing mod references" if absolutize_mods else "")
                         + (", stripping Requires" if without_require else ", with Requires")
                         + (f", with {extra_top_header} at the top" if extra_top_header else "")
+                        + (", with explicit setting of options" if include_options_settings else "")
                     ),
                     get_test_output(
+                        req_module,
                         absolutize_mods=absolutize_mods,
                         first_wrap_then_include=first_wrap_then_include,
                         without_require=without_require,
                         insert_at_top=insert_at_top,
                         extra_top_header=extra_top_header,
+                        include_options_settings=include_options_settings,
                     ),
                 )
                 for absolutize_mods in (False, True)
                 for first_wrap_then_include in ((True, False) if kwargs["prefer_inline_via_include"] else (False, True))
                 for without_require, insert_at_top in ((True, False), (False, True), (False, False))
                 for extra_top_header in (None, "Import Coq.Init.Prelude.")
+                for include_options_settings in (False, True)
             ]
             (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
         except IOError as e:

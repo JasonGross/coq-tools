@@ -154,6 +154,7 @@ def absolutize_and_mangle_libname(lib, first_wrap_then_include=False, **kwargs):
 def contents_as_module(
     lib,
     other_imports,
+    extra_contents_inside_module: str = "",
     first_wrap_then_include=False,
     export=False,
     without_require=True,
@@ -189,6 +190,8 @@ def contents_as_module(
         contents = extra_top_header + "\n" + contents
     # wrap the contents in directory modules
     maybe_export = "Export " if export else ""
+    if extra_contents_inside_module:
+        contents = extra_contents_inside_module + "\n" + contents
     early_contents = ""
     if first_wrap_then_include:  # works around https://github.com/JasonGross/coq-tools/issues/67
         early_contents, contents = contents, "Include %s.%s." % (mangled_module_name, lib_parts[-1])
