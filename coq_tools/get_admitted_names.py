@@ -1,18 +1,15 @@
 #!/usr/bin/env python
-import tempfile, sys, os, re
+import tempfile, os
 from . import custom_arguments
 from .argparse_compat import argparse
-from .import_util import get_file, lib_of_filename
+from .import_util import lib_of_filename
 from .diagnose_error import get_coq_output
 from .import_util import lib_of_filename, norm_libname
 from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings
-from .memoize import memoize
 from .coq_version import (
     get_coqc_version,
-    get_coqtop_version,
     get_coqc_help,
     get_coq_accepts_top,
-    group_coq_args,
     DEFAULT_COQTOP,
 )
 from .custom_arguments import (
@@ -21,17 +18,15 @@ from .custom_arguments import (
     add_logging_arguments,
     process_logging_arguments,
     get_parser_name_mapping,
-    DEFAULT_LOG,
     LOG_ALWAYS,
 )
 from .binding_util import process_maybe_list
-from .file_util import clean_v_file, read_from_file, write_to_file, restore_file
+from .file_util import clean_v_file
 from . import util
 from .util import PY3
 
 if PY3:
     from .util import raw_input
-from . import diagnose_error
 
 __all__ = ["main"]
 

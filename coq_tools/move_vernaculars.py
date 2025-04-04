@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import with_statement
-import os, sys, shutil, re
+import re
 from .argparse_compat import argparse
 from .split_file import split_coq_file_contents_with_comments
 from .strip_comments import strip_comments

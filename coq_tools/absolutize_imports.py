@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import shutil, os, os.path, sys
+import os, os.path, sys
 from .argparse_compat import argparse
 from .import_util import get_file, sort_files_by_dependency, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
 from .custom_arguments import (

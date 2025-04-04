@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import shutil, os, os.path, sys, re
+import os, os.path, sys, re
 from .argparse_compat import argparse
 from .custom_arguments import (
     add_libname_arguments,
@@ -21,9 +21,7 @@ from .import_util import (
 from .file_util import write_to_file
 from .memoize import memoize
 from .minimizer_drivers import run_binary_search
-from .coq_version import DEFAULT_COQTOP
 from . import diagnose_error
-from . import util
 
 __all__ = ["main"]
 

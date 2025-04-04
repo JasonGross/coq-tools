@@ -1,6 +1,5 @@
 from __future__ import with_statement, print_function
-import os, sys, tempfile, subprocess, re, time, math, glob, threading, shutil, traceback
-from .Popen_noblock import Popen_async, Empty
+import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from .memoize import memoize
 from .file_util import clean_v_file
 from .util import re_escape
