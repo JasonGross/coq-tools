@@ -153,6 +153,13 @@ def add_libname_arguments_gen(parser, passing):
         + passing_for,
     )
     parser.add_argument(
+        twodash_passing_dash + "coqlib",
+        metavar="COQLIB",
+        dest=passing_underscore + "coqlib",
+        type=str,
+        help="Coqlib argument to pass to Coq" + passing_for,
+    )
+    parser.add_argument(
         onedash_passing_dash + "f",
         metavar="FILE",
         dest=passing_underscore + "CoqProjectFile",
@@ -268,9 +275,13 @@ def argstring_to_iterable(arg):
     return arg.split(" ")
 
 
-def append_coq_arg(env, arg, passing=""):
+def append_coq_args_raw(env, *args, passing=""):
     for key in ("coqc_args", "coqtop_args"):
-        env[passing + key] = tuple(list(env.get(passing + key, [])) + list(argstring_to_iterable(arg)))
+        env[passing + key] = tuple(list(env.get(passing + key, [])) + list(args))
+
+
+def append_coq_arg(env, arg, passing=""):
+    append_coq_args_raw(env, *argstring_to_iterable(arg), passing=passing)
 
 
 def process_CoqProject(env, contents, passing=""):
@@ -368,6 +379,11 @@ def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths):
         elif ":" in coqpath:
             for path in coqpath.split(":"):
                 do_with_path(coqpath if coqpath != "" else ".")
+
+
+def update_env_with_coqlib(passing_prefix, env):
+    if env.get(passing_prefix + "coqlib"):
+        append_coq_args_raw(env, "-coqlib", env[passing_prefix + "coqlib"], passing=passing_prefix)
 
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
