@@ -27,7 +27,7 @@ file_contents = {}
 lib_imports_fast = {}
 lib_imports_slow = {}
 
-DEFAULT_LIBNAMES = ((".", "Top"),)
+DEFAULT_LIBNAMES = ()  # ((".", "Top"),)
 
 IMPORT_LINE_REG = re.compile(
     r"^\s*(?:From|Require\s+Import|Require\s+Export|Require|Load\s+Verbose|Load)\s+(.*?)\.(?:\s|$)",
