@@ -22,15 +22,17 @@ __all__ = [
 PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING = "prefer-passing", "passing", "prefer-nonpassing", "nonpassing"
 
 DEFAULT_PREFERENCE_KEY = "parse_with"
+_DEFAULT_PASSING = PREFER_NONPASSING
 
 
 def get_preferred_fallback_passing(key, preference_key=DEFAULT_PREFERENCE_KEY, **env):
-    if env[preference_key] in (PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING):
-        default = env.get("passing_" + key) if env[preference_key] in (PREFER_PASSING, PASSING) else env.get(key)
+    preference = env.get(preference_key, _DEFAULT_PASSING)
+    if preference in (PREFER_PASSING, PASSING, PREFER_NONPASSING, NONPASSING):
+        default = env.get("passing_" + key) if preference in (PREFER_PASSING, PASSING) else env.get(key)
         fallback = (
             None
-            if env[preference_key] in (PASSING, NONPASSING)
-            else env.get("passing_" + key) if env[preference_key] == PREFER_NONPASSING else env.get(key)
+            if preference in (PASSING, NONPASSING)
+            else env.get("passing_" + key) if preference == PREFER_NONPASSING else env.get(key)
         )
         return (default, fallback)
     raise ValueError(
