@@ -73,3 +73,5 @@ nosetests.xml
 /examples/example_*/tmp*.v
 /examples/example_*/*/tmp*.v
 /examples/example_*/*/*/tmp*.v
+
+.venv
