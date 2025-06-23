@@ -71,3 +71,15 @@ else
 fi
 
 export -f inline_imports
+
+if [ -z "${RELPATH}" ]; then
+    function relpath() {
+        python -c "import os, sys; print(os.path.relpath(*sys.argv[1:])" "$@"
+    }
+else
+    RELPATH="$(cd "$DIR" && realpath "$(which "${RELPATH}")")"
+    export RELPATH
+    function relpath() {
+        "${RELPATH}" "$@"
+    }
+fi

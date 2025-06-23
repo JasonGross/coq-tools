@@ -67,7 +67,7 @@ then
     echo
     echo "Actual:"
     echo "$ACTUAL_PRE"
-    PREFIX_GREP="$(realpath --relative-to="$PWD" "$DIR/prefix-grep.py")"
+    PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
     exit 1
 fi
@@ -101,7 +101,7 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
-    PREFIX_GREP="$(realpath --relative-to="$PWD" "$DIR/prefix-grep.py")"
+    PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
