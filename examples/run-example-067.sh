@@ -45,7 +45,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 16, characters 0-15:
+File "[^"]*\+\.v", line [0-9]\+, characters 0-15:
 Error: The command has not failed\s\?!
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s

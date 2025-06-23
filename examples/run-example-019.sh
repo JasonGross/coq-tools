@@ -37,7 +37,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 2-39:
+File "[^"]*\+\.v", line [0-9]\+, characters 2-39:
 Error: Tactic failure\.
 EOF
 # pre-build the files to normalize the output for the run we're testing

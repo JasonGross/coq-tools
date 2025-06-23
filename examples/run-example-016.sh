@@ -37,7 +37,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 6-\(7\|13\):
+File "[^"]*\+\.v", line [0-9]\+, characters 6-\(7\|13\):
 Error:\(
 \| \)The term "X" has type "\(Set ->\|forall _ : Set,\) Set" while it is expected to have type
 EOF

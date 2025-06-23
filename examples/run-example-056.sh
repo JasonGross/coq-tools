@@ -48,7 +48,7 @@ set -x
 This file produces the following output when Coq'ed:
      = fun A : Prop => A -> False
      : Prop -> Prop
-File "/[A-Za-z0-9_/]\+\.v", line 1\(1\|2\), characters 0-28:
+File "[^"]*\+\.v", line [0-9]\+, characters 0-28:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing

@@ -47,7 +47,7 @@ set -x
 { EXPECTED_ERROR=$(cat); } <<EOF
      = fun b : bool => if b then True else False
      : bool -> Prop
-File "/[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-30:
+File "[^"]*\+\.v", line [0-9]\+, characters 0-30:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing

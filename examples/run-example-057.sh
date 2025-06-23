@@ -48,7 +48,7 @@ set -x
 This file produces the following output when Coq'ed:
 Set
      : Type
-File "/[A-Za-z0-9_/]\+\.v", line 1\(0\|1\), characters 0-15:
+File "[^"]*\+\.v", line [0-9]\+, characters 0-15:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing

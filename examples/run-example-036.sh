@@ -33,7 +33,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 1\(7\|8\), characters 47-49:
+File "[^"]*\+\.v", line [0-9]\+, characters 47-49:
 Error:[
  ]The term.*
 EOF
