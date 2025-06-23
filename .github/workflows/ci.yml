@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        coq-version: ['dev', '8.20', '8.19', '8.18', '8.17', '8.16', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
+        coq-version: ['dev', '9.0', '8.20', '8.19', '8.18', '8.17', '8.16', '8.15', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
         ocaml-version: ['default']
         test-location: ['installed', 'local', 'standalone']
 
@@ -39,6 +39,7 @@ jobs:
           startGroup 'install general dependencies'
           sudo apt-get update -y
           sudo apt-get install -y python3 python3-pip python-is-python3 python3-venv
+          opam install -y coq
           eval $(opam env)
           endGroup
           startGroup 'make print-support'
