@@ -53,8 +53,8 @@ echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>&1)"
-ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
-TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
+ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1' | tr -d '\r')"
+TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1' | tr -d '\r')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -89,8 +89,8 @@ Fail Check Set\.
 
 EOF
 
-EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
-ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"
+EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
+ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
 LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then

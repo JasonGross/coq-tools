@@ -81,8 +81,8 @@ End Top\.
 End Top_DOT_example_064\.
 EOF
 
-EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
-ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"
+EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
+ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
 LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then
