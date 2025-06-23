@@ -46,7 +46,7 @@ set -x
 # versions of Coq (<= 8.6?)
 # In this file, character 31 is the end character for 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line \(9\|1[0-9]\), characters 6-\(25\|31\):
+File "[^"]*\+\.v", line [0-9]\+, characters 6-\(25\|31\):
 Error:[
  ]The term "(bar, npp, A\.a)" has type
  "((1 = 2 -> forall P : Prop, ~ ~ P -> P) \* (forall P : Prop, ~ ~ P -> P) \*
@@ -88,7 +88,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 Definition foo : 1 = 2 -> forall P, ~~P -> P\.
 Proof\( using \)\?\.

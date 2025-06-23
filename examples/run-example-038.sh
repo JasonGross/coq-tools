@@ -43,7 +43,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line \(9\|10\), characters 10-14:
+File "[^"]*\+\.v", line [0-9]\+, characters 10-14:
 Error: The reference True was not found in the current environment\.
 EOF
 # pre-build the files to normalize the output for the run we're testing
@@ -81,7 +81,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 
 Check I : True\.

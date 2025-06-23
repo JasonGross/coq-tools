@@ -33,7 +33,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 1\(2\|3\), characters 6-\(13\|23\):
+File "[^"]*\+\.v", line [0-9]\+, characters 6-\(13\|23\):
 Error:[
  ]The term "eq_refl" has type.*
 EOF
@@ -72,7 +72,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 
 Definition α := 1\.

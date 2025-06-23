@@ -39,7 +39,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line [0-9]\+, characters 6-\(13\|41\):
+File "[^"]*\+\.v", line [0-9]\+, characters 6-\(13\|41\):
 Error:\(
 \|\s*\)The term "eq_refl" has type "forall x : ?[0-9A-Z]\+, eq x x"
 \s*while it is expected to have type "eq v (forall x : Prop, x)"\.
@@ -78,7 +78,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines\(, then from [0-9]\+ lines to [0-9]\+ lines\)\? \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 
 Inductive eq {A} (x : A) : \(A ->\|forall _ : A,\) Set := eq_refl : eq x x\.

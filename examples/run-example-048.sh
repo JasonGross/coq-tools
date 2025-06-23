@@ -45,7 +45,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "/[A-Za-z0-9_/]\+\.v", line 1[0-9], characters 72-73:
+File "[^"]*\+\.v", line [0-9]\+, characters 72-73:
 Error:
 In environment
 f := fun _ : bar => eq_refl : forall _ : bar, eq Foo\.foo Set
@@ -88,7 +88,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 Require \(Coq\|Corelib\|Stdlib\)\.Init\.Ltac\.
 

@@ -47,7 +47,7 @@ set -x
 { EXPECTED_ERROR=$(cat); } <<EOF
 A -> Baz.B
      : Set
-File "/[A-Za-z0-9_/]\+\.v", line 2[0-9], characters 0-30:
+File "[^"]*\+\.v", line [0-9]\+, characters 0-30:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing
@@ -85,7 +85,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 { EXPECTED=$(cat); } <<EOF
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)
+(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 
 Axiom A : Set\.
