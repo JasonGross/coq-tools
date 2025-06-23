@@ -32,7 +32,8 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | grep -v '^$'
-    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED"
+    PREFIX_GREP="$(realpath --relative-to="$PWD" "$DIR/prefix-grep.py")"
+    ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED"
     exit 1
 fi
 exit 0

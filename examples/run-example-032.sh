@@ -51,7 +51,8 @@ then
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_INPUT_COPY" | grep -v '^$'
-    ${PYTHON} "$DIR/prefix-grep.py" "$ACTUAL" "$EXPECTED_ONE_LINE"
+    PREFIX_GREP="$(realpath --relative-to="$PWD" "$DIR/prefix-grep.py")"
+    ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
 fi
 exit 0
