@@ -2582,7 +2582,6 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
     STRIP_ADMIT_TACTIC_WRAPPER = "STRIP_ADMIT_TACTIC_WRAPPER"
     ADD_ADMIT_TACTIC_WRAPPER = "ADD_ADMIT_TACTIC_WRAPPER"
 
-
     def get_test_output(
         req_module: str,
         absolutize_mods=False,
@@ -2676,7 +2675,10 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         + (", stripping Requires" if without_require else ", with Requires")
                         + (f", with {extra_top_header} at the top" if extra_top_header else "")
                         + (", with explicit setting of options" if include_options_settings else "")
-                        + {ADD_ADMIT_TACTIC_WRAPPER: ", re-adding admit tactic wrapper", STRIP_ADMIT_TACTIC_WRAPPER: ", without admit tactic wrapper"}.get(admit_tactic_wrapper_action, ", leaving admit tactic wrapper alone")
+                        + {
+                            ADD_ADMIT_TACTIC_WRAPPER: ", re-adding admit tactic wrapper",
+                            STRIP_ADMIT_TACTIC_WRAPPER: ", without admit tactic wrapper",
+                        }.get(admit_tactic_wrapper_action, ", leaving admit tactic wrapper alone")
                     ),
                     get_test_output(
                         req_module,
@@ -3174,7 +3176,6 @@ def main():
             for key in ("coqc_args", "coqtop_args", "passing_coqc_args", "passing_coqtop_args"):
                 env[key] = tuple(list(env[key]) + ["-noinit"])
             inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
-        inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
         write_to_file(output_file_name, inlined_contents)
 
         if not env["should_succeed"]:
@@ -3227,6 +3228,23 @@ def main():
             else:
                 env["log"]("Failed to inline inputs.")
                 sys.exit(1)
+
+        if env["admit_transparent"] or env["admit_opaque"]:
+            old_contents = read_from_file(output_file_name)
+            inlined_contents = add_admit_tactic_wrapper(old_contents, **env)
+            if not check_change_and_write_to_file(
+                old_contents,
+                inlined_contents,
+                output_file_name,
+                unchanged_message="Admit tactic wrapper already present!",
+                success_message="Admit tactic wrapper added.",
+                failure_description="add admit tactic wrapper",
+                changed_description="File",
+                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
+                write_to_temp_file=True,
+                **env,
+            ):
+                env["log"]("Failed to add admit tactic wrapper, skipping...")
 
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)
