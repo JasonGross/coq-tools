@@ -2579,6 +2579,10 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
     cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
     requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **kwargs)
 
+    STRIP_ADMIT_TACTIC_WRAPPER = "STRIP_ADMIT_TACTIC_WRAPPER"
+    ADD_ADMIT_TACTIC_WRAPPER = "ADD_ADMIT_TACTIC_WRAPPER"
+
+
     def get_test_output(
         req_module: str,
         absolutize_mods=False,
@@ -2587,6 +2591,7 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
         insert_at_top=False,
         extra_top_header=None,
         include_options_settings=False,
+        admit_tactic_wrapper_action=ADD_ADMIT_TACTIC_WRAPPER,
     ):
         new_req_module = absolutize_and_mangle_libname(
             req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
@@ -2630,12 +2635,23 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
         )
         if insert_at_top:
             header, test_output = split_leading_comments_and_whitespace(test_output)
-            return add_admit_tactic_wrapper(
-                (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n",
-                **kwargs,
-            )
+            body = (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n"
+            if admit_tactic_wrapper_action == STRIP_ADMIT_TACTIC_WRAPPER:
+                return remove_admit_tactic(body, **kwargs)
+            elif admit_tactic_wrapper_action == ADD_ADMIT_TACTIC_WRAPPER:
+                return add_admit_tactic_wrapper(
+                    body,
+                    **kwargs,
+                )
+            else:
+                return body
+
         else:
-            return ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
+            body = ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
+            if admit_tactic_wrapper_action == STRIP_ADMIT_TACTIC_WRAPPER:
+                return remove_admit_tactic(body, **kwargs)
+            else:
+                return body
 
     for req_module in reversed(requires):
         if req_module in libname_blacklist:
@@ -2660,6 +2676,7 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         + (", stripping Requires" if without_require else ", with Requires")
                         + (f", with {extra_top_header} at the top" if extra_top_header else "")
                         + (", with explicit setting of options" if include_options_settings else "")
+                        + {ADD_ADMIT_TACTIC_WRAPPER: ", re-adding admit tactic wrapper", STRIP_ADMIT_TACTIC_WRAPPER: ", without admit tactic wrapper"}.get(admit_tactic_wrapper_action, ", leaving admit tactic wrapper alone")
                     ),
                     get_test_output(
                         req_module,
@@ -2669,8 +2686,10 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         insert_at_top=insert_at_top,
                         extra_top_header=extra_top_header,
                         include_options_settings=include_options_settings,
+                        admit_tactic_wrapper_action=admit_tactic_wrapper_action,
                     ),
                 )
+                for admit_tactic_wrapper_action in (ADD_ADMIT_TACTIC_WRAPPER, "", STRIP_ADMIT_TACTIC_WRAPPER)
                 for absolutize_mods in (False, True)
                 for first_wrap_then_include in ((True, False) if kwargs["prefer_inline_via_include"] else (False, True))
                 for without_require, insert_at_top in ((True, False), (False, True), (False, False))
