@@ -67,8 +67,8 @@ echo "==================== ACTUAL ===================="
 echo "==================== EXPECTED_ERROR ===================="
 echo "${EXPECTED_ERROR}"
 echo "==================== EXPECTED_ERROR ===================="
-ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1')"
-TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1')"
+ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1' | tr -d '\r')"
+TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1' | tr -d '\r')"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
 then
     echo "Expected a string matching:"
@@ -101,8 +101,8 @@ Notation "(+ \*) " := (Set Set)\.
 Check (+\*)\.
 EOF
 
-EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1')"
-ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1')"
+EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
+ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
 LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then
