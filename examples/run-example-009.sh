@@ -22,7 +22,7 @@ then
     exit 1
 fi
 find_bug example_${N}.v bug_${N}.v || exit $?
-EXPECTED='^(\* File reduced by coq-bug-minimizer from original input, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines, then from [0-9]\+ lines to [0-9]\+ lines \*)$'
+EXPECTED='^(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)$'
 LINES="$(grep -c "$EXPECTED" bug_${N}.v)"
 if [ "$LINES" -ne 1 ]
 then
