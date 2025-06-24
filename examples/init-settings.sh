@@ -83,3 +83,17 @@ else
         "${RELPATH}" "$@"
     }
 fi
+
+export -f relpath
+
+function strip_for_grep() {
+    s="$(printf "%s" "$1" | grep -v '^$' | tr -d '\r')"
+    # Trim leading whitespace
+    s="${s#"${s%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    s="${s%"${s##*[![:space:]]}"}"
+    s="$(printf "%s" "$s" | tr '\n' '\1')"
+    printf "%s" "$s"
+}
+
+export -f strip_for_grep
