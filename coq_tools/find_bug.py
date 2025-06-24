@@ -2285,6 +2285,25 @@ def try_remove_admit_tactic_header(output_file_name, **kwargs):
         **kwargs,
     )
 
+def try_add_admit_tactic_header(output_file_name, **kwargs):
+    contents = read_from_file(output_file_name)
+    old_contents = contents
+    new_contents = add_admit_tactic(contents, **kwargs)
+    if not check_change_and_write_to_file(
+        old_contents,
+        new_contents,
+        output_file_name,
+        unchanged_message="Admit tactic wrapper already present!",
+        success_message="Admit tactic wrapper added.",
+        failure_description="add admit tactic wrapper",
+        changed_description="File",
+        timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
+        write_to_temp_file=True,
+        **kwargs,
+    ):
+        kwargs["log"]("Failed to add admit tactic wrapper, skipping...")
+
+
 
 def default_on_fatal(message, log=DEFAULT_LOG, **env):
     if message is not None:
@@ -2318,6 +2337,11 @@ def minimize_file(
             write_to_file(env["temp_file_name"], read_from_file(output_file_name))
             os.remove(output_file_name)
         return die("Fatal error: Sanity check failed.", **env)
+
+
+    if env["admit_transparent"] or env["admit_opaque"]:
+        env["log"]("\nNow, I will attempt to add an admit tactic wrapper to this file...")
+        try_add_admit_tactic_header(output_file_name, **env)
 
     if env["max_consecutive_newlines"] >= 0 or env["strip_trailing_space"]:
         env["log"]("\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...")
@@ -3228,23 +3252,6 @@ def main():
             else:
                 env["log"]("Failed to inline inputs.")
                 sys.exit(1)
-
-        if env["admit_transparent"] or env["admit_opaque"]:
-            old_contents = read_from_file(output_file_name)
-            inlined_contents = add_admit_tactic_wrapper(old_contents, **env)
-            if not check_change_and_write_to_file(
-                old_contents,
-                inlined_contents,
-                output_file_name,
-                unchanged_message="Admit tactic wrapper already present!",
-                success_message="Admit tactic wrapper added.",
-                failure_description="add admit tactic wrapper",
-                changed_description="File",
-                timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
-                write_to_temp_file=True,
-                **env,
-            ):
-                env["log"]("Failed to add admit tactic wrapper, skipping...")
 
         # initial run before we (potentially) do fancy things with the requires
         minimize_file(output_file_name, **env)
