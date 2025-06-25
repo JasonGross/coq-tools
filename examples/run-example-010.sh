@@ -25,7 +25,7 @@ fi
 find_bug example_${N}.v bug_${N}.v -Q . Top || exit $?
 EXPECTED='(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)'
 LINES="$(grep -c "$EXPECTED" bug_${N}.v)"
-ACTUAL="$(cat bug_${N}.v | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
+ACTUAL="$(cat bug_${N}.v | strip_for_grep)"
 if [ "$LINES" -ne 1 ]
 then
     echo "Expected a string matching:"

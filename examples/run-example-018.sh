@@ -42,8 +42,8 @@ Require Export Coq.Arith.Arith.
 Definition foo : True. program_simpl. Qed.
 EOF
 
-EXPECTED_ONE_LINE="$(echo "$EXPECTED" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
-ACTUAL="$(cat "$EXAMPLE_INPUT_COPY" | grep -v '^$' | tr '\n' '\1' | tr -d '\r')"
+EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
+ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_INPUT_COPY")")"
 LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then
