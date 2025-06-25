@@ -2719,7 +2719,7 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                 for admit_tactic_wrapper_action in (ADD_ADMIT_TACTIC_WRAPPER, "", STRIP_ADMIT_TACTIC_WRAPPER)
                 for absolutize_mods in (False, True)
                 for first_wrap_then_include in ((True, False) if kwargs["prefer_inline_via_include"] else (False, True))
-                for without_require, insert_at_top in ((True, False), (False, True), (False, False))
+                for without_require, insert_at_top in ((True, False), (False, True), (False, False), (True, True))
                 for extra_top_header in (None, "Import Coq.Init.Prelude.")
                 for include_options_settings in (False, True)
             ]
