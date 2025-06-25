@@ -2697,6 +2697,7 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         (" without Include" if not first_wrap_then_include else " via Include")
                         + (", absolutizing mod references" if absolutize_mods else "")
                         + (", stripping Requires" if without_require else ", with Requires")
+                        + (", inserting at the top" if insert_at_top else "")
                         + (f", with {extra_top_header} at the top" if extra_top_header else "")
                         + (", with explicit setting of options" if include_options_settings else "")
                         + {
