@@ -3,6 +3,7 @@ from __future__ import print_function, with_statement
 import glob
 import os
 import os.path
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -568,9 +569,12 @@ def get_all_v_files(directory, exclude=tuple()):
 # we want to run on passing arguments if we're running in
 # passing/non-passing mode, cf
 # https://github.com/JasonGross/coq-tools/issues/57.  Hence we return
-# the passing version iff passing_coqc is passed
-def get_maybe_passing_arg(kwargs, key):
-    if kwargs.get("passing_coqc"):
+# the passing version iff passing_coqc is passed.
+# However, if the passing coqc does not have built vo files,
+# as will be the case on Coq's CI (cf https://github.com/JasonGross/coq-tools/issues/296),
+# we also allow the caller to force the failing version, so that we can get the longest .glob file.
+def get_maybe_passing_arg(kwargs, key, force_failing: bool = False):
+    if not force_failing and kwargs.get("passing_coqc"):
         return kwargs["passing_" + key]
     return kwargs[key]
 
@@ -685,27 +689,29 @@ def run_coq_makefile_and_make(v_files, targets, **kwargs):
                 os.remove(filename)
 
 
-def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
+def make_one_glob_file_helper(v_file, clobber_glob_on_failure: bool = True, force_failing: bool = False, **kwargs):
     kwargs = safe_kwargs(fill_kwargs(kwargs))
-    coqc_prog = get_maybe_passing_arg(kwargs, "coqc")
-    coqpath_paths = get_maybe_passing_arg(kwargs, "coqpath_paths")
+    coqc_prog = get_maybe_passing_arg(kwargs, "coqc", force_failing=force_failing)
+    coqpath_paths = get_maybe_passing_arg(kwargs, "coqpath_paths", force_failing=force_failing)
     assert isinstance(coqc_prog, tuple), coqc_prog
     cmds = [*coqc_prog, "-q"]
-    for physical_name, logical_name in get_maybe_passing_arg(kwargs, "libnames"):
+    for physical_name, logical_name in get_maybe_passing_arg(kwargs, "libnames", force_failing=force_failing):
         cmds += [
             "-R",
             physical_name,
             (logical_name if logical_name not in ("", "''", '""') else '""'),
         ]
-    for physical_name, logical_name in get_maybe_passing_arg(kwargs, "non_recursive_libnames"):
+    for physical_name, logical_name in get_maybe_passing_arg(
+        kwargs, "non_recursive_libnames", force_failing=force_failing
+    ):
         cmds += [
             "-Q",
             physical_name,
             (logical_name if logical_name not in ("", "''", '""') else '""'),
         ]
-    for dirname in get_maybe_passing_arg(kwargs, "ocaml_dirnames"):
+    for dirname in get_maybe_passing_arg(kwargs, "ocaml_dirnames", force_failing=force_failing):
         cmds += ["-I", dirname]
-    cmds += list(get_maybe_passing_arg(kwargs, "coqc_args"))
+    cmds += list(get_maybe_passing_arg(kwargs, "coqc_args", force_failing=force_failing))
     v_file = fix_path(v_file)
     v_file_root, ext = os.path.splitext(v_file)
     o_file = os.path.join(tempfile.gettempdir(), os.path.basename(v_file_root) + ".vo")
@@ -771,6 +777,51 @@ def make_one_glob_file(v_file, clobber_glob_on_failure: bool = True, **kwargs):
             os.remove(o_file)
         if os.path.exists(tmp_glob_file):
             os.remove(tmp_glob_file)
+
+
+# we want to run on passing arguments if we're running in
+# passing/non-passing mode, cf
+# https://github.com/JasonGross/coq-tools/issues/57.  Hence we return
+# the passing version iff passing_coqc is passed.
+# However, if the passing coqc does not have built vo files,
+# as will be the case on Coq's CI (cf https://github.com/JasonGross/coq-tools/issues/296),
+# we also allow the caller to force the failing version, so that we can get the longest .glob file.
+def get_glob_contents(v_file, **kwargs):
+    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    v_file = Path(fix_path(v_file))
+    glob_file = v_file.with_suffix(".glob")
+    stdout, stderr = make_one_glob_file_helper(str(v_file), **kwargs)
+    return (stdout, stderr), glob_file.read_text()
+
+
+def make_one_glob_file(v_file, **kwargs):
+    kwargs = safe_kwargs(fill_kwargs(kwargs))
+    v_file = Path(fix_path(v_file))
+    glob_file = v_file.with_suffix(".glob")
+    (stdout_failing, stderr_failing), glob_contents_failing = get_glob_contents(
+        str(v_file), force_failing=True, **kwargs
+    )
+    if not kwargs.get("passing_coqc"):
+        return (stdout_failing, stderr_failing), (None, None)
+    (stdout_passing, stderr_passing), glob_contents_passing = get_glob_contents(
+        str(v_file), force_failing=False, **kwargs
+    )
+    if glob_contents_failing != glob_contents_passing:
+        passing_lines = len(glob_contents_passing.splitlines())
+        failing_lines = len(glob_contents_failing.splitlines())
+        kwargs["log"](f"Failing .glob file:\n\n{glob_contents_failing}\n\n", level=4)
+        kwargs["log"](f"Passing .glob file:\n\n{glob_contents_passing}\n\n", level=4)
+        if failing_lines > passing_lines:
+            kwargs["log"](
+                f"Taking the failing {glob_file} file ({failing_lines} lines) because the passing version ({passing_lines} lines) is shorter"
+            )
+            glob_file.write_text(glob_contents_failing)
+        else:
+            kwargs["log"](
+                f"Taking the passing {glob_file} file ({passing_lines} lines) because the failing version ({failing_lines} lines) is longer"
+            )
+            glob_file.write_text(glob_contents_passing)
+    return (stdout_failing, stderr_failing), (stdout_passing, stderr_passing)
 
 
 def is_subdirectory_of(filename, parent):
