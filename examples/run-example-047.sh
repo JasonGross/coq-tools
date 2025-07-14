@@ -38,7 +38,7 @@ echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
-ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1' | tr -d '\r')"
+ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 if echo "${ACTUAL_PRE}" | grep 'Unknown _CoqProject entry:'; then
     echo "There should not be any unknown _CoqProject entries"
     exit 1

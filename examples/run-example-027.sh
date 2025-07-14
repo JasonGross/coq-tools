@@ -56,8 +56,8 @@ echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo # 2>/dev/null >/
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo -l - 2>&1)"
-ACTUAL_PRE_ONE_LINE="$(echo "$ACTUAL_PRE" | tr '\n' '\1' | tr -d '\r')"
-TEST_FOR="$(echo "$EXPECTED_ERROR" | tr '\n' '\1' | tr -d '\r')"
+ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
+TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
 if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
 then
     echo "Expected a string matching:"
