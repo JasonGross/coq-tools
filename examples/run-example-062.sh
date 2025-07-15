@@ -76,9 +76,9 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
 EXPECTED="$(cat "${EXAMPLE_OUTPUT}.expected" | "$GREP" -v '^$' | tail +6)"
-EXPECTED_ONE_LINE="$(printf '%s' "${EXPECTED}" | tr '\n' '\1' | tr -d '\r')"
+EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +6)"
-ACTUAL_ONE_LINE="$(printf '%s' "${ACTUAL}" | tr '\n' '\1' | tr -d '\r')"
+ACTUAL_ONE_LINE="$(strip_for_grep "$ACTUAL")"
 if [ "$EXPECTED" != "$ACTUAL" ]
 then
     echo "Expected a string matching:"
