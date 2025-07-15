@@ -43,13 +43,13 @@ EOF
 
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_INPUT_COPY")")"
-LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
+LINES="$(echo "$ACTUAL" | "$GREP" -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
-    cat "$EXAMPLE_INPUT_COPY" | grep -v '^$'
+    cat "$EXAMPLE_INPUT_COPY" | "$GREP" -v '^$'
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1

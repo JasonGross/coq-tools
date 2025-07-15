@@ -8,7 +8,7 @@ set -x
 . "$DIR/disable-parallel-make.sh"
 rm -f *.vo *.glob *.d .*.d
 find_bug example_008.v bug_008_3.v --coqc-is-coqtop "$@" || exit $?
-LINES="$(cat bug_008_3.v | grep -v '^$' | wc -l)"
+LINES="$(cat bug_008_3.v | "$GREP" -v '^$' | wc -l)"
 if [ "$LINES" -ne 9 ]
 then
     echo "Expected 9 lines"

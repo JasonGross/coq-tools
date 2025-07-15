@@ -50,7 +50,7 @@ touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
-if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
+if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | "$GREP" -c "$TEST_FOR")" -lt 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
@@ -75,16 +75,16 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED="$(cat "${EXAMPLE_OUTPUT}.expected" | grep -v '^$' | tail +6)"
+EXPECTED="$(cat "${EXAMPLE_OUTPUT}.expected" | "$GREP" -v '^$' | tail +6)"
 EXPECTED_ONE_LINE="$(printf '%s' "${EXPECTED}" | tr '\n' '\1' | tr -d '\r')"
-ACTUAL="$(cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tail +6)"
+ACTUAL="$(cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +6)"
 ACTUAL_ONE_LINE="$(printf '%s' "${ACTUAL}" | tr '\n' '\1' | tr -d '\r')"
 if [ "$EXPECTED" != "$ACTUAL" ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
-    cat "$EXAMPLE_OUTPUT" | grep -v '^$' | tail +6
+    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +6
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL_ONE_LINE" "$EXPECTED_ONE_LINE"
     exit 1

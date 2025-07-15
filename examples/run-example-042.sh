@@ -61,7 +61,7 @@ touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
-if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
+if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | "$GREP" -c "$TEST_FOR")" -lt 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
@@ -122,13 +122,13 @@ EOF
 
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_OUTPUT")")"
-LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
+LINES="$(echo "$ACTUAL" | "$GREP" -c "$EXPECTED_ONE_LINE")"
 if [ "$LINES" -ne 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
-    cat "$EXAMPLE_OUTPUT" | grep -v '^$'
+    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$'
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1

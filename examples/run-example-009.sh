@@ -10,7 +10,7 @@ set -x
 rm -f *.vo *.v.d bug*.v *.glob
 EXPECTED_ERROR="Error: The command has not failed"
 ACTUAL_PRE="$(echo "y" | find_bug example_${N}.v bug_${N}.v 2>&1)"
-if [ "$(echo "$ACTUAL_PRE" | grep -c "$EXPECTED_ERROR")" -lt 1 ]
+if [ "$(echo "$ACTUAL_PRE" | "$GREP" -c "$EXPECTED_ERROR")" -lt 1 ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
