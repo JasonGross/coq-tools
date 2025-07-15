@@ -83,8 +83,7 @@ EOF
 
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_OUTPUT")")"
-LINES="$(echo "$ACTUAL" | "$GREP" -c "$EXPECTED_ONE_LINE")"
-if [ "$LINES" -ne 1 ]
+if ! grep_contains "$ACTUAL" "$EXPECTED_ONE_LINE"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"

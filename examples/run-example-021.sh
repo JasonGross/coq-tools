@@ -48,7 +48,7 @@ touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${ARGS[@]}" 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
-if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | "$GREP" -c "$TEST_FOR")" -lt 1 ]
+if ! grep_contains "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
@@ -82,8 +82,7 @@ EOF
 
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_OUTPUT")")"
-LINES="$(echo "$ACTUAL" | "$GREP" -c "$EXPECTED_ONE_LINE")"
-if [ "$LINES" -ne 1 ]
+if ! grep_contains "$ACTUAL" "$EXPECTED_ONE_LINE"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
