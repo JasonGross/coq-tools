@@ -41,7 +41,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\+\.v", line [0-9]\+, characters 2-61:
+File "[^"]*\.v", line [0-9]\+, characters 2-61:
 Error: Tactic failure: Universe {TestSuite.issues.issue7.110} is unbound\.
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s

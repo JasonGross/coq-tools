@@ -41,7 +41,7 @@ set -x
 { EXPECTED_ERROR=$(cat); } <<EOF
 Set
      : Type
-File "[^"]*\+\.v", line [0-9]\+, characters 0-15:
+File "[^"]*\.v", line [0-9]\+, characters 0-15:
 Error: The command has not failed\s\?!
 
 \?.\?Does this output display the correct error? \[(y)es/(n)o\]\s

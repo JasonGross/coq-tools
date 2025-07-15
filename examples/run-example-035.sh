@@ -40,7 +40,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\+\.v", line [0-9]\+, characters 6-9:
+File "[^"]*\.v", line [0-9]\+, characters 6-9:
 Error: The reference foo was not found in the current environment\.
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s
