@@ -54,7 +54,7 @@ export -f minimize_requires
 
 if [ -z "${ABSOLUTIZE_IMPORTS}" ]; then
     function absolutize_imports() {
-        ${PYTHON} "${ABSOLUTIZE_IMPORTS_PY}" "$@"
+        "${PYTHON}" "${ABSOLUTIZE_IMPORTS_PY}" "$@"
     }
 else
     ABSOLUTIZE_IMPORTS="$(cd "$DIR" && realpath "$(which "${ABSOLUTIZE_IMPORTS}")")"
@@ -69,7 +69,7 @@ export -f absolutize_imports
 
 if [ -z "${INLINE_IMPORTS}" ]; then
     function inline_imports() {
-        ${PYTHON} "${INLINE_IMPORTS_PY}" "$@"
+        "${PYTHON}" "${INLINE_IMPORTS_PY}" "$@"
     }
 else
     INLINE_IMPORTS="$(cd "$DIR" && realpath "$(which "${INLINE_IMPORTS}")")"
@@ -83,7 +83,7 @@ export -f inline_imports
 
 if [ -z "${RELPATH}" ]; then
     function relpath() {
-        python -c "import os, sys; print(os.path.relpath(*sys.argv[1:]))" "$@"
+        "${PYTHON}" -c "import os, sys; print(os.path.relpath(*sys.argv[1:]))" "$@"
     }
 else
     RELPATH="$(cd "$DIR" && realpath "$(which "${RELPATH}")")"
