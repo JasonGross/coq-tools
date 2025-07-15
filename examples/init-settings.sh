@@ -15,6 +15,15 @@ if [ -z "${PYTHON}" ]; then
     export PYTHON
 fi
 
+if [ -z "${GREP}" ]; then
+    if command -v ggrep >/dev/null 2>&1; then
+        GREP="ggrep"
+    else
+        GREP="grep"
+    fi
+    export GREP
+fi
+
 if [ -z "${FIND_BUG}" ]; then
     function find_bug() {
         ${PYTHON} "${FIND_BUG_PY}" "$@"
@@ -45,7 +54,7 @@ export -f minimize_requires
 
 if [ -z "${ABSOLUTIZE_IMPORTS}" ]; then
     function absolutize_imports() {
-        ${PYTHON} "${ABSOLUTIZE_IMPORTS_PY}" "$@"
+        "${PYTHON}" "${ABSOLUTIZE_IMPORTS_PY}" "$@"
     }
 else
     ABSOLUTIZE_IMPORTS="$(cd "$DIR" && realpath "$(which "${ABSOLUTIZE_IMPORTS}")")"
@@ -60,7 +69,7 @@ export -f absolutize_imports
 
 if [ -z "${INLINE_IMPORTS}" ]; then
     function inline_imports() {
-        ${PYTHON} "${INLINE_IMPORTS_PY}" "$@"
+        "${PYTHON}" "${INLINE_IMPORTS_PY}" "$@"
     }
 else
     INLINE_IMPORTS="$(cd "$DIR" && realpath "$(which "${INLINE_IMPORTS}")")"
@@ -74,7 +83,7 @@ export -f inline_imports
 
 if [ -z "${RELPATH}" ]; then
     function relpath() {
-        python -c "import os, sys; print(os.path.relpath(*sys.argv[1:]))" "$@"
+        "${PYTHON}" -c "import os, sys; print(os.path.relpath(*sys.argv[1:]))" "$@"
     }
 else
     RELPATH="$(cd "$DIR" && realpath "$(which "${RELPATH}")")"
@@ -87,7 +96,7 @@ fi
 export -f relpath
 
 function strip_for_grep() {
-    s="$(printf "%s" "$1" | grep -v '^$' | tr -d '\r')"
+    s="$(printf "%s" "$1" | "$GREP" -v '^$' | tr -d '\r')"
     # Trim leading whitespace
     s="${s#"${s%%[![:space:]]*}"}"
     # Trim trailing whitespace
@@ -97,3 +106,16 @@ function strip_for_grep() {
 }
 
 export -f strip_for_grep
+
+function grep_contains() {
+    count="$(printf '%s' "$1" | "$GREP" -c "$2")"
+    if [ -z "$count" ]; then
+        return 1
+    elif [ "$count" -lt 1 ]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+export -f grep_contains
