@@ -175,7 +175,12 @@ def main():
     for dirname in env["ocaml_dirnames"]:
         env["coqc_args"] = tuple(list(env["coqc_args"]) + ["-I", dirname])
     env["coqc_args"] = deduplicate_trailing_dir_bindings(
-        env["coqc_args"], coqc_help=coqc_help, coq_accepts_top=get_coq_accepts_top(env["coqc"])
+        env["coqc_args"],
+        coqc_help=coqc_help,
+        coq_accepts_top=get_coq_accepts_top(env["coqc"]),
+        coqc=env["coqc"],
+        coqc_is_coqtop=env["coqc_is_coqtop"],
+        base_dir=env["base_dir"] or os.getcwd(),
     )
 
     try:
