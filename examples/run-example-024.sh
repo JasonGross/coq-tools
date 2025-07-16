@@ -13,7 +13,7 @@ cd outputs
 rm -f ok
 ${COQBIN}coq_makefile -f _CoqProject -o Makefile || exit $?
 make
-(${PYTHON} ../../../minimize-requires.py --all -f _CoqProject 2>&1 && touch ok) | grep -v '^$' | grep -v '^Running command.*:' | grep -v '^The timeout for ' | sed 's/^\(getting [^ ]*\) (.*)$/\1/g' | tee run.log
+(${PYTHON} ../../../minimize-requires.py --all -f _CoqProject 2>&1 && touch ok) | "$GREP" -v '^$' | "$GREP" -v '^Running command.*:' | "$GREP" -v '^The timeout for ' | sed 's/^\(getting [^ ]*\) (.*)$/\1/g' | tee run.log
 rm ok || exit $?
 for f in run.log _CoqProject $(ls *.v); do
     diff ../expected/$f $f

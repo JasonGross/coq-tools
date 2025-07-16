@@ -41,7 +41,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\+\.v", line [0-9]\+, characters 2-61:
+File "[^"]*\.v", line [0-9]\+, characters 2-61:
 Error: Tactic failure: Universe {TestSuite.issues.issue7.110} is unbound\.
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s
@@ -57,7 +57,7 @@ touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
-if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
+if ! grep_contains "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"

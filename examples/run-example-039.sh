@@ -43,7 +43,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\+\.v", line [0-9]\+, characters 6-\(9\|16\):
+File "[^"]*\.v", line [0-9]\+, characters 6-\(9\|16\):
 Error:[
  ]The term "bar" has type "False -> False"
 \? while it is expected to have type
@@ -57,7 +57,7 @@ touch "${EXAMPLE_OUTPUT%%.v}.glob"
 ACTUAL_PRE="$( (echo "y"; echo "y") | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" -l - 2>&1)"
 ACTUAL_PRE_ONE_LINE="$(strip_for_grep "$ACTUAL_PRE")"
 TEST_FOR="$(strip_for_grep "$EXPECTED_ERROR")"
-if [ "$(echo "$ACTUAL_PRE_ONE_LINE" | grep -c "$TEST_FOR")" -lt 1 ]
+if ! grep_contains "$ACTUAL_PRE_ONE_LINE" "$TEST_FOR"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED_ERROR"
@@ -97,13 +97,12 @@ EOF
 
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
 ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_OUTPUT")")"
-LINES="$(echo "$ACTUAL" | grep -c "$EXPECTED_ONE_LINE")"
-if [ "$LINES" -ne 1 ]
+if ! grep_contains "$ACTUAL" "$EXPECTED_ONE_LINE"
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
-    cat "$EXAMPLE_OUTPUT" | grep -v '^$'
+    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$'
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
     exit 1
