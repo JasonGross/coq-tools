@@ -21,8 +21,16 @@ from .split_definitions import (
     get_preferred_passing,
 )
 from .admit_abstract import transform_abstract_to_admit
-from .import_util import lib_of_filename, clear_libimport_cache, IMPORT_ABSOLUTIZE_TUPLE, ALL_ABSOLUTIZE_TUPLE
-from .import_util import split_requires_of_statements, get_file_statements_insert_references
+from .import_util import (
+    lib_of_filename,
+    clear_libimport_cache,
+    IMPORT_ABSOLUTIZE_TUPLE,
+    ALL_ABSOLUTIZE_TUPLE,
+)
+from .import_util import (
+    split_requires_of_statements,
+    get_file_statements_insert_references,
+)
 from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings_get_topname
 from .memoize import memoize
 from .coq_version import (
@@ -64,7 +72,10 @@ parser = custom_arguments.ArgumentParser(
     description="Attempt to create a small file which reproduces a bug found in a large development."
 )
 parser.add_argument(
-    "bug_file", metavar="BUGGY_FILE", type=argparse.FileType("r"), help="a .v file which displays the bug"
+    "bug_file",
+    metavar="BUGGY_FILE",
+    type=argparse.FileType("r"),
+    help="a .v file which displays the bug",
 )
 parser.add_argument(
     "output_file",
@@ -147,7 +158,10 @@ parser.add_argument(
     dest="admit_opaque",
     action=BooleanOptionalAction,
     default=None,
-    help=("(Don't) try to replace opaque things ([Qed] and [abstract]) " + "with [admit]s."),
+    help=(
+        "(Don't) try to replace opaque things ([Qed] and [abstract]) "
+        + "with [admit]s."
+    ),
 )
 parser.add_argument(
     "--admit-transparent",
@@ -233,7 +247,10 @@ parser.add_argument(
     action="store_const",
     const=False,
     default=True,
-    help=("Don't strip trailing spaces.  By default, " + "trailing spaces on each line are removed."),
+    help=(
+        "Don't strip trailing spaces.  By default, "
+        + "trailing spaces on each line are removed."
+    ),
 )
 parser.add_argument(
     "--strict-whitespace",
@@ -278,7 +295,9 @@ parser.add_argument(
     action="store_const",
     const=True,
     default=False,
-    help=("Attempt to inline requires from Coq's standard library under the Stdlib namespace"),
+    help=(
+        "Attempt to inline requires from Coq's standard library under the Stdlib namespace"
+    ),
 )
 parser.add_argument(
     "--inline-prelude",
@@ -297,6 +316,22 @@ parser.add_argument(
     help=("Attempt to inline requires from the user-contrib folder"),
 )
 parser.add_argument(
+    "--no-inline-stdlib",
+    dest="no_inline_stdlib",
+    action="store_const",
+    const=True,
+    default=False,
+    help=("Skip Stdlib directory when using --inline-user-contrib"),
+)
+parser.add_argument(
+    "--no-inline-corelib",
+    dest="no_inline_corelib",
+    action="store_const",
+    const=True,
+    default=False,
+    help=("Skip Corelib directory when using --inline-user-contrib"),
+)
+parser.add_argument(
     "--timeout",
     dest="timeout",
     metavar="SECONDS",
@@ -310,7 +345,13 @@ parser.add_argument(
         + "Default: -1"
     ),
 )
-parser.add_argument("--no-timeout", dest="timeout", action="store_const", const=0, help=("Do not use a timeout"))
+parser.add_argument(
+    "--no-timeout",
+    dest="timeout",
+    action="store_const",
+    const=0,
+    help=("Do not use a timeout"),
+)
 parser.add_argument(
     "--passing-timeout",
     dest="passing_timeout",
@@ -350,7 +391,14 @@ parser.add_argument(
     default="",
     help="The path to a folder containing the coqc and coqtop programs.",
 )
-parser.add_argument("--ocamlpath", metavar="OCAMLPATH", dest="ocamlpath", type=str, default=None, help="The OCAMLPATH.")
+parser.add_argument(
+    "--ocamlpath",
+    metavar="OCAMLPATH",
+    dest="ocamlpath",
+    type=str,
+    default=None,
+    help="The OCAMLPATH.",
+)
 parser.add_argument(
     "--nonpassing-ocamlpath",
     metavar="OCAMLPATH",
@@ -368,7 +416,13 @@ parser.add_argument(
     help="The OCAMLPATH for the passing coqc.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
+    "--coqc",
+    metavar="COQC",
+    dest="coqc",
+    type=str,
+    default=None,
+    action="append",
+    help="The path to the coqc program.",
 )
 parser.add_argument(
     "--coqtop",
@@ -419,7 +473,12 @@ parser.add_argument(
     help="The path to the coq_makefile program.",
 )
 parser.add_argument(
-    "--coqdep", metavar="COQDEP", dest="coqdep", type=str, default="coqdep", help="The path to the coqdep program."
+    "--coqdep",
+    metavar="COQDEP",
+    dest="coqdep",
+    type=str,
+    default="coqdep",
+    help="The path to the coqdep program.",
 )
 parser.add_argument(
     "--passing-coqc",
@@ -547,7 +606,9 @@ parser.add_argument(
     action="store_const",
     const=True,
     default=False,
-    help=("Emit a verbose warning when include fails, including the file contents, separately for each error message."),
+    help=(
+        "Emit a verbose warning when include fails, including the file contents, separately for each error message."
+    ),
 )
 parser.add_argument(
     "--verbose-include-failure-warning-prefix",
@@ -571,8 +632,15 @@ parser.add_argument(
     default=False,
     help="Require that the file succeed rather than failing.  Incompatible with --passing-* arguments, among others.",
 )
-parser.add_argument("--export-modules", action=BooleanOptionalAction, default=True, help="Export all Modules.")
-parser.add_argument("--split-imports", action=BooleanOptionalAction, default=None, help="Split imports.")
+parser.add_argument(
+    "--export-modules",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Export all Modules.",
+)
+parser.add_argument(
+    "--split-imports", action=BooleanOptionalAction, default=None, help="Split imports."
+)
 parser.add_argument(
     "--remove-modules",
     dest="remove_modules",
@@ -587,23 +655,59 @@ parser.add_argument(
     default=None,
     help="Remove all sections. Only relevant if --no-error is passed.",
 )
-parser.add_argument("--remove-comments", action=BooleanOptionalAction, default=None, help="Remove all comments.")
-parser.add_argument("--normalize-requires", action=BooleanOptionalAction, default=True, help="Normalize requires.")
+parser.add_argument(
+    "--remove-comments",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Remove all comments.",
+)
+parser.add_argument(
+    "--normalize-requires",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Normalize requires.",
+)
 parser.add_argument(
     "--recursive-requires-explicit",
     action=BooleanOptionalAction,
     default=None,
     help="When normalizing requires, include all recursive requires explicitly.  This is useful for removing unneeded intermediate requires rather than inlining them, but causes issues with minimization when requires are not pre-emptively removed if any require fails to inline.",
 )
-parser.add_argument("--split-requires", action=BooleanOptionalAction, default=True, help="Split requires.")
-parser.add_argument("--remove-hints", action=BooleanOptionalAction, default=None, help="Remove all hints.")
 parser.add_argument(
-    "--remove-empty-sections", action=BooleanOptionalAction, default=True, help="Remove all empty sections."
+    "--split-requires",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Split requires.",
 )
-parser.add_argument("--remove-abort", action=BooleanOptionalAction, default=True, help="Remove all aborts.")
-parser.add_argument("--remove-ltac", action=BooleanOptionalAction, default=None, help="Remove unused ltac.")
 parser.add_argument(
-    "--remove-section-variables", action=BooleanOptionalAction, default=None, help="Remove unused section variables."
+    "--remove-hints",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Remove all hints.",
+)
+parser.add_argument(
+    "--remove-empty-sections",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Remove all empty sections.",
+)
+parser.add_argument(
+    "--remove-abort",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Remove all aborts.",
+)
+parser.add_argument(
+    "--remove-ltac",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Remove unused ltac.",
+)
+parser.add_argument(
+    "--remove-section-variables",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Remove unused section variables.",
 )
 parser.add_argument(
     "--prefer-inline-via-include",
@@ -611,7 +715,12 @@ parser.add_argument(
     default=None,
     help="Prefer inlining dependencies via Include.",
 )
-parser.add_argument("--add-proof-using", action=BooleanOptionalAction, default=True, help="Add Proof using.")
+parser.add_argument(
+    "--add-proof-using",
+    action=BooleanOptionalAction,
+    default=True,
+    help="Add Proof using.",
+)
 parser.add_argument(
     "--add-proof-using-before-admit",
     action=BooleanOptionalAction,
@@ -685,10 +794,15 @@ def get_error_reg_string_of_output(output, output_file_name, **kwargs):
     error_reg_string = ""
     if diagnose_error.has_error(output):
         error_string = diagnose_error.get_error_string(output)
-        error_reg_string = diagnose_error.make_reg_string(output, strict_whitespace=kwargs["strict_whitespace"])
+        error_reg_string = diagnose_error.make_reg_string(
+            output, strict_whitespace=kwargs["strict_whitespace"]
+        )
         kwargs["log"](
             "\nI think the error is '%s'.\nThe corresponding regular expression is '%s'.\n"
-            % (error_string, error_reg_string.replace("\\\n", "\\n").replace("\n", "\\n")),
+            % (
+                error_string,
+                error_reg_string.replace("\\\n", "\\n").replace("\n", "\\n"),
+            ),
             force_stdout=True,
             level=LOG_ALWAYS,
         )
@@ -698,7 +812,10 @@ def get_error_reg_string_of_output(output, output_file_name, **kwargs):
         if result in ("no", "n"):
             error_reg_string = ""
     else:
-        kwargs["log"]("\nThe current state of the file does not have a recognizable error.", level=LOG_ALWAYS)
+        kwargs["log"](
+            "\nThe current state of the file does not have a recognizable error.",
+            level=LOG_ALWAYS,
+        )
 
     if error_reg_string == "":
         success = False
@@ -709,28 +826,41 @@ def get_error_reg_string_of_output(output, output_file_name, **kwargs):
             try:
                 re.compile(error_reg_string)
             except Exception as e:
-                kwargs["log"]("\nThat regular expression does not compile: %s" % e, force_stdout=True, level=LOG_ALWAYS)
+                kwargs["log"](
+                    "\nThat regular expression does not compile: %s" % e,
+                    force_stdout=True,
+                    level=LOG_ALWAYS,
+                )
                 success = False
             else:
                 success = True
 
     while error_reg_string != "" and (
-        not re.search(error_reg_string, output) or len(re.search(error_reg_string, output).groups()) != 2
+        not re.search(error_reg_string, output)
+        or len(re.search(error_reg_string, output).groups()) != 2
     ):
         if not re.search(error_reg_string, output):
             kwargs["log"](
-                "\nThe given regular expression does not match the output.", force_stdout=True, level=LOG_ALWAYS
+                "\nThe given regular expression does not match the output.",
+                force_stdout=True,
+                level=LOG_ALWAYS,
             )
         elif len(re.search(error_reg_string, output).groups()) != 2:
             kwargs["log"](
-                "\nThe given regular expression does not have two groups.", force_stdout=True, level=LOG_ALWAYS
+                "\nThe given regular expression does not have two groups.",
+                force_stdout=True,
+                level=LOG_ALWAYS,
             )
             kwargs["log"](
                 "It must first have one integer group which matches on the line number,",
                 force_stdout=True,
                 level=LOG_ALWAYS,
             )
-            kwargs["log"]("and second a group which matches on the error string.", force_stdout=True, level=LOG_ALWAYS)
+            kwargs["log"](
+                "and second a group which matches on the error string.",
+                force_stdout=True,
+                level=LOG_ALWAYS,
+            )
         error_reg_string = raw_input(
             "Please enter a valid regular expression which matches on the output.  Leave blank to re-coq the file (%s).\n"
             % output_file_name
@@ -758,10 +888,19 @@ def get_error_reg_string(output_file_name, **kwargs):
         )
         result = ""
         kwargs["log"](
-            "\nThis file produces the following output when Coq'ed:\n%s" % output, force_stdout=True, level=LOG_ALWAYS
+            "\nThis file produces the following output when Coq'ed:\n%s" % output,
+            force_stdout=True,
+            level=LOG_ALWAYS,
         )
         while result not in ("y", "n", "yes", "no"):
-            result = ask("Does this output display the correct error? [(y)es/(n)o] ", **kwargs).lower().strip()
+            result = (
+                ask(
+                    "Does this output display the correct error? [(y)es/(n)o] ",
+                    **kwargs,
+                )
+                .lower()
+                .strip()
+            )
         if result in ("n", "no"):
             raw_input(
                 "Please modify the file (%s) so that it errors correctly, and then press ENTER to continue, or ^C to break."
@@ -769,7 +908,9 @@ def get_error_reg_string(output_file_name, **kwargs):
             )
             continue
 
-        error_reg_string = get_error_reg_string_of_output(output, output_file_name, **kwargs)
+        error_reg_string = get_error_reg_string_of_output(
+            output, output_file_name, **kwargs
+        )
 
         if error_reg_string == "":
             continue
@@ -778,7 +919,10 @@ def get_error_reg_string(output_file_name, **kwargs):
 
 
 def escape_coq_prog_args(coq_prog_args):
-    return " ".join('"' + arg.replace("\\", "\\\\").replace('"', r"\"") + '"' for arg in coq_prog_args)
+    return " ".join(
+        '"' + arg.replace("\\", "\\\\").replace('"', r"\"") + '"'
+        for arg in coq_prog_args
+    )
 
 
 def unescape_coq_prog_args(coq_prog_args):
@@ -812,7 +956,9 @@ def unescape_coq_prog_args(coq_prog_args):
                     idx += 1
                 else:
                     DEFAULT_LOG(
-                        "Warning: Invalid backslash at end of coq-prog-args '%s'" % coq_prog_args, level=LOG_ALWAYS
+                        "Warning: Invalid backslash at end of coq-prog-args '%s'"
+                        % coq_prog_args,
+                        level=LOG_ALWAYS,
                     )
             else:
                 cur += cur_char
@@ -843,14 +989,20 @@ def get_old_header(contents, header=""):
     if header[:2] == "(*" and header[-2:] == "*)" and "*)" not in header[2:-2]:
         pre_header = header[: header.index("%")]
         if pre_header in contents and contents.index("*)") > contents.index(pre_header):
-            return contents[contents.index(pre_header) + len(pre_header) : contents.index("*)")].strip()
+            return contents[
+                contents.index(pre_header) + len(pre_header) : contents.index("*)")
+            ].strip()
     return "original input"
 
 
 def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwargs):
     """Fills in the variables in the header for output files"""
     contents = strip_coq_prog_args(contents)
-    if dynamic_header[:2] == "(*" and dynamic_header[-2:] == "*)" and "*)" not in dynamic_header[2:-2]:
+    if (
+        dynamic_header[:2] == "(*"
+        and dynamic_header[-2:] == "*)"
+        and "*)" not in dynamic_header[2:-2]
+    ):
         pre_header = dynamic_header[: dynamic_header.index("%")]
         if contents[: len(pre_header)] == pre_header:
             # strip the old header
@@ -867,9 +1019,12 @@ def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwa
     final_line_count = len(contents.split("\n"))
     header_dict = dict(header_dict)  # clone the dict
     header_dict["final_line_count"] = final_line_count
-    header_dict["inline_failure_libnames"] = ", ".join(kwargs["inline_failure_libnames"])
+    header_dict["inline_failure_libnames"] = ", ".join(
+        kwargs["inline_failure_libnames"]
+    )
     header_dict["module_inline_failure_string"] = (
-        "\n   Modules that could not be inlined: %s" % header_dict["inline_failure_libnames"]
+        "\n   Modules that could not be inlined: %s"
+        % header_dict["inline_failure_libnames"]
         if header_dict["inline_failure_libnames"]
         else ""
     )
@@ -877,7 +1032,8 @@ def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwa
         header_dict["old_header"] = "original input"
     use_header = (dynamic_header + "\n" + header) % header_dict
     coq_prog_args = (
-        '(* -*- mode: coq; coq-prog-args: ("-emacs" %s) -*- *)\n' % escape_coq_prog_args(kwargs["coqc_args"])
+        '(* -*- mode: coq; coq-prog-args: ("-emacs" %s) -*- *)\n'
+        % escape_coq_prog_args(kwargs["coqc_args"])
         if len(kwargs["coqc_args"]) > 0
         else ""
     )
@@ -907,7 +1063,11 @@ def get_header_dict(contents, old_header=None, original_line_count=0, **env):
     }
 
 
-CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = "contents_unchanged", "change_success", "change_failure"
+CONTENTS_UNCHANGED, CHANGE_SUCCESS, CHANGE_FAILURE = (
+    "contents_unchanged",
+    "change_success",
+    "change_failure",
+)
 
 
 def classify_contents_change(
@@ -920,7 +1080,10 @@ def classify_contents_change(
 ):
     # returns (RESULT_TYPE, PADDED_CONTENTS, OUTPUT_LIST, option BAD_INDEX, DESCRIPTION_OF_FAILURE_MODE, RUNTIME, EXTRA_VERBOSE_DESCRIPTION_OF_FAILURE_MODE_TUPLE_LIST)
     kwargs["header_dict"] = kwargs.get(
-        "header_dict", get_header_dict(new_contents, original_line_count=len(old_contents.split("\n")), **kwargs)
+        "header_dict",
+        get_header_dict(
+            new_contents, original_line_count=len(old_contents.split("\n")), **kwargs
+        ),
     )
 
     # this is a function, so that once we update the header dict with the runtime, we get the right header
@@ -928,7 +1091,15 @@ def classify_contents_change(
         return prepend_header(new_contents, **kwargs)
 
     if new_contents == old_contents:
-        return (CONTENTS_UNCHANGED, get_padded_contents(), tuple(), None, "No change.  ", None, [])
+        return (
+            CONTENTS_UNCHANGED,
+            get_padded_contents(),
+            tuple(),
+            None,
+            "No change.  ",
+            None,
+            [],
+        )
 
     if reset_timeout:
         diagnose_error.reset_timeout()
@@ -955,7 +1126,9 @@ def classify_contents_change(
         ocamlpath=kwargs["nonpassing_ocamlpath"],
         **kwargs,
     )
-    if not should_succeed and diagnose_error.has_error(output, kwargs["error_reg_string"]):
+    if not should_succeed and diagnose_error.has_error(
+        output, kwargs["error_reg_string"]
+    ):
         if kwargs["passing_coqc"]:
             if ignore_coq_output_cache:
                 diagnose_error.reset_coq_output_cache(
@@ -969,18 +1142,23 @@ def classify_contents_change(
                     ocamlpath=kwargs["passing_ocamlpath"],
                     **kwargs,
                 )
-            passing_output, cmds, passing_retcode, passing_runtime = diagnose_error.get_coq_output(
-                kwargs["passing_coqc"],
-                kwargs["passing_coqc_args"],
-                new_contents,
-                kwargs["passing_timeout"],
-                cwd=kwargs["passing_base_dir"],
-                is_coqtop=kwargs["passing_coqc_is_coqtop"],
-                verbose_base=2,
-                ocamlpath=kwargs["passing_ocamlpath"],
-                **kwargs,
+            passing_output, cmds, passing_retcode, passing_runtime = (
+                diagnose_error.get_coq_output(
+                    kwargs["passing_coqc"],
+                    kwargs["passing_coqc_args"],
+                    new_contents,
+                    kwargs["passing_timeout"],
+                    cwd=kwargs["passing_base_dir"],
+                    is_coqtop=kwargs["passing_coqc_is_coqtop"],
+                    verbose_base=2,
+                    ocamlpath=kwargs["passing_ocamlpath"],
+                    **kwargs,
+                )
             )
-            if not (diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(passing_output)):
+            if not (
+                diagnose_error.has_error(passing_output)
+                or diagnose_error.is_timeout(passing_output)
+            ):
                 # we return passing_runtime, under the presumption
                 # that in Coq's test-suite, the file should pass, and
                 # so this is a better indicator of how long it'll take
@@ -1007,14 +1185,38 @@ def classify_contents_change(
                 )
         else:
             kwargs["header_dict"]["recent_runtime"] = runtime
-            return (CHANGE_SUCCESS, get_padded_contents(), (output,), None, "Change successful.  ", runtime, [])
+            return (
+                CHANGE_SUCCESS,
+                get_padded_contents(),
+                (output,),
+                None,
+                "Change successful.  ",
+                runtime,
+                [],
+            )
     elif should_succeed and not diagnose_error.has_error(output):
         kwargs["header_dict"]["recent_runtime"] = runtime
-        return (CHANGE_SUCCESS, get_padded_contents(), (output,), None, "Change successful.  ", runtime, [])
+        return (
+            CHANGE_SUCCESS,
+            get_padded_contents(),
+            (output,),
+            None,
+            "Change successful.  ",
+            runtime,
+            [],
+        )
     else:
         extra_desc = ""
         extra_desc_list = [(2, "The error was:\n%s\n" % output)]
-        return (CHANGE_FAILURE, get_padded_contents(), (output,), 0, extra_desc, runtime, extra_desc_list)
+        return (
+            CHANGE_FAILURE,
+            get_padded_contents(),
+            (output,),
+            0,
+            extra_desc,
+            runtime,
+            extra_desc_list,
+        )
 
 
 def check_change_and_write_to_file(
@@ -1036,20 +1238,39 @@ def check_change_and_write_to_file(
     skip_extra_verbose_error_state=set(),
     **kwargs,
 ):
-    kwargs["log"]('Running coq on the file\n"""\n%s\n"""' % new_contents, level=2 + verbose_base)
-    change_result, contents, outputs, output_i, error_desc, runtime, error_desc_verbose_list = classify_contents_change(
-        old_contents, new_contents, ignore_coq_output_cache=ignore_coq_output_cache, **kwargs
+    kwargs["log"](
+        'Running coq on the file\n"""\n%s\n"""' % new_contents, level=2 + verbose_base
+    )
+    (
+        change_result,
+        contents,
+        outputs,
+        output_i,
+        error_desc,
+        runtime,
+        error_desc_verbose_list,
+    ) = classify_contents_change(
+        old_contents,
+        new_contents,
+        ignore_coq_output_cache=ignore_coq_output_cache,
+        **kwargs,
     )
     if change_result == CONTENTS_UNCHANGED:
         kwargs["log"]("\n%s" % unchanged_message, level=verbose_base)
         return False
     elif change_result == CHANGE_SUCCESS:
-        kwargs["log"](util.color("\n%s" % success_message, util.colors.OKGREEN, kwargs["color_on"]), level=verbose_base)
+        kwargs["log"](
+            util.color(
+                "\n%s" % success_message, util.colors.OKGREEN, kwargs["color_on"]
+            ),
+            level=verbose_base,
+        )
         write_to_file(output_file_name, contents)
         return True
     elif change_result == CHANGE_FAILURE:
         kwargs["log"](
-            "\nNon-fatal error: Failed to %s and preserve the error.  %s" % (failure_description, error_desc),
+            "\nNon-fatal error: Failed to %s and preserve the error.  %s"
+            % (failure_description, error_desc),
             level=verbose_base,
         )
         for lvl, msg in error_desc_verbose_list:
@@ -1057,7 +1278,11 @@ def check_change_and_write_to_file(
         if write_to_temp_file and not kwargs["remove_temp_file"]:
             kwargs["log"](
                 "Writing %s to %s (log in %s)."
-                % (changed_description.lower(), kwargs["temp_file_name"], kwargs["temp_file_log_name"]),
+                % (
+                    changed_description.lower(),
+                    kwargs["temp_file_name"],
+                    kwargs["temp_file_log_name"],
+                ),
                 level=verbose_base,
             )
         kwargs["log"]("The new error was:", level=verbose_base)
@@ -1068,12 +1293,17 @@ def check_change_and_write_to_file(
             write_to_file(kwargs["temp_file_log_name"], outputs[output_i])
         else:
             kwargs["log"](
-                util.color("%s not saved." % changed_description, util.colors.WARNING, kwargs["color_on"]),
+                util.color(
+                    "%s not saved." % changed_description,
+                    util.colors.WARNING,
+                    kwargs["color_on"],
+                ),
                 level=verbose_base,
             )
         if timeout_retry_count > 1 and diagnose_error.is_timeout(outputs[output_i]):
             kwargs["log"](
-                "\nRetrying another %d time%s..." % (timeout_retry_count - 1, "s" if timeout_retry_count > 2 else ""),
+                "\nRetrying another %d time%s..."
+                % (timeout_retry_count - 1, "s" if timeout_retry_count > 2 else ""),
                 level=verbose_base,
             )
             return check_change_and_write_to_file(
@@ -1094,10 +1324,13 @@ def check_change_and_write_to_file(
         else:
             if diagnose_error.has_error(outputs[output_i]):
                 new_line = diagnose_error.get_error_line_number(outputs[output_i])
-                new_start, new_end = diagnose_error.get_error_byte_locations(outputs[output_i])
+                new_start, new_end = diagnose_error.get_error_byte_locations(
+                    outputs[output_i]
+                )
                 new_contents_lines = new_contents.split("\n")
-                new_contents_to_error, new_contents_rest = "\n".join(new_contents_lines[: new_line - 1]), "\n".join(
-                    new_contents_lines[new_line - 1 :]
+                new_contents_to_error, new_contents_rest = (
+                    "\n".join(new_contents_lines[: new_line - 1]),
+                    "\n".join(new_contents_lines[new_line - 1 :]),
                 )
                 source_display = "%s\n%s\n" % (
                     new_contents_to_error,
@@ -1106,7 +1339,10 @@ def check_change_and_write_to_file(
             else:
                 source_display = new_contents
             error_key = re.sub(r'File "[^"]+"', r'File ""', outputs[output_i])
-            if display_extra_verbose_on_error and error_key not in skip_extra_verbose_error_state:
+            if (
+                display_extra_verbose_on_error
+                and error_key not in skip_extra_verbose_error_state
+            ):
                 skip_extra_verbose_error_state.add(error_key)
                 kwargs["log"](
                     "%s%s"
@@ -1114,7 +1350,13 @@ def check_change_and_write_to_file(
                         extra_verbose_prefix,
                         (
                             "%sFailed to %s and preserve the error.  %s\nThe new error was:\n%s\n\nThe file generating the error was:\n%s"
-                            % (extra_verbose_prefix, failure_description, error_desc, outputs[output_i], source_display)
+                            % (
+                                extra_verbose_prefix,
+                                failure_description,
+                                error_desc,
+                                outputs[output_i],
+                                source_display,
+                            )
                         )
                         .replace("\r\n", "\n")
                         .replace("\n", extra_verbose_newline),
@@ -1132,7 +1374,17 @@ def check_change_and_write_to_file(
                 change_result,
                 repr(old_contents),
                 repr(new_contents),
-                repr((change_result, contents, outputs, output_i, error_desc, runtime, error_desc_verbose_list)),
+                repr(
+                    (
+                        change_result,
+                        contents,
+                        outputs,
+                        output_i,
+                        error_desc,
+                        runtime,
+                        error_desc_verbose_list,
+                    )
+                ),
             ),
             level=LOG_ALWAYS,
         )
@@ -1140,7 +1392,12 @@ def check_change_and_write_to_file(
 
 
 def try_transform_each(
-    definitions, output_file_name, transformer, skip_n=1, returns_all_definitions: bool = False, **kwargs
+    definitions,
+    output_file_name,
+    transformer,
+    skip_n=1,
+    returns_all_definitions: bool = False,
+    **kwargs,
 ):
     """Tries to apply transformer to each definition in definitions,
     additionally passing in the list of subsequent definitions.  If
@@ -1165,14 +1422,20 @@ def try_transform_each(
         )
     while i >= 0:
         old_definition = definitions[i]
-        new_definition, new_rest_definitions = transformer(old_definition, definitions[i + 1 :])
+        new_definition, new_rest_definitions = transformer(
+            old_definition, definitions[i + 1 :]
+        )
         if not new_definition:
             if kwargs["save_typeclasses"] and (
                 INSTANCE_REG.search(old_definition["statement"])
                 or CANONICAL_STRUCTURE_REG.search(old_definition["statement"])
                 or TC_HINT_REG.search(old_definition["statement"])
             ):
-                kwargs["log"]("Ignoring Instance/Canonical Structure/Hint: %s" % old_definition["statement"], level=3)
+                kwargs["log"](
+                    "Ignoring Instance/Canonical Structure/Hint: %s"
+                    % old_definition["statement"],
+                    level=3,
+                )
                 i -= 1
                 continue
             new_definitions = []
@@ -1190,7 +1453,10 @@ def try_transform_each(
             or new_rest_definitions != definitions[i + 1 :]
         ):
             if len(new_definitions) == 0:
-                kwargs["log"]("Attempting to remove %s" % repr(old_definition["statement"]), level=2)
+                kwargs["log"](
+                    "Attempting to remove %s" % repr(old_definition["statement"]),
+                    level=2,
+                )
                 if new_rest_definitions != definitions[i + 1 :]:
                     kwargs["log"](
                         "Also modifying remainder via %s"
@@ -1204,11 +1470,16 @@ def try_transform_each(
             else:
                 kwargs["log"](
                     "Attempting to transform %s\ninto\n%s"
-                    % (old_definition["statement"], "".join(defn["statement"] for defn in new_definitions)),
+                    % (
+                        old_definition["statement"],
+                        "".join(defn["statement"] for defn in new_definitions),
+                    ),
                     level=2,
                 )
                 if len(new_definitions) > 1:
-                    kwargs["log"]("Splitting definition: %s" % repr(new_definitions), level=2)
+                    kwargs["log"](
+                        "Splitting definition: %s" % repr(new_definitions), level=2
+                    )
                 if new_rest_definitions != definitions[i + 1 :]:
                     kwargs["log"](
                         "Also modifying remainder via %s"
@@ -1218,10 +1489,16 @@ def try_transform_each(
                         ),
                         level=3,
                     )
-                try_definitions = definitions[:i] + new_definitions + new_rest_definitions
+                try_definitions = (
+                    definitions[:i] + new_definitions + new_rest_definitions
+                )
 
             if check_change_and_write_to_file(
-                "", join_definitions(try_definitions), output_file_name, verbose_base=2, **kwargs
+                "",
+                join_definitions(try_definitions),
+                output_file_name,
+                verbose_base=2,
+                **kwargs,
             ):
                 success = True
                 definitions = try_definitions
@@ -1233,7 +1510,10 @@ def try_transform_each(
     if success:
         kwargs["log"](kwargs["noun_description"] + " successful")
         if join_definitions(save_definitions) != join_definitions(definitions):
-            kwargs["log"]("Probably fatal error: definitions != save_definitions", level=LOG_ALWAYS)
+            kwargs["log"](
+                "Probably fatal error: definitions != save_definitions",
+                level=LOG_ALWAYS,
+            )
         else:
             contents = prepend_header(join_definitions(definitions), **kwargs)
             write_to_file(output_file_name, contents)
@@ -1244,7 +1524,12 @@ def try_transform_each(
 
 
 def try_transform_reversed(
-    definitions, output_file_name, transformer, skip_n=1, returns_all_definitions: bool = False, **kwargs
+    definitions,
+    output_file_name,
+    transformer,
+    skip_n=1,
+    returns_all_definitions: bool = False,
+    **kwargs,
 ):
     """Replaces each definition in definitions, with transformer
     applied to that definition and the subsequent (transformed)
@@ -1267,11 +1552,18 @@ def try_transform_reversed(
             rest_definitions,
         )
     for i in reversed(list(range(len(definitions) - skip_n))):
-        new_definition, new_rest_definitions = transformer(definitions[i], definitions[i + 1 :])
+        new_definition, new_rest_definitions = transformer(
+            definitions[i], definitions[i + 1 :]
+        )
         if new_definition:
-            if definitions[i] != new_definition or new_rest_definitions != definitions[i + 1 :]:
+            if (
+                definitions[i] != new_definition
+                or new_rest_definitions != definitions[i + 1 :]
+            ):
                 kwargs["log"](
-                    "Transforming %s into %s" % (definitions[i]["statement"], new_definition["statement"]), level=2
+                    "Transforming %s into %s"
+                    % (definitions[i]["statement"], new_definition["statement"]),
+                    level=2,
                 )
                 if new_rest_definitions != definitions[i + 1 :]:
                     kwargs["log"](
@@ -1291,7 +1583,11 @@ def try_transform_reversed(
                 or CANONICAL_STRUCTURE_REG.search(definitions[i]["statement"])
                 or TC_HINT_REG.search(definitions[i]["statement"])
             ):
-                kwargs["log"]("Ignoring Instance/Canonical Structure/Hint: %s" % definitions[i]["statement"], level=3)
+                kwargs["log"](
+                    "Ignoring Instance/Canonical Structure/Hint: %s"
+                    % definitions[i]["statement"],
+                    level=3,
+                )
                 pass
             else:
                 kwargs["log"]("Removing %s" % definitions[i]["statement"], level=2)
@@ -1343,7 +1639,10 @@ def try_transform_reversed_or_else_each(definitions, *args, **kwargs):
 
 def try_remove_if_not_matches_transformer(definition_found_in, **kwargs):
     def transformer(cur_definition, rest_definitions):
-        if any(definition_found_in(cur_definition, future_definition) for future_definition in rest_definitions):
+        if any(
+            definition_found_in(cur_definition, future_definition)
+            for future_definition in rest_definitions
+        ):
             kwargs["log"](
                 "Definition found; found:\n%s\nin\n%s"
                 % (
@@ -1383,7 +1682,11 @@ def try_remove_if_name_not_found_in_transformer(get_names, **kwargs):
             return False  # we don't care if the name is found in a
             # statement like [Section ...] or [End ...]
         return any(
-            re_search(r"(?<![\w'])%s(?![\w'])" % re.escape(name), future_definition["statement"]) for name in names
+            re_search(
+                r"(?<![\w'])%s(?![\w'])" % re.escape(name),
+                future_definition["statement"],
+            )
+            for name in names
         )
 
     return try_remove_if_not_matches_transformer(definition_found_in, **kwargs)
@@ -1406,7 +1709,11 @@ def try_remove_if_name_not_found_in_section_transformer(get_names, **kwargs):
             elif SECTION_END_REG.match(future_definition["statement"]):
                 section_level -= 1
             elif any(
-                re_search(r"(?<![\w'])%s(?![\w'])" % re.escape(name), future_definition["statement"]) for name in names
+                re_search(
+                    r"(?<![\w'])%s(?![\w'])" % re.escape(name),
+                    future_definition["statement"],
+                )
+                for name in names
             ):
                 return cur_definition
         # we didn't find the name, so we can safely remove it
@@ -1478,7 +1785,16 @@ EXTRA_DEFINITION_ISH = "|".join(
     + ["Variant", "Record", "Structure", "Class"]
     + ["Fixpoint", "CoFixpoint"]
     + ["Axiom", "Axioms", "Symbol", "Symbols", "Primitive"]
-    + ["Variables", "Variable", "Hypotheses", "Hypothesis", "Parameters", "Parameter", "Conjectures", "Conjecture"]
+    + [
+        "Variables",
+        "Variable",
+        "Hypotheses",
+        "Hypothesis",
+        "Parameters",
+        "Parameter",
+        "Conjectures",
+        "Conjecture",
+    ]
     + ["Instance", "Derive", "Declare"]
 )
 
@@ -1499,7 +1815,9 @@ EXTRA_DEFINITION_ISH_REG = re.compile(
 SECTION_REG = re.compile(r"^\s*(?:Section|Module|End)(?:\s+|$)", flags=re.MULTILINE)
 
 
-def try_remove_each_and_every_non_definition_line(definitions, output_file_name, **kwargs):
+def try_remove_each_and_every_non_definition_line(
+    definitions, output_file_name, **kwargs
+):
     def transformer(cur_definition, rest_definitions):
         if (
             cur_definition["terms_defined"]
@@ -1509,7 +1827,8 @@ def try_remove_each_and_every_non_definition_line(definitions, output_file_name,
             return cur_definition
         else:
             kwargs["log"](
-                "Attempting to remove non-definition line: %s" % cur_definition["statement"],
+                "Attempting to remove non-definition line: %s"
+                % cur_definition["statement"],
                 level=4,
             )
             return False
@@ -1531,14 +1850,20 @@ def try_remove_aborted(definitions, output_file_name, **kwargs):
     return try_transform_reversed(
         definitions,
         output_file_name,
-        (lambda definition, rest: None if ABORT_REG.search(definition["statement"]) else definition),
+        (
+            lambda definition, rest: None
+            if ABORT_REG.search(definition["statement"])
+            else definition
+        ),
         noun_description="Aborted removal",
         verb_description="remove Aborts",
         **kwargs,
     )
 
 
-LTAC_REG = re.compile(r"^\s*(?:Local\s+|Global\s+)?Ltac2?\s+([^\s]+)", flags=re.MULTILINE)
+LTAC_REG = re.compile(
+    r"^\s*(?:Local\s+|Global\s+)?Ltac2?\s+([^\s]+)", flags=re.MULTILINE
+)
 
 
 def try_remove_ltac(definitions, output_file_name, **kwargs):
@@ -1584,7 +1909,8 @@ def try_remove_hints(definitions, output_file_name, **kwargs):
         (
             lambda definition, rest: (
                 None
-                if len(definition["statements"]) == 1 and not HINT_REG.match(definition["statement"])
+                if len(definition["statements"]) == 1
+                and not HINT_REG.match(definition["statement"])
                 else definition
             )
         ),
@@ -1621,7 +1947,9 @@ def try_remove_variables(definitions, output_file_name, **kwargs):
 
 
 CONTEXT_REG = re.compile(
-    r"^\s*" + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*" + r"Context\s*`\s*[\({]\s*([^:\s]+)\s*:",
+    r"^\s*"
+    + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+)*"
+    + r"Context\s*`\s*[\({]\s*([^:\s]+)\s*:",
     flags=re.MULTILINE,
 )
 
@@ -1631,7 +1959,10 @@ def try_remove_contexts(definitions, output_file_name, **kwargs):
         definitions,
         output_file_name,
         try_remove_if_name_not_found_in_section_transformer(
-            lambda definition: CONTEXT_REG.findall(definition["statement"].replace(":", " : ")), **kwargs
+            lambda definition: CONTEXT_REG.findall(
+                definition["statement"].replace(":", " : ")
+            ),
+            **kwargs,
         ),
         noun_description="Context removal",
         verb_description="remove Contexts",
@@ -1646,7 +1977,10 @@ def try_admit_abstracts(definitions, output_file_name, **kwargs):
             output_file_name,
             (
                 lambda definition, rest_definitions: transform_abstract_to_admit(
-                    definition, rest_definitions, aggressive=aggressive, log=kwargs["log"]
+                    definition,
+                    rest_definitions,
+                    aggressive=aggressive,
+                    log=kwargs["log"],
                 )
             ),
             noun_description="Admitting [abstract ...]",
@@ -1709,7 +2043,10 @@ def statements_are_only_admitted(statements):
         return False
     if proof_statements[-1] == "Admitted.":
         proof_statements = proof_statements[:-1]
-    elif len(proof_statements) >= 2 and tuple(proof_statements[-2:]) == ("admit.", "Defined."):
+    elif len(proof_statements) >= 2 and tuple(proof_statements[-2:]) == (
+        "admit.",
+        "Defined.",
+    ):
         proof_statements = proof_statements[:-2]
     else:
         return False
@@ -1717,7 +2054,9 @@ def statements_are_only_admitted(statements):
         return True
     if len(proof_statements) == 1 and proof_statements[0].replace(" ", "") == "Proof.":
         return True
-    if len(proof_statements) == 1 and re.match(r"^\s*Proof\s+using\s+", proof_statements[0]):
+    if len(proof_statements) == 1 and re.match(
+        r"^\s*Proof\s+using\s+", proof_statements[0]
+    ):
         return True
     return False
 
@@ -1745,15 +2084,20 @@ def extract_proof_using(cur_definition, **kwargs):
     return proof_using
 
 
-def make_try_admit_matching_definitions(matcher, use_admitted=False, suppress_proof_using=False, **kwargs):
+def make_try_admit_matching_definitions(
+    matcher, use_admitted=False, suppress_proof_using=False, **kwargs
+):
     def transformer(cur_definition, rest_definitions):
         if (
             len(cur_definition["statements"]) > 2
             and matcher(cur_definition)
             and not statements_are_only_admitted(cur_definition["statements"])
         ):
-
-            proof_using_block = extract_proof_using(cur_definition, **kwargs) if not suppress_proof_using else []
+            proof_using_block = (
+                extract_proof_using(cur_definition, **kwargs)
+                if not suppress_proof_using
+                else []
+            )
             statements = (
                 cur_definition["statements"][0],
                 *proof_using_block,
@@ -1771,7 +2115,10 @@ def make_try_admit_matching_definitions(matcher, use_admitted=False, suppress_pr
 
     def try_admit_matching_definitions(definitions, output_file_name, **kwargs2):
         return try_transform_reversed_or_else_each(
-            definitions, output_file_name, transformer, **dict(list(kwargs.items()) + list(kwargs2.items()))
+            definitions,
+            output_file_name,
+            transformer,
+            **dict(list(kwargs.items()) + list(kwargs2.items())),
         )
 
     return try_admit_matching_definitions
@@ -1833,7 +2180,11 @@ def try_add_proof_using(
                 if cur_definition["statements"][1].strip().replace(" ", "") == "Proof."
                 else cur_definition["statements"][1:]
             )
-            statements = (cur_definition["statements"][0], f"Proof using {proof_using}.", *rest_statements)
+            statements = (
+                cur_definition["statements"][0],
+                f"Proof using {proof_using}.",
+                *rest_statements,
+            )
             return {
                 "statements": statements,
                 "statement": "\n".join(statements),
@@ -1861,11 +2212,19 @@ def try_split_imports(definitions, output_file_name, **kwargs):
             len(cur_definition["statements"]) > 1
             or any(ch in cur_definition["statement"] for ch in "*()")
             or cur_definition["statement"].strip()[-1] != "."
-            or cur_definition["statement"].strip().replace("\n", " ").split(" ")[0] not in ("Import", "Export")
+            or cur_definition["statement"].strip().replace("\n", " ").split(" ")[0]
+            not in ("Import", "Export")
         ):
             return cur_definition
         else:
-            terms = [i for i in cur_definition["statement"].strip().replace("\n", " ")[:-1].split(" ") if i != ""]
+            terms = [
+                i
+                for i in cur_definition["statement"]
+                .strip()
+                .replace("\n", " ")[:-1]
+                .split(" ")
+                if i != ""
+            ]
             import_or_export, terms = terms[0], terms[1:]
             pat = import_or_export + " %s."
             rtn_part = dict(cur_definition)
@@ -1887,7 +2246,9 @@ def try_split_imports(definitions, output_file_name, **kwargs):
 
 
 def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwargs):
-    OBLIGATION_REG = re.compile(r"^\s*(Next\s+Obligation|Obligation\s+[0-9]+)\b", flags=re.DOTALL)
+    OBLIGATION_REG = re.compile(
+        r"^\s*(Next\s+Obligation|Obligation\s+[0-9]+)\b", flags=re.DOTALL
+    )
 
     def transformer(cur_definition, rest_definitions):
         if (
@@ -1906,7 +2267,9 @@ def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwa
         else:
             return cur_definition
 
-    return try_transform_reversed_or_else_each(definitions, output_file_name, transformer, **kwargs)
+    return try_transform_reversed_or_else_each(
+        definitions, output_file_name, transformer, **kwargs
+    )
 
 
 def try_admit_qed_obligations(definitions, output_file_name, **kwargs):
@@ -1989,7 +2352,9 @@ MODULE_REG = re.compile(r"^(\s*Module)(\s+[^\s\.]+\s*\.\s*)$")
 
 def try_export_modules(definitions, output_file_name, **kwargs):
     def transformer(cur_definition, rest_definitions):
-        if len(cur_definition["statements"]) > 1 or not MODULE_REG.match(cur_definition["statement"]):
+        if len(cur_definition["statements"]) > 1 or not MODULE_REG.match(
+            cur_definition["statement"]
+        ):
             return cur_definition
         else:
             new_statement = MODULE_REG.sub(r"\1 Export\2", cur_definition["statement"])
@@ -2051,7 +2416,10 @@ def try_split_requires(output_file_name, **kwargs):
         output_file_name, update_globs=True, types=("lib",), appends=("<>",), **kwargs
     )
     if annotated_contents is None:
-        kwargs["log"]("\nNon-fatal error: Failed to get references for %s" % output_file_name, level=LOG_ALWAYS)
+        kwargs["log"](
+            "\nNon-fatal error: Failed to get references for %s" % output_file_name,
+            level=LOG_ALWAYS,
+        )
         return False
 
     try:
@@ -2077,7 +2445,9 @@ def try_split_requires(output_file_name, **kwargs):
     )
 
 
-def try_strip_newlines(output_file_name, max_consecutive_newlines, strip_trailing_space, **kwargs):
+def try_strip_newlines(
+    output_file_name, max_consecutive_newlines, strip_trailing_space, **kwargs
+):
     contents = read_from_file(output_file_name)
     old_contents = contents
     if strip_trailing_space:
@@ -2101,7 +2471,9 @@ def try_strip_extra_lines(output_file_name, statements, line_num, **kwargs):
     new_statements = statements
     kwargs["log"](f"Trimming file to line {line_num}...", level=4)
     for statement_num, statement in enumerate(statements):
-        cur_line_num += statement.count("\n") + 1  # +1 for the extra newline between each statement
+        cur_line_num += (
+            statement.count("\n") + 1
+        )  # +1 for the extra newline between each statement
         kwargs["log"](f"Line {cur_line_num}: {statement!r}", level=4)
         if cur_line_num >= line_num:
             new_statements = statements[: statement_num + 1]
@@ -2113,7 +2485,8 @@ def try_strip_extra_lines(output_file_name, statements, line_num, **kwargs):
         output_file_name,
         unchanged_message="No lines to trim.",
         success_message=(
-            "Trimming successful.  We removed all lines after %d; the error was on line %d." % (cur_line_num, line_num)
+            "Trimming successful.  We removed all lines after %d; the error was on line %d."
+            % (cur_line_num, line_num)
         ),
         failure_description="trim file",
         changed_descruption="Trimmed file",
@@ -2122,22 +2495,32 @@ def try_strip_extra_lines(output_file_name, statements, line_num, **kwargs):
         kwargs["log"]("Trimmed file:\n%s" % read_from_file(output_file_name), level=3)
 
 
-def try_remove_section_module_transformer(*, remove_section: bool = True, remove_module: bool = True, **kwargs):
-    SECTION_BEGIN_REG = re.compile(r"^\s*Section\s+([^\.\s]+)\s*\.\s*$", flags=re.DOTALL)
+def try_remove_section_module_transformer(
+    *, remove_section: bool = True, remove_module: bool = True, **kwargs
+):
+    SECTION_BEGIN_REG = re.compile(
+        r"^\s*Section\s+([^\.\s]+)\s*\.\s*$", flags=re.DOTALL
+    )
     MODULE_BEGIN_REG = re.compile(
-        r"^\s*Module\s+(?:(?:Import|Export|Type)\s+)?([^\.\s\(:=]+)\s*\.\s*$", flags=re.DOTALL
+        r"^\s*Module\s+(?:(?:Import|Export|Type)\s+)?([^\.\s\(:=]+)\s*\.\s*$",
+        flags=re.DOTALL,
     )
     MODULE_SECTION_BEGIN_REG = re.compile(
-        r"^\s*(?:Section|Module(?:\s+(?:Import|Export|Type))?)\s+([^\.\s\(:=]+)", flags=re.DOTALL
+        r"^\s*(?:Section|Module(?:\s+(?:Import|Export|Type))?)\s+([^\.\s\(:=]+)",
+        flags=re.DOTALL,
     )
     WITH_REG = re.compile(r"\s+with\s+[^\s]+\s*:=", flags=re.DOTALL)
-    END_REG = lambda name: re.compile(rf"^\s*End\s+{re.escape(name)}\s*\.\s*$", flags=re.DOTALL)
+    END_REG = lambda name: re.compile(
+        rf"^\s*End\s+{re.escape(name)}\s*\.\s*$", flags=re.DOTALL
+    )
 
     def transformer(cur_definition, rest_definitions):
         sections = SECTION_BEGIN_REG.findall(cur_definition["statement"])
         modules = MODULE_BEGIN_REG.findall(cur_definition["statement"])
         mod_assign = ":=" in WITH_REG.sub("", cur_definition["statement"])
-        if not (sections and remove_section) and not (modules and remove_module and not mod_assign):
+        if not (sections and remove_section) and not (
+            modules and remove_module and not mod_assign
+        ):
             return cur_definition, rest_definitions
         name = sections[0] if sections else modules[0]
         end_reg = END_REG(name)
@@ -2146,7 +2529,9 @@ def try_remove_section_module_transformer(*, remove_section: bool = True, remove
             if similar_section_level < 0:
                 # remove the section/module and the end
                 return None, rest_definitions[: i - 1] + rest_definitions[i:]
-            mod_sec_names = MODULE_SECTION_BEGIN_REG.findall(future_definition["statement"])
+            mod_sec_names = MODULE_SECTION_BEGIN_REG.findall(
+                future_definition["statement"]
+            )
             end_match = end_reg.match(future_definition["statement"])
             if end_match:
                 similar_section_level -= 1
@@ -2155,15 +2540,26 @@ def try_remove_section_module_transformer(*, remove_section: bool = True, remove
                 if not mod_assign:
                     similar_section_level += 1
         if end_reg.search("\n".join(d["statement"] for d in rest_definitions)):
-            kwargs["log"]("Warning: Section/Module %s not closed in a recognizable way." % name, level=2)
-            kwargs["log"]("Contents:\n%s" % "\n".join(d["statement"] for d in rest_definitions), level=4)
+            kwargs["log"](
+                "Warning: Section/Module %s not closed in a recognizable way." % name,
+                level=2,
+            )
+            kwargs["log"](
+                "Contents:\n%s" % "\n".join(d["statement"] for d in rest_definitions),
+                level=4,
+            )
         return cur_definition, rest_definitions
 
     return transformer
 
 
 def try_remove_module_sections(
-    definitions, output_file_name, *, remove_section: bool = True, remove_module: bool = True, **kwargs
+    definitions,
+    output_file_name,
+    *,
+    remove_section: bool = True,
+    remove_module: bool = True,
+    **kwargs,
 ):
     if remove_section and remove_module:
         noun_description = "Section/Module removal"
@@ -2179,7 +2575,9 @@ def try_remove_module_sections(
     return try_transform_reversed_or_else_each(
         definitions,
         output_file_name,
-        try_remove_section_module_transformer(remove_section=remove_section, remove_module=remove_module, **kwargs),
+        try_remove_section_module_transformer(
+            remove_section=remove_section, remove_module=remove_module, **kwargs
+        ),
         noun_description=noun_description,
         verb_description=verb_description,
         returns_all_definitions=True,
@@ -2188,16 +2586,31 @@ def try_remove_module_sections(
 
 
 def try_remove_modules(definitions, output_file_name, **kwargs):
-    return try_remove_module_sections(definitions, output_file_name, remove_section=False, remove_module=True, **kwargs)
+    return try_remove_module_sections(
+        definitions,
+        output_file_name,
+        remove_section=False,
+        remove_module=True,
+        **kwargs,
+    )
 
 
 def try_remove_sections(definitions, output_file_name, **kwargs):
-    return try_remove_module_sections(definitions, output_file_name, remove_section=True, remove_module=False, **kwargs)
+    return try_remove_module_sections(
+        definitions,
+        output_file_name,
+        remove_section=True,
+        remove_module=False,
+        **kwargs,
+    )
 
 
 EMPTY_SECTION_REG = re.compile(
-    r"(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^ \.]+)\." + r"(?:\s" + r"|Local\s"
-    r"|Set\s+Universe\s+Polymorphism\s*\.\s" + r"|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^ \.]+)\.(\s+|$)",
+    r"(\.\s+|^\s*)(?:Section|Module\s+Export|Module)\s+([^ \.]+)\."
+    + r"(?:\s"
+    + r"|Local\s"
+    r"|Set\s+Universe\s+Polymorphism\s*\.\s"
+    + r"|Unset\s+Universe\s+Polymorphism\s*\.\s)+End\s+([^ \.]+)\.(\s+|$)",
     flags=re.MULTILINE,
 )
 
@@ -2207,7 +2620,10 @@ def try_strip_empty_sections(output_file_name, **kwargs):
     old_contents = contents
     new_contents = EMPTY_SECTION_REG.sub(r"\1", old_contents)
     while new_contents != old_contents:
-        old_contents, new_contents = new_contents, EMPTY_SECTION_REG.sub(r"\1", new_contents)
+        old_contents, new_contents = (
+            new_contents,
+            EMPTY_SECTION_REG.sub(r"\1", new_contents),
+        )
 
     check_change_and_write_to_file(
         contents,
@@ -2229,17 +2645,13 @@ def remove_admit_tactic(contents, tac_code: str = "", **kwargs):
 ?(End LocalFalse\.)?
 ?(?:Axiom proof_admitted : False\.)?
 ?(?:%s)?(?:Tactic Notation "admit" := abstract case proof_admitted\.)?
-?End AdmitTactic\.\n*""" % re.escape(
-        after
-    )
+?End AdmitTactic\.\n*""" % re.escape(after)
     tac_code_re2 = r"""\s*(?:Module Import LocalFalse\.)?
 ?(?:Inductive False : Prop := \.)?
 ?(End LocalFalse\.)?
 ?(?:Axiom proof_admitted : False\.)?
 ?(?:%s)?Tactic Notation "admit" := abstract case proof_admitted\.
-?\n*""" % re.escape(
-        after
-    )
+?\n*""" % re.escape(after)
     header, contents = split_leading_comments_and_whitespace(contents)
     return "%s%s%s" % (
         header,
@@ -2247,7 +2659,12 @@ def remove_admit_tactic(contents, tac_code: str = "", **kwargs):
         re.sub(
             tac_code_re,
             "\n",
-            re.sub(tac_code_re2, "\n", contents.replace(before, ""), flags=re.DOTALL | re.MULTILINE),
+            re.sub(
+                tac_code_re2,
+                "\n",
+                contents.replace(before, ""),
+                flags=re.DOTALL | re.MULTILINE,
+            ),
             flags=re.DOTALL | re.MULTILINE,
         ),
     )
@@ -2285,6 +2702,7 @@ def try_remove_admit_tactic_header(output_file_name, **kwargs):
         **kwargs,
     )
 
+
 def try_add_admit_tactic_header(output_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
@@ -2304,7 +2722,6 @@ def try_add_admit_tactic_header(output_file_name, **kwargs):
         kwargs["log"]("Failed to add admit tactic wrapper, skipping...")
 
 
-
 def default_on_fatal(message, log=DEFAULT_LOG, **env):
     if message is not None:
         log(message, level=0, force_stderr=True)
@@ -2312,7 +2729,11 @@ def default_on_fatal(message, log=DEFAULT_LOG, **env):
 
 
 def minimize_file(
-    output_file_name, die=default_on_fatal, return_after_requires=False, return_after_splitting=False, **env
+    output_file_name,
+    die=default_on_fatal,
+    return_after_requires=False,
+    return_after_splitting=False,
+    **env,
 ):
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
@@ -2333,18 +2754,23 @@ def minimize_file(
         **env,
     ):
         if os.path.exists(output_file_name):
-            env["log"]("\nMoving %s to %s..." % (output_file_name, env["temp_file_name"]))
+            env["log"](
+                "\nMoving %s to %s..." % (output_file_name, env["temp_file_name"])
+            )
             write_to_file(env["temp_file_name"], read_from_file(output_file_name))
             os.remove(output_file_name)
         return die("Fatal error: Sanity check failed.", **env)
 
-
     if env["admit_transparent"] or env["admit_opaque"]:
-        env["log"]("\nNow, I will attempt to add an admit tactic wrapper to this file...")
+        env["log"](
+            "\nNow, I will attempt to add an admit tactic wrapper to this file..."
+        )
         try_add_admit_tactic_header(output_file_name, **env)
 
     if env["max_consecutive_newlines"] >= 0 or env["strip_trailing_space"]:
-        env["log"]("\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...")
+        env["log"](
+            "\nNow, I will attempt to strip repeated newlines and trailing spaces from this file..."
+        )
         try_strip_newlines(output_file_name, **env)
 
     contents = read_from_file(output_file_name)
@@ -2371,12 +2797,17 @@ def minimize_file(
         "\nIn order to efficiently manipulate the file, I have to break it into statements.  I will attempt to do this by matching on periods."
     )
     strings = re.findall(r'"[^"\n\r]+"', contents)
-    bad_strings = [i for i in strings if re.search(r"(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s", i)]
+    bad_strings = [
+        i for i in strings if re.search(r"(?<=[^\.]\.\.\.)\s|(?<=[^\.]\.)\s", i)
+    ]
     if bad_strings:
         env["log"](
             'If you have periods in strings, and these periods are essential to generating the error, then this process will fail.  Consider replacing the string with some hack to get around having a period and then a space, like ["a. b"%string] with [("a." ++ " b")%string].'
         )
-        env["log"]("You have the following strings with periods in them:\n%s" % "\n".join(bad_strings))
+        env["log"](
+            "You have the following strings with periods in them:\n%s"
+            % "\n".join(bad_strings)
+        )
     statements = split_coq_file_contents(contents)
     if not check_change_and_write_to_file(
         "",
@@ -2390,11 +2821,15 @@ def minimize_file(
         **env,
     ):
         env["log"]("I will not be able to proceed.")
-        env["log"]("re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2)
+        env["log"](
+            "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
+        )
         return die(None, **env)
 
     if not env["should_succeed"]:
-        env["log"]("\nI will now attempt to remove any lines after the line which generates the error.")
+        env["log"](
+            "\nI will now attempt to remove any lines after the line which generates the error."
+        )
         output, cmds, retcode, runtime = diagnose_error.get_coq_output(
             env["coqc"],
             env["coqc_args"],
@@ -2428,7 +2863,9 @@ def minimize_file(
         **env,
     ):
         env["log"]("I will not be able to proceed.")
-        env["log"]("re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2)
+        env["log"](
+            "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
+        )
         return die(None, **env)
 
     if return_after_splitting:
@@ -2442,7 +2879,10 @@ def minimize_file(
     if not env["should_succeed"]:
         recursive_tasks += (
             ("remove unused definitions", try_remove_definitions),
-            ("remove unused non-instance, non-canonical structure definitions", try_remove_non_instance_definitions),
+            (
+                "remove unused non-instance, non-canonical structure definitions",
+                try_remove_non_instance_definitions,
+            ),
         )
     if env["remove_section_variables"]:
         recursive_tasks += (
@@ -2451,25 +2891,43 @@ def minimize_file(
         )
 
     tasks = recursive_tasks
-    if env["add_proof_using_before_admit"] and not (env["admit_opaque"] and env["admit_transparent"]):
+    if env["add_proof_using_before_admit"] and not (
+        env["admit_opaque"] and env["admit_transparent"]
+    ):
         tasks += (("add Proof using lines", try_add_proof_using),)
     if env["admit_opaque"]:
         if env["admit_obligations"]:
-            tasks += (("replace Qed Obligation with Admit Obligations", try_admit_qed_obligations),)
-        for suppress_proof_using in (False,) if env["add_proof_using_before_admit"] else (True, False):
+            tasks += (
+                (
+                    "replace Qed Obligation with Admit Obligations",
+                    try_admit_qed_obligations,
+                ),
+            )
+        for suppress_proof_using in (
+            (False,) if env["add_proof_using_before_admit"] else (True, False)
+        ):
             with_proof_using_suffix = (
                 ""
-                if suppress_proof_using or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
+                if suppress_proof_using
+                or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
                 else " with Proof using"
             )
             tasks += (
                 (
                     f"replace Qeds with Admitteds{with_proof_using_suffix}",
-                    make_try_admit_qeds(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_qeds(
+                        use_admitted=True,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
                 (
                     f"replace Qeds with admit. Defined.{with_proof_using_suffix}",
-                    make_try_admit_qeds(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_qeds(
+                        use_admitted=False,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
             )
         tasks += (
@@ -2482,33 +2940,56 @@ def minimize_file(
         )
 
     if not env["aggressive"] and not env["should_succeed"]:
-        tasks += (("remove unused definitions, one at a time", try_remove_each_definition),)
+        tasks += (
+            ("remove unused definitions, one at a time", try_remove_each_definition),
+        )
 
     if env["admit_transparent"]:
         if env["admit_obligations"]:
-            tasks += (("replace Obligation with Admit Obligations", try_admit_obligations),)
-        for suppress_proof_using in (False,) if env["add_proof_using_before_admit"] else (True, False):
+            tasks += (
+                ("replace Obligation with Admit Obligations", try_admit_obligations),
+            )
+        for suppress_proof_using in (
+            (False,) if env["add_proof_using_before_admit"] else (True, False)
+        ):
             proof_using_suffix = (
                 ""
-                if suppress_proof_using or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
+                if suppress_proof_using
+                or not (env["add_proof_using"] or env["add_proof_using_before_admit"])
                 else " with Proof using"
             )
             tasks += (
                 (
                     f"admit lemmas with Admitted{proof_using_suffix}",
-                    make_try_admit_lemmas(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_lemmas(
+                        use_admitted=True,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
                 (
                     f"admit definitions with Admitted{proof_using_suffix}",
-                    make_try_admit_definitions(use_admitted=True, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_definitions(
+                        use_admitted=True,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
                 (
                     f"admit lemmas with admit. Defined{proof_using_suffix}",
-                    make_try_admit_lemmas(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_lemmas(
+                        use_admitted=False,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
                 (
                     f"admit definitions with admit. Defined{proof_using_suffix}",
-                    make_try_admit_definitions(use_admitted=False, suppress_proof_using=suppress_proof_using, **env),
+                    make_try_admit_definitions(
+                        use_admitted=False,
+                        suppress_proof_using=suppress_proof_using,
+                        **env,
+                    ),
                 ),
             )
 
@@ -2571,7 +3052,9 @@ def minimize_file(
     try_remove_admit_tactic_header(output_file_name, **env)
 
     if env["max_consecutive_newlines"] >= 0 or env["strip_trailing_space"]:
-        env["log"]("\nNow, I will attempt to strip repeated newlines and trailing spaces from this file...")
+        env["log"](
+            "\nNow, I will attempt to strip repeated newlines and trailing spaces from this file..."
+        )
         try_strip_newlines(output_file_name, **env)
 
     return True
@@ -2595,13 +3078,17 @@ def make_cur_output_gen(output_file_name, **kwargs):
     )
 
 
-def inline_one_require(output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs):
+def inline_one_require(
+    output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs
+):
     if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
         add_admit_tactic_wrapper = add_admit_tactic
     else:
         add_admit_tactic_wrapper = lambda x, **kwargs: x
     cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
-    requires = recursively_get_requires_from_file(output_file_name, update_globs=True, **kwargs)
+    requires = recursively_get_requires_from_file(
+        output_file_name, update_globs=True, **kwargs
+    )
 
     STRIP_ADMIT_TACTIC_WRAPPER = "STRIP_ADMIT_TACTIC_WRAPPER"
     ADD_ADMIT_TACTIC_WRAPPER = "ADD_ADMIT_TACTIC_WRAPPER"
@@ -2619,7 +3106,11 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
         new_req_module = absolutize_and_mangle_libname(
             req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
         )
-        test_output = cur_output if not absolutize_mods else cur_output_gen({req_module: new_req_module})
+        test_output = (
+            cur_output
+            if not absolutize_mods
+            else cur_output_gen({req_module: new_req_module})
+        )
         if not absolutize_mods:
             cur_rep = rep
         else:
@@ -2658,7 +3149,12 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
         )
         if insert_at_top:
             header, test_output = split_leading_comments_and_whitespace(test_output)
-            body = (header + replacement + "\n" + ("\n" + test_output).replace(cur_rep, "\n")).strip() + "\n"
+            body = (
+                header
+                + replacement
+                + "\n"
+                + ("\n" + test_output).replace(cur_rep, "\n")
+            ).strip() + "\n"
             if admit_tactic_wrapper_action == STRIP_ADMIT_TACTIC_WRAPPER:
                 return remove_admit_tactic(body, **kwargs)
             elif admit_tactic_wrapper_action == ADD_ADMIT_TACTIC_WRAPPER:
@@ -2670,7 +3166,9 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                 return body
 
         else:
-            body = ("\n" + test_output).replace(cur_rep, replacement, 1).replace(cur_rep, "\n").strip() + "\n"
+            body = ("\n" + test_output).replace(cur_rep, replacement, 1).replace(
+                cur_rep, "\n"
+            ).strip() + "\n"
             if admit_tactic_wrapper_action == STRIP_ADMIT_TACTIC_WRAPPER:
                 return remove_admit_tactic(body, **kwargs)
             else:
@@ -2694,16 +3192,35 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
             test_output_alts = [
                 (
                     (
-                        (" without Include" if not first_wrap_then_include else " via Include")
+                        (
+                            " without Include"
+                            if not first_wrap_then_include
+                            else " via Include"
+                        )
                         + (", absolutizing mod references" if absolutize_mods else "")
-                        + (", stripping Requires" if without_require else ", with Requires")
+                        + (
+                            ", stripping Requires"
+                            if without_require
+                            else ", with Requires"
+                        )
                         + (", inserting at the top" if insert_at_top else "")
-                        + (f", with {extra_top_header} at the top" if extra_top_header else "")
-                        + (", with explicit setting of options" if include_options_settings else "")
+                        + (
+                            f", with {extra_top_header} at the top"
+                            if extra_top_header
+                            else ""
+                        )
+                        + (
+                            ", with explicit setting of options"
+                            if include_options_settings
+                            else ""
+                        )
                         + {
                             ADD_ADMIT_TACTIC_WRAPPER: ", re-adding admit tactic wrapper",
                             STRIP_ADMIT_TACTIC_WRAPPER: ", without admit tactic wrapper",
-                        }.get(admit_tactic_wrapper_action, ", leaving admit tactic wrapper alone")
+                        }.get(
+                            admit_tactic_wrapper_action,
+                            ", leaving admit tactic wrapper alone",
+                        )
                     ),
                     get_test_output(
                         req_module,
@@ -2716,14 +3233,30 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                         admit_tactic_wrapper_action=admit_tactic_wrapper_action,
                     ),
                 )
-                for admit_tactic_wrapper_action in (ADD_ADMIT_TACTIC_WRAPPER, "", STRIP_ADMIT_TACTIC_WRAPPER)
+                for admit_tactic_wrapper_action in (
+                    ADD_ADMIT_TACTIC_WRAPPER,
+                    "",
+                    STRIP_ADMIT_TACTIC_WRAPPER,
+                )
                 for absolutize_mods in (False, True)
-                for first_wrap_then_include in ((True, False) if kwargs["prefer_inline_via_include"] else (False, True))
-                for without_require, insert_at_top in ((True, False), (False, True), (False, False), (True, True))
+                for first_wrap_then_include in (
+                    (True, False)
+                    if kwargs["prefer_inline_via_include"]
+                    else (False, True)
+                )
+                for without_require, insert_at_top in (
+                    (True, False),
+                    (False, True),
+                    (False, False),
+                    (True, True),
+                )
                 for extra_top_header in (None, "Import Coq.Init.Prelude.")
                 for include_options_settings in (False, True)
             ]
-            (test_output_descr, test_output), test_output_alts = test_output_alts[0], test_output_alts[1:]
+            (test_output_descr, test_output), test_output_alts = (
+                test_output_alts[0],
+                test_output_alts[1:],
+            )
         except IOError as e:
             kwargs["log"](
                 "\nWarning: Cannot inline %s (%s)\nRecursively Searched: %s\nNonrecursively Searched: %s"
@@ -2741,7 +3274,9 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
             test_output,
             output_file_name,
             unchanged_message="Invalid empty file!",
-            success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
+            success_message=(
+                "Inlining %s%s succeeded." % (req_module, test_output_descr)
+            ),
             failure_description=("inline %s%s" % (req_module, test_output_descr)),
             changed_description="File",
             reset_timeout=True,
@@ -2769,7 +3304,9 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                     # ability of a later one to succeed
                     reset_timeout=True,
                     display_source_to_error=True,
-                    display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
+                    display_extra_verbose_on_error=kwargs[
+                        "verbose_include_failure_warning"
+                    ],
                     **kwargs,
                 )
                 for descr, test_output_alt in test_output_alts
@@ -2783,24 +3320,35 @@ def inline_one_require(output_file_name, libname_blacklist, cur_output, check_sh
                     test_output,
                     output_file_name,
                     unchanged_message="Invalid empty file!",
-                    success_message=("Inlining %s%s succeeded." % (req_module, test_output_descr)),
-                    failure_description=("inline %s%s" % (req_module, test_output_descr)),
+                    success_message=(
+                        "Inlining %s%s succeeded." % (req_module, test_output_descr)
+                    ),
+                    failure_description=(
+                        "inline %s%s" % (req_module, test_output_descr)
+                    ),
                     changed_description="File",
                     timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
                     reset_timeout=True,
                     display_source_to_error=True,
-                    display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
+                    display_extra_verbose_on_error=kwargs[
+                        "verbose_include_failure_warning"
+                    ],
                     write_to_temp_file=True,
                     **kwargs,
                 )
 
                 extra_blacklist = [
-                    r for r in get_recursive_require_names(req_module, **kwargs) if r not in libname_blacklist
+                    r
+                    for r in get_recursive_require_names(req_module, **kwargs)
+                    if r not in libname_blacklist
                 ]
                 if extra_blacklist:
                     kwargs["log"](
                         "\nWarning: Preemptively skipping recursive dependency module%s: %s\n"
-                        % (("" if len(extra_blacklist) == 1 else "s"), ", ".join(extra_blacklist))
+                        % (
+                            ("" if len(extra_blacklist) == 1 else "s"),
+                            ", ".join(extra_blacklist),
+                        )
                     )
                 libname_blacklist.extend(extra_blacklist)
                 kwargs["inline_failure_libnames"].append(req_module)
@@ -2832,7 +3380,13 @@ def inline_all_requires(output_file_name, check_should_break, **kwargs):
     while cur_output != last_output or first_run:
         first_run = False
         last_output = cur_output
-        inline_one_require(output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs)
+        inline_one_require(
+            output_file_name,
+            libname_blacklist,
+            cur_output,
+            check_should_break,
+            **kwargs,
+        )
         cur_output = cur_output_gen(dict())
 
 
@@ -2868,8 +3422,12 @@ def main():
         "header": args.header,
         "dynamic_header": args.dynamic_header,
         "strip_trailing_space": args.strip_trailing_space,
-        "timeout": (args.nonpassing_timeout if args.nonpassing_timeout != -1 else args.timeout),
-        "passing_timeout": (args.passing_timeout if args.passing_timeout != -1 else args.timeout),
+        "timeout": (
+            args.nonpassing_timeout if args.nonpassing_timeout != -1 else args.timeout
+        ),
+        "passing_timeout": (
+            args.passing_timeout if args.passing_timeout != -1 else args.timeout
+        ),
         "absolutize": args.absolutize,
         "minimize_before_inlining": args.minimize_before_inlining,
         "save_typeclasses": args.save_typeclasses,
@@ -2916,26 +3474,41 @@ def main():
         "passing_coqc": (
             prepend_coqbin(args.passing_coqc)
             if args.passing_coqc
-            else (prepend_coqbin(args.coqc) if args.passing_coqc_args is not None else None)
+            else (
+                prepend_coqbin(args.coqc)
+                if args.passing_coqc_args is not None
+                else None
+            )
         ),
         "passing_coqtop": (
             prepend_coqbin(args.passing_coqtop)
             if args.passing_coqtop
-            else (prepend_coqbin(args.coqtop) if args.passing_coqtop_args is not None else None)
+            else (
+                prepend_coqbin(args.coqtop)
+                if args.passing_coqtop_args is not None
+                else None
+            )
         ),
         "nonpassing_ocamlpath": (
-            args.nonpassing_ocamlpath if args.nonpassing_ocamlpath is not None else args.ocamlpath
+            args.nonpassing_ocamlpath
+            if args.nonpassing_ocamlpath is not None
+            else args.ocamlpath
         ),
         "passing_ocamlpath": (
             args.passing_ocamlpath
             if args.passing_ocamlpath is not None
             else (
                 args.ocamlpath
-                if args.ocamlpath is not None and (args.passing_coqc != "" or args.passing_coqc_args is not None)
+                if args.ocamlpath is not None
+                and (args.passing_coqc != "" or args.passing_coqc_args is not None)
                 else args.ocamlpath
             )
         ),
-        "passing_base_dir": (os.path.abspath(args.passing_base_dir) if args.passing_base_dir != "" else None),
+        "passing_base_dir": (
+            os.path.abspath(args.passing_base_dir)
+            if args.passing_base_dir != ""
+            else None
+        ),
         "base_dir": (os.path.abspath(args.base_dir) if args.base_dir != "" else None),
         "use_coq_makefile_for_deps": args.use_coq_makefile_for_deps,
         "walk_tree": args.walk_tree,
@@ -2976,29 +3549,37 @@ def main():
     }
 
     try:
-
         if bug_file_name[-2:] != ".v":
             env["log"](
-                "\nError: BUGGY_FILE must end in .v (value: %s)" % bug_file_name, force_stdout=True, level=LOG_ALWAYS
+                "\nError: BUGGY_FILE must end in .v (value: %s)" % bug_file_name,
+                force_stdout=True,
+                level=LOG_ALWAYS,
             )
             sys.exit(1)
         if output_file_name[-2:] != ".v":
             env["log"](
-                "\nError: OUT_FILE must end in .v (value: %s)" % output_file_name, force_stdout=True, level=LOG_ALWAYS
+                "\nError: OUT_FILE must end in .v (value: %s)" % output_file_name,
+                force_stdout=True,
+                level=LOG_ALWAYS,
             )
             sys.exit(1)
         if os.path.exists(output_file_name):
             env["log"](
-                "\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n" % output_file_name,
+                "\nWarning: OUT_FILE (%s) already exists.  Would you like to overwrite?\n"
+                % output_file_name,
                 force_stdout=True,
                 level=LOG_ALWAYS,
             )
             if not yes_no_prompt(yes=env["yes"]):
                 sys.exit(1)
-        for k, arg in (("base_dir", "--base-dir"), ("passing_base_dir", "--passing-base-dir")):
+        for k, arg in (
+            ("base_dir", "--base-dir"),
+            ("passing_base_dir", "--passing-base-dir"),
+        ):
             if env[k] is not None and not os.path.isdir(env[k]):
                 env["log"](
-                    "\nError: Argument to %s (%s) must exist and be a directory." % (arg, env[k]),
+                    "\nError: Argument to %s (%s) must exist and be a directory."
+                    % (arg, env[k]),
                     force_stdout=True,
                     level=LOG_ALWAYS,
                 )
@@ -3041,18 +3622,29 @@ def main():
             env,
             args,
             include_passing=env["passing_coqc"],
-            use_default=not has_dir_binding(env["coqc_args"], coqc_help=coqc_help, file_name=bug_file_name),
+            use_default=not has_dir_binding(
+                env["coqc_args"], coqc_help=coqc_help, file_name=bug_file_name
+            ),
             use_passing_default=not has_dir_binding(
                 env["passing_coqc_args"], coqc_help=coqc_help, file_name=bug_file_name
             ),
         )
 
         if args.inline_user_contrib:
+            # Build list of directories to skip based on command-line arguments
+            skip_dirs = []
+            if args.no_inline_stdlib:
+                skip_dirs.append("Stdlib")
+            if args.no_inline_corelib:
+                skip_dirs.append("Corelib")
+
             for passing_prefix in ("", "passing_"):
                 if env[passing_prefix + "coqc"]:
                     coq_user_contrib_path = os.path.join(
                         get_coqc_coqlib(
-                            env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
+                            env[passing_prefix + "coqc"],
+                            coq_args=env[passing_prefix + "coqc_args"],
+                            **env,
                         ),
                         "user-contrib",
                     )
@@ -3060,6 +3652,7 @@ def main():
                         passing_prefix,
                         env,
                         coq_user_contrib_path,
+                        skip_dirs=skip_dirs,
                     )
                     env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
 
@@ -3067,42 +3660,57 @@ def main():
             for passing_prefix in ("", "passing_"):
                 if env[passing_prefix + "coqc"]:
                     coq_lib_path = get_coqc_coqlib(
-                        env[passing_prefix + "coqc"], coq_args=env[passing_prefix + "coqc_args"], **env
+                        env[passing_prefix + "coqc"],
+                        coq_args=env[passing_prefix + "coqc_args"],
+                        **env,
                     )
                     coq_theories_path = os.path.join(coq_lib_path, "theories")
-                    coq_user_contrib_path = os.path.join(os.path.join(coq_lib_path, "user-contrib"), "Stdlib")
+                    coq_user_contrib_path = os.path.join(
+                        os.path.join(coq_lib_path, "user-contrib"), "Stdlib"
+                    )
                     coqpath_path = os.environ.get("COQPATH", "")
-                    coqpath_paths = coqpath_path.split(os.pathsep) if coqpath_path else []
+                    coqpath_paths = (
+                        coqpath_path.split(os.pathsep) if coqpath_path else []
+                    )
                     if args.inline_coqlib:
                         if coqc_version != "" and coqc_version[0] == "8":
                             env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Coq")]
+                                list(env[passing_prefix + "libnames"])
+                                + [(coq_theories_path, "Coq")]
                             )
                         else:
                             env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Corelib")]
+                                list(env[passing_prefix + "libnames"])
+                                + [(coq_theories_path, "Corelib")]
                             )
                         env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
+                            list(env[passing_prefix + "libnames"])
+                            + [(coq_user_contrib_path, "Stdlib")]
                         )
                         for p in coqpath_paths:
                             env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Coq")]
+                                list(env[passing_prefix + "libnames"])
+                                + [(os.path.join(p, "Stdlib"), "Coq")]
                             )
                     if args.inline_stdlib:
                         env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(coq_theories_path, "Stdlib")]
+                            list(env[passing_prefix + "libnames"])
+                            + [(coq_theories_path, "Stdlib")]
                         )
                         env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"]) + [(coq_user_contrib_path, "Stdlib")]
+                            list(env[passing_prefix + "libnames"])
+                            + [(coq_user_contrib_path, "Stdlib")]
                         )
                         for p in coqpath_paths:
                             env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"]) + [(os.path.join(p, "Stdlib"), "Stdlib")]
+                                list(env[passing_prefix + "libnames"])
+                                + [(os.path.join(p, "Stdlib"), "Stdlib")]
                             )
                     if args.inline_coqlib or args.inline_stdlib:
                         env[passing_prefix + "coqpath_paths"].append(coq_theories_path)
-                        env[passing_prefix + "coqpath_paths"].append(coq_user_contrib_path)
+                        env[passing_prefix + "coqpath_paths"].append(
+                            coq_user_contrib_path
+                        )
                         env[passing_prefix + "coqpath_paths"].extend(coqpath_paths)
 
         env["log"]("{", level=2)
@@ -3116,7 +3724,11 @@ def main():
                 if "-native-compiler" not in env[args_key]:
                     env[args_key] = tuple(
                         list(env[args_key])
-                        + list(get_coq_native_compiler_ondemand_fragment(env[passing_prefix + "coqc"], **env))
+                        + list(
+                            get_coq_native_compiler_ondemand_fragment(
+                                env[passing_prefix + "coqc"], **env
+                            )
+                        )
                     )
 
         if env["temp_file_name"][-2:] != ".v":
@@ -3129,19 +3741,33 @@ def main():
 
         env["log"]("\nCoq version: %s\n" % coqc_version)
 
-        extra_args = get_coq_prog_args(get_file(bug_file_name, **env)) if args.use_coq_prog_args else []
+        extra_args = (
+            get_coq_prog_args(get_file(bug_file_name, **env))
+            if args.use_coq_prog_args
+            else []
+        )
         # persist topname so that when we get it from failing coqc, we can use it for passing coqc
         topname = None
         for args_name, coq_prog, passing_prefix in (
             ("coqc_args", env["coqc"], ""),
             ("coqtop_args", env["coqtop"], ""),
-            ("passing_coqc_args", env["passing_coqc"] if env["passing_coqc"] else env["coqc"], "passing_"),
-            ("passing_coqtop_args", env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"], "passing_"),
+            (
+                "passing_coqc_args",
+                env["passing_coqc"] if env["passing_coqc"] else env["coqc"],
+                "passing_",
+            ),
+            (
+                "passing_coqtop_args",
+                env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"],
+                "passing_",
+            ),
         ):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + "libnames", []):
                 env[args_name] = tuple(list(env[args_name]) + ["-R", dirname, libname])
-            for dirname, libname in env.get(passing_prefix + "non_recursive_libnames", []):
+            for dirname, libname in env.get(
+                passing_prefix + "non_recursive_libnames", []
+            ):
                 env[args_name] = tuple(list(env[args_name]) + ["-Q", dirname, libname])
             for dirname in env.get(passing_prefix + "ocaml_dirnames", []):
                 env[args_name] = tuple(list(env[args_name]) + ["-I", dirname])
@@ -3157,7 +3783,9 @@ def main():
                 if arg[0] == "-R":
                     env.get(passing_prefix + "libnames", []).append((arg[1], arg[2]))
                 if arg[0] == "-Q":
-                    env.get(passing_prefix + "non_recursive_libnames", []).append((arg[1], arg[2]))
+                    env.get(passing_prefix + "non_recursive_libnames", []).append(
+                        (arg[1], arg[2])
+                    )
                 if arg[0] == "-I":
                     env.get(passing_prefix + "ocaml_dirnames", []).append(arg[1])
 
@@ -3173,9 +3801,11 @@ def main():
             coqc_prog_help = get_coqc_help(coqc_prog, **env)
             coqtop_prog_help = get_coqc_help(coqtop_prog, **env)
             # we want to skip any arguments that are recognized by coqc but not coqtop
-            recognized_args, unrecognized_args = group_coq_args_split_recognized(env[args_name], coqtop_prog_help)
-            coqc_but_not_coqtop_args, unrecognized_args = group_coq_args_split_recognized(
-                unrecognized_args, coqc_prog_help
+            recognized_args, unrecognized_args = group_coq_args_split_recognized(
+                env[args_name], coqtop_prog_help
+            )
+            coqc_but_not_coqtop_args, unrecognized_args = (
+                group_coq_args_split_recognized(unrecognized_args, coqc_prog_help)
             )
             if len(coqc_but_not_coqtop_args) > 0:
                 env["log"](
@@ -3183,7 +3813,9 @@ def main():
                     % repr(coqc_but_not_coqtop_args),
                     level=2,
                 )
-            env[args_name] = tuple([arg for group in recognized_args for arg in group] + unrecognized_args)
+            env[args_name] = tuple(
+                [arg for group in recognized_args for arg in group] + unrecognized_args
+            )
 
         if env["admit_transparent"] or env["admit_opaque"]:
             add_admit_tactic_wrapper = add_admit_tactic
@@ -3198,7 +3830,12 @@ def main():
         inlined_contents = get_file(bug_file_name, update_globs=True, **env)
         args.bug_file.close()
         if args.inline_prelude:
-            for key in ("coqc_args", "coqtop_args", "passing_coqc_args", "passing_coqtop_args"):
+            for key in (
+                "coqc_args",
+                "coqtop_args",
+                "passing_coqc_args",
+                "passing_coqtop_args",
+            ):
                 env[key] = tuple(list(env[key]) + ["-noinit"])
             inlined_contents = add_coqlib_prelude_import(inlined_contents, **env)
         write_to_file(output_file_name, inlined_contents)
@@ -3208,14 +3845,24 @@ def main():
             env["error_reg_string"] = get_error_reg_string(output_file_name, **env)
 
             if args.error_log:
-                env["log"]("\nNow, I will attempt to find the error message in the log...")
+                env["log"](
+                    "\nNow, I will attempt to find the error message in the log..."
+                )
                 error_log = args.error_log.read()
                 args.error_log.close()
                 if not diagnose_error.has_error(error_log, env["error_reg_string"]):
-                    env["log"]("\nMoving %s to %s..." % (output_file_name, env["temp_file_name"]))
-                    write_to_file(env["temp_file_name"], read_from_file(output_file_name))
+                    env["log"](
+                        "\nMoving %s to %s..."
+                        % (output_file_name, env["temp_file_name"])
+                    )
+                    write_to_file(
+                        env["temp_file_name"], read_from_file(output_file_name)
+                    )
                     os.remove(output_file_name)
-                    default_on_fatal("The computed error message was not present in the given error log.", **env)
+                    default_on_fatal(
+                        "The computed error message was not present in the given error log.",
+                        **env,
+                    )
 
         if not env["minimize_before_inlining"]:
             env["log"](
@@ -3227,7 +3874,9 @@ def main():
                 inlined_contents = add_admit_tactic_wrapper(inlined_contents, **env)
                 env["log"]("Stripping trailing ends")
                 while re.search(r"End [^ \.]*\.\s*$", inlined_contents):
-                    inlined_contents = re.sub(r"End [^ \.]*\.\s*$", "", inlined_contents)
+                    inlined_contents = re.sub(
+                        r"End [^ \.]*\.\s*$", "", inlined_contents
+                    )
                 if not check_change_and_write_to_file(
                     "",
                     inlined_contents,
@@ -3240,12 +3889,17 @@ def main():
                     write_to_temp_file=True,
                     **env,
                 ):
-                    env["log"]("Failed to inline requires all at once, trying one by one...")
+                    env["log"](
+                        "Failed to inline requires all at once, trying one by one..."
+                    )
                     inline_all_requires(
                         output_file_name,
                         (
                             lambda: minimize_file(
-                                output_file_name, return_after_requires=True, die=(lambda *args, **kargs: False), **env
+                                output_file_name,
+                                return_after_requires=True,
+                                die=(lambda *args, **kargs: False),
+                                **env,
                             )
                         ),
                         **env,
@@ -3264,7 +3918,11 @@ def main():
             # order.  As soon as we succeed, we reset the list
             inline_all_requires(
                 output_file_name,
-                (lambda: minimize_file(output_file_name, die=(lambda *args, **kargs: False), **env)),
+                (
+                    lambda: minimize_file(
+                        output_file_name, die=(lambda *args, **kargs: False), **env
+                    )
+                ),
                 **env,
             )
 
@@ -3278,7 +3936,11 @@ def main():
         if hasattr(traceback, "TracebackException"):
             etype, value, tb = sys.exc_info()
             env["log"](
-                "".join(traceback.TracebackException(type(value), value, tb, capture_locals=True).format()),
+                "".join(
+                    traceback.TracebackException(
+                        type(value), value, tb, capture_locals=True
+                    ).format()
+                ),
                 level=LOG_ALWAYS,
             )
         else:

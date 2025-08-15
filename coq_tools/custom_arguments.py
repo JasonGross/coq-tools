@@ -38,11 +38,19 @@ LOG_ALWAYS = None
 
 def make_logger(log_files):
     # log if level <= the level of the logger
-    def log(text, level=DEFAULT_VERBOSITY, max_level=None, force_stdout=False, force_stderr=False, end="\n"):
+    def log(
+        text,
+        level=DEFAULT_VERBOSITY,
+        max_level=None,
+        force_stdout=False,
+        force_stderr=False,
+        end="\n",
+    ):
         selected_log_files = [
             f
             for flevel, f in log_files
-            if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level))
+            if level is LOG_ALWAYS
+            or (level <= flevel and (max_level is None or flevel < max_level))
         ]
         for i in selected_log_files:
             if force_stderr and i.fileno() == 1 and not force_stdout:
@@ -53,8 +61,13 @@ def make_logger(log_files):
             i.flush()
             if i.fileno() > 2:  # stderr
                 os.fsync(i.fileno())
-        for force, fno, sys_file in ((force_stdout, 1, sys.stdout), (force_stderr, 2, sys.stderr)):
-            if force and not any(i.fileno() == fno for i in selected_log_files):  # not already writing to std{out,err}
+        for force, fno, sys_file in (
+            (force_stdout, 1, sys.stdout),
+            (force_stderr, 2, sys.stderr),
+        ):
+            if force and not any(
+                i.fileno() == fno for i in selected_log_files
+            ):  # not already writing to std{out,err}
                 if PY3:
                     sys_file.buffer.write(text.encode("utf-8"))
                     sys_file.buffer.write(end.encode("utf-8"))
@@ -76,7 +89,11 @@ class DeprecatedAction(argparse.Action):
         self.replacement = replacement
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print("ERROR: option %s is deprecated.  Use %s instead." % (option_string, self.replacement), file=sys.stderr)
+        print(
+            "ERROR: option %s is deprecated.  Use %s instead."
+            % (option_string, self.replacement),
+            file=sys.stderr,
+        )
         sys.exit(0)
 
 
@@ -93,7 +110,11 @@ class ArgAppendWithWarningAction(argparse.Action):
                     + "\n  Instead try using multiple invocations, as in"
                     + "\n    %s"
                 )
-                % (option_string, value, " ".join(option_string + "=" + v for v in value.split(" "))),
+                % (
+                    option_string,
+                    value,
+                    " ".join(option_string + "=" + v for v in value.split(" ")),
+                ),
                 file=sys.stderr,
             )
 
@@ -122,7 +143,8 @@ def add_libname_arguments_gen(parser, passing):
         default=[],
         nargs=2,
         action=CoqLibnameAction,
-        help="recursively map physical DIR to logical COQDIR, as in the -R argument to coqc" + passing_for,
+        help="recursively map physical DIR to logical COQDIR, as in the -R argument to coqc"
+        + passing_for,
     )
     parser.add_argument(
         onedash_passing_dash + "Q",
@@ -132,7 +154,8 @@ def add_libname_arguments_gen(parser, passing):
         default=[],
         nargs=2,
         action=CoqLibnameAction,
-        help="(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc" + passing_for,
+        help="(nonrecursively) map physical DIR to logical COQDIR, as in the -Q argument to coqc"
+        + passing_for,
     )
     parser.add_argument(
         onedash_passing_dash + "I",
@@ -176,7 +199,9 @@ def TupleType(*types):
     def call(strings):
         vals = strings.split(",")
         if len(vals) != len(types):
-            raise ValueError("Got %d arguments, expected %d arguments" % (len(vals), len(types)))
+            raise ValueError(
+                "Got %d arguments, expected %d arguments" % (len(vals), len(types))
+            )
         return tuple(ty(val) for ty, val in zip(types, vals))
 
     return call
@@ -190,7 +215,9 @@ def add_logging_arguments(parser):
         action="count",
         help="display some extra information by default (does not impact --verbose-log-file)",
     )
-    parser.add_argument("--quiet", "-q", dest="quiet", action="count", help="the inverse of --verbose")
+    parser.add_argument(
+        "--quiet", "-q", dest="quiet", action="count", help="the inverse of --verbose"
+    )
     parser.add_argument(
         "--log-file",
         "-l",
@@ -223,7 +250,9 @@ def process_logging_arguments(args):
     if args.quiet is None:
         args.quiet = 0
     args.verbose -= args.quiet
-    args.log = make_logger([(args.verbose, f) for f in args.log_files] + args.verbose_log_files)
+    args.log = make_logger(
+        [(args.verbose, f) for f in args.log_files] + args.verbose_log_files
+    )
     del args.quiet
     del args.verbose
     return args
@@ -270,7 +299,9 @@ def argstring_to_iterable(arg):
 
 def append_coq_arg(env, arg, passing=""):
     for key in ("coqc_args", "coqtop_args"):
-        env[passing + key] = tuple(list(env.get(passing + key, [])) + list(argstring_to_iterable(arg)))
+        env[passing + key] = tuple(
+            list(env.get(passing + key, [])) + list(argstring_to_iterable(arg))
+        )
 
 
 def process_CoqProject(env, contents, passing=""):
@@ -283,7 +314,9 @@ def process_CoqProject(env, contents, passing=""):
             env[passing + "libnames"].append((tokens[i + 1], tokens[i + 2]))
             i += 3
         elif tokens[i] == "-Q" and i + 2 < len(tokens):
-            env[passing + "non_recursive_libnames"].append((tokens[i + 1], tokens[i + 2]))
+            env[passing + "non_recursive_libnames"].append(
+                (tokens[i + 1], tokens[i + 2])
+            )
             i += 3
         elif tokens[i] == "-I" and i + 1 < len(tokens):
             env[passing + "ocaml_dirnames"].append(tokens[i + 1])
@@ -294,7 +327,10 @@ def process_CoqProject(env, contents, passing=""):
         elif tokens[i][-2:] == ".v":
             env[passing + "_CoqProject_v_files"].append(tokens[i])
             i += 1
-        elif any(tokens[i][-len(ext) :] == ext for ext in (".mli", ".ml", ".mlg", ".mllib", ".ml4")):
+        elif any(
+            tokens[i][-len(ext) :] == ext
+            for ext in (".mli", ".ml", ".mlg", ".mllib", ".ml4")
+        ):
             i += 1
         else:
             if "log" in env.keys():
@@ -317,7 +353,12 @@ def update_env_with_libname_default(env, args, default=((".", "Top"),), passing=
 
 
 def update_env_with_libnames(
-    env, args, default=((".", "Top"),), include_passing=False, use_default=True, use_passing_default=True
+    env,
+    args,
+    default=((".", "Top"),),
+    include_passing=False,
+    use_default=True,
+    use_passing_default=True,
 ):
     all_keys = (
         "libnames",
@@ -337,8 +378,12 @@ def update_env_with_libnames(
                 f.close()
         process_CoqProject(env, env[passing + "_CoqProject"], passing=passing)
         env[passing + "libnames"].extend(getattr(args, passing + "libnames"))
-        env[passing + "non_recursive_libnames"].extend(getattr(args, passing + "non_recursive_libnames"))
-        env[passing + "ocaml_dirnames"].extend(getattr(args, passing + "ocaml_dirnames"))
+        env[passing + "non_recursive_libnames"].extend(
+            getattr(args, passing + "non_recursive_libnames")
+        )
+        env[passing + "ocaml_dirnames"].extend(
+            getattr(args, passing + "ocaml_dirnames")
+        )
     if include_passing:
         # The nonpassing_ prefix is actually temporary; the semantics
         # are that, e.g., libnames = libnames + nonpassing_libnames,
@@ -353,10 +398,15 @@ def update_env_with_libnames(
         update_env_with_libname_default(env, args, default=default, passing="passing_")
 
 
-def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths):
+def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths, skip_dirs=None):
+    if skip_dirs is None:
+        skip_dirs = []
+
     def do_with_path(path):
         env.get(passing_prefix + "non_recursive_libnames", []).extend(
-            (os.path.join(path, d), d) for d in sorted(os.listdir(path))
+            (os.path.join(path, d), d)
+            for d in sorted(os.listdir(path))
+            if d not in skip_dirs
         )
 
     for coqpath in coqpaths:
@@ -404,7 +454,11 @@ class ArgumentParser(argparse.ArgumentParser):
 def get_parser_name_mapping(parser):
     mapping = {}
     for action in parser._actions:
-        if hasattr(action, "const") and action.const is not None and len(action.option_strings) > 0:
+        if (
+            hasattr(action, "const")
+            and action.const is not None
+            and len(action.option_strings) > 0
+        ):
             dest = action.dest
             const = action.const
             if dest not in mapping:
