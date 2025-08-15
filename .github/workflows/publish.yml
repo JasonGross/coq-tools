@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -49,7 +49,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -74,7 +74,7 @@ jobs:
     - build-standalone
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Download standalone ⛏️ Ubuntu
       uses: actions/download-artifact@v4
       with:
@@ -228,7 +228,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' }} # only publish to PyPI on tag pushes
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Bump Package version
       id: bumpPackageViaPush
       run: |
