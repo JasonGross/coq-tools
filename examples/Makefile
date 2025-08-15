@@ -101,6 +101,8 @@ YELLOW=\033[0;33m
 BOLD=$(shell tput bold)
 NORMAL=$(shell tput sgr0)
 
+MAKEFILE_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 COQC_VERSION:=$(subst version ,,$(shell $(COQBIN)coqc --version 2>&1 | grep -o 'version [^ ]*'))
 COQC_SUPPORTS_Q:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- -Q)
 COQC_SUPPORTS_TOP:=$(shell { $(COQBIN)coqc -top foo empty.v 2>&1 | grep -q -- "-top: no such file or directory"; } && echo 0 || echo 1)
@@ -122,9 +124,9 @@ COQLIB_PRELUDE_GLOB_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.glob)
 .PHONY: check
 check::
 	@printf "Running with PYTHON=$(GREEN)"
-	@bash -c '. "$(PWD)/init-settings.sh"; printf '%s' "$${PYTHON}"'
+	@bash -c '. "$(MAKEFILE_DIR)/init-settings.sh"; printf '%s' "$${PYTHON}"'
 	@printf "$(NC) ($(GREEN)"
-	@bash -c '. "$(PWD)/init-settings.sh"; printf '%s' "$$(which "$${PYTHON}")"'
+	@bash -c '. "$(MAKEFILE_DIR)/init-settings.sh"; printf '%s' "$$(which "$${PYTHON}")"'
 	@printf "$(NC)) (based on $(GREEN)%s$(NC))\n" "$${PYTHON}"
 	@printf "Running with FIND_BUG='%s'\n" "$(FIND_BUG)"
 	$(MAKE) -B test-suite
@@ -266,7 +268,7 @@ print-support::
 	@printf "coqc installs stdlib .glob files:\t\tYes\n"
 
 
-COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell . init-settings.sh; $${PYTHON} -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
+COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell . "$(MAKEFILE_DIR)/init-settings.sh"; $${PYTHON} -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
 ifeq (True,$(strip $(COQLIB_PRELUDE_GLOB_FILE_NEWER)))
 test-suite: $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
 ENABLED_LOGS += $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
