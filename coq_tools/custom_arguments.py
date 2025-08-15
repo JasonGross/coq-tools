@@ -402,11 +402,16 @@ def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths, skip_dirs=No
     if skip_dirs is None:
         skip_dirs = []
 
+    existing_names = set()
+    for libnames_key in ["libnames", "non_recursive_libnames"]:
+        for _, name in env.get(passing_prefix + libnames_key, []):
+            existing_names.add(name)
+
     def do_with_path(path):
         env.get(passing_prefix + "non_recursive_libnames", []).extend(
             (os.path.join(path, d), d)
             for d in sorted(os.listdir(path))
-            if d not in skip_dirs
+            if d not in skip_dirs and d not in existing_names
         )
 
     for coqpath in coqpaths:
@@ -414,10 +419,10 @@ def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths, skip_dirs=No
             do_with_path(coqpath)
         elif ";" in coqpath:
             for path in coqpath.split(";"):
-                do_with_path(coqpath if coqpath != "" else ".")
+                do_with_path(path if path != "" else ".")
         elif ":" in coqpath:
             for path in coqpath.split(":"):
-                do_with_path(coqpath if coqpath != "" else ".")
+                do_with_path(path if path != "" else ".")
 
 
 # http://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
