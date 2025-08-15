@@ -121,11 +121,11 @@ COQLIB_PRELUDE_GLOB_FILE:=$(wildcard $(COQC_COQLIB)/theories/Init/Prelude.glob)
 
 .PHONY: check
 check::
-	@echo -n "Running with PYTHON=$(GREEN)"
-	@bash -c '. init-settings.sh; echo -n "$${PYTHON}"'
-	@echo -n "$(NC) ($(GREEN)"
-	@bash -c '. init-settings.sh; echo -n "$$(which "$${PYTHON}")"'
-	@echo "$(NC)) (based on $(GREEN)$${PYTHON}$(NC))"
+	@printf "Running with PYTHON=$(GREEN)"
+	@bash -c '. "$(PWD)/init-settings.sh"; printf '%s' "$${PYTHON}"'
+	@printf "$(NC) ($(GREEN)"
+	@bash -c '. "$(PWD)/init-settings.sh"; printf '%s' "$$(which "$${PYTHON}")"'
+	@printf "$(NC)) (based on $(GREEN)%s$(NC))\n" "$${PYTHON}"
 	@printf "Running with FIND_BUG='%s'\n" "$(FIND_BUG)"
 	$(MAKE) -B test-suite
 
