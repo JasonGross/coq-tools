@@ -17,9 +17,17 @@ __all__ = ["main"]
 
 parser = argparse.ArgumentParser(description="Inline the imports of a file")
 parser.add_argument(
-    "input_file", metavar="IN_FILE", type=argparse.FileType("r"), help="a .v file to inline the imports of"
+    "input_file",
+    metavar="IN_FILE",
+    type=argparse.FileType("r"),
+    help="a .v file to inline the imports of",
 )
-parser.add_argument("output_file", metavar="OUT_FILE", type=argparse.FileType("w"), help="a .v file to write to")
+parser.add_argument(
+    "output_file",
+    metavar="OUT_FILE",
+    type=argparse.FileType("w"),
+    help="a .v file to write to",
+)
 parser.add_argument(
     "--fast-merge-imports",
     dest="fast_merge_imports",
@@ -81,7 +89,13 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
+    "--coqc",
+    metavar="COQC",
+    dest="coqc",
+    type=str,
+    default=None,
+    action="append",
+    help="The path to the coqc program.",
 )
 # parser.add_argument(
 #     "--coqtop",
@@ -125,6 +139,22 @@ parser.add_argument(
     default=False,
     help=("Attempt to inline requires from the user-contrib folder"),
 )
+parser.add_argument(
+    "--no-inline-stdlib",
+    dest="no_inline_stdlib",
+    action="store_const",
+    const=True,
+    default=False,
+    help=("Skip Stdlib directory when using --inline-user-contrib"),
+)
+parser.add_argument(
+    "--no-inline-corelib",
+    dest="no_inline_corelib",
+    action="store_const",
+    const=True,
+    default=False,
+    help=("Skip Corelib directory when using --inline-user-contrib"),
+)
 add_libname_arguments(parser)
 add_logging_arguments(parser)
 
@@ -153,8 +183,20 @@ def main():
     }
     update_env_with_libnames(env, args)
     if args.inline_user_contrib:
+        # Build list of directories to skip based on command-line arguments
+        skip_dirs = []
+        if args.no_inline_stdlib:
+            skip_dirs.append("Stdlib")
+        if args.no_inline_corelib:
+            skip_dirs.append("Corelib")
         update_env_with_coqpath_folders(
-            "", env, os.path.join(get_coqc_coqlib(env["coqc"], coq_args=env["coqc_args"], **env), "user-contrib")
+            "",
+            env,
+            os.path.join(
+                get_coqc_coqlib(env["coqc"], coq_args=env["coqc_args"], **env),
+                "user-contrib",
+            ),
+            skip_dirs=skip_dirs,
         )
 
     filename = args.input_file.name
