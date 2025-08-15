@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import tempfile, sys, os, re, os.path
+import glob
 import traceback
 from . import custom_arguments
 from .argparse_compat import argparse
@@ -3269,6 +3270,24 @@ def inline_one_require(
             )
             continue
 
+        temp_file_base, temp_ext = os.path.splitext(kwargs["temp_file_name"])
+        temp_log_file_base, temp_log_ext = os.path.splitext(
+            kwargs["temp_file_log_name"]
+        )
+        file_suffixes = [
+            f"{req_module}{test_output_descr}".replace(" ", "-")
+            .replace(",", "-")
+            .replace(".", "-")
+            for req_module, test_output_descr in test_output_alts
+        ]
+        temp_file_names = [
+            f"{temp_file_base}.{suffix}{temp_ext}.orig" for suffix in file_suffixes
+        ]
+        temp_log_file_names = [
+            f"{temp_log_file_base}.{suffix}{temp_log_ext}.orig"
+            for suffix in file_suffixes
+        ]
+
         if not check_change_and_write_to_file(
             cur_output,
             test_output,
@@ -3307,9 +3326,18 @@ def inline_one_require(
                     display_extra_verbose_on_error=kwargs[
                         "verbose_include_failure_warning"
                     ],
-                    **kwargs,
+                    write_to_temp_file=True,
+                    **(
+                        kwargs
+                        | {
+                            "temp_file_name": temp_file_name,
+                            "temp_file_log_name": temp_log_file_name,
+                        }
+                    ),
                 )
-                for descr, test_output_alt in test_output_alts
+                for (descr, test_output_alt), temp_file_name, temp_log_file_name in zip(
+                    test_output_alts, temp_file_names, temp_log_file_names
+                )
             ):
                 # let's also display the error and source
                 # for the original failure to inline,
@@ -3336,6 +3364,13 @@ def inline_one_require(
                     write_to_temp_file=True,
                     **kwargs,
                 )
+
+                for fname in temp_file_names + temp_log_file_names:
+                    if os.path.exists(fname):
+                        assert fname.endswith(".orig"), fname
+                        os.rename(fname, fname[: -len(".orig")])
+                    else:
+                        kwargs["log"](f"Warning: {fname} does not exist")
 
                 extra_blacklist = [
                     r
@@ -3951,6 +3986,21 @@ def main():
             clean_v_file(env["temp_file_name"])
             if os.path.exists(env["temp_file_log_name"]):
                 os.remove(env["temp_file_log_name"])
+            all_matching_files = {}
+            for base_temp_file in (env["temp_file_name"], env["temp_file_log_name"]):
+                temp_dir = os.path.dirname(base_temp_file)
+                temp_name = os.path.basename(base_temp_file)
+                if "." in temp_name:
+                    base_name, ext = os.path.splitext(temp_name)
+                    pattern = os.path.join(temp_dir, base_name + "*" + ext)
+                else:
+                    pattern = os.path.join(temp_dir, temp_name + "*")
+                all_matching_files[base_temp_file] = glob.glob(pattern)
+            for v_file in all_matching_files[env["temp_file_name"]]:
+                clean_v_file(v_file)
+            for log_file in all_matching_files[env["temp_file_log_name"]]:
+                if os.path.exists(log_file):
+                    os.remove(log_file)
 
 
 if __name__ == "__main__":
