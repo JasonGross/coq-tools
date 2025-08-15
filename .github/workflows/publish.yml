@@ -76,17 +76,17 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Download standalone ⛏️ Ubuntu
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-standalone-ubuntu-latest
         path: dist-ubuntu/
     - name: Download standalone ⛏️ Windows
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-standalone-windows-latest
         path: dist-windows/
     - name: Download standalone ⛏️ MacOS
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-standalone-macos-latest
         path: dist-macos/
@@ -137,7 +137,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-package-distributions
         path: dist/
@@ -161,7 +161,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-package-distributions
         path: dist/
@@ -203,12 +203,12 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-package-distributions
         path: dist/
     - name: Download standalone
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: python-standalone
         path: .
