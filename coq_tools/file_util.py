@@ -1,6 +1,9 @@
-import os, time
-from .memoize import memoize
+import os
+import tempfile
+import time
+
 from . import util
+from .memoize import memoize
 
 __all__ = [
     "clean_v_file",
@@ -58,8 +61,10 @@ def write_bytes_to_file(file_name, contents, do_backup=False, backup_ext=".bak",
     written = False
     while not written:
         try:
-            with open(file_name, "wb") as f:
+            with tempfile.NamedTemporaryFile(mode="wb", dir=os.path.dirname(file_name), prefix=os.path.basename(file_name) + ".", delete=False) as f:
                 f.write(contents)
+                temp_file_name = f.name
+            os.rename(temp_file_name, file_name)
             written = True
             FILE_CACHE[file_name] = (os.stat(file_name).st_mtime, contents)
         except IOError as e:
