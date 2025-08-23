@@ -3278,7 +3278,7 @@ def inline_one_require(
             f"{req_module}{test_output_descr}".replace(" ", "-")
             .replace(",", "-")
             .replace(".", "-")
-            for req_module, test_output_descr in test_output_alts
+            for test_output_descr, _test_output in test_output_alts
         ]
         temp_file_names = [
             f"{temp_file_base}.{suffix}{temp_ext}.orig" for suffix in file_suffixes
