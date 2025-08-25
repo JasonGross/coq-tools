@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import tempfile, sys, os, re, os.path
+import tempfile, sys, os, re, os.path, math
 import glob
 import traceback
 from . import custom_arguments
@@ -3094,6 +3094,13 @@ def inline_one_require(
     STRIP_ADMIT_TACTIC_WRAPPER = "STRIP_ADMIT_TACTIC_WRAPPER"
     ADD_ADMIT_TACTIC_WRAPPER = "ADD_ADMIT_TACTIC_WRAPPER"
 
+    cur_timeout = {}
+    for passing_prefix in ("", "nonpassing_"):
+        coqc = kwargs.get(f"{passing_prefix}coqc")
+        cur_timeout[coqc] = diagnose_error.get_timeout(coqc)
+
+    mod_timeouts = {}
+
     def get_test_output(
         req_module: str,
         absolutize_mods=False,
@@ -3107,6 +3114,22 @@ def inline_one_require(
         new_req_module = absolutize_and_mangle_libname(
             req_module, first_wrap_then_include=first_wrap_then_include, **kwargs
         )
+        # since we'll be resetting the timeout shortly anyway, we get the time here manually
+        if new_req_module not in mod_timeouts:
+            _output, _cmds, _retcode, runtime = diagnose_error.get_coq_output(
+                kwargs["coqc"],
+                kwargs["coqc_args"],
+                new_req_module,
+                timeout_val=None,  # no timeout
+                cwd=kwargs["base_dir"],
+                is_coqtop=kwargs["coqc_is_coqtop"],
+                verbose_base=2,
+                ocamlpath=kwargs["nonpassing_ocamlpath"],
+                **kwargs,
+            )
+            mod_timeouts[new_req_module] = runtime
+        else:
+            runtime = mod_timeouts[new_req_module]
         test_output = (
             cur_output
             if not absolutize_mods
@@ -3162,18 +3185,18 @@ def inline_one_require(
                 return add_admit_tactic_wrapper(
                     body,
                     **kwargs,
-                )
+                ), runtime
             else:
-                return body
+                return body, runtime
 
         else:
             body = ("\n" + test_output).replace(cur_rep, replacement, 1).replace(
                 cur_rep, "\n"
             ).strip() + "\n"
             if admit_tactic_wrapper_action == STRIP_ADMIT_TACTIC_WRAPPER:
-                return remove_admit_tactic(body, **kwargs)
+                return remove_admit_tactic(body, **kwargs), runtime
             else:
-                return body
+                return body, runtime
 
     for req_module in reversed(requires):
         if req_module in libname_blacklist:
@@ -3254,7 +3277,7 @@ def inline_one_require(
                 for extra_top_header in (None, "Import Coq.Init.Prelude.")
                 for include_options_settings in (False, True)
             ]
-            (test_output_descr, test_output), test_output_alts = (
+            (test_output_descr, test_output, test_runtime), test_output_alts = (
                 test_output_alts[0],
                 test_output_alts[1:],
             )
@@ -3288,6 +3311,10 @@ def inline_one_require(
             for suffix in file_suffixes
         ]
 
+        mk_timeout_val = lambda runtime: 3 * max((1, int(math.ceil(runtime)))) + max(
+            cur_timeout.values()
+        )
+
         if not check_change_and_write_to_file(
             cur_output,
             test_output,
@@ -3300,6 +3327,7 @@ def inline_one_require(
             changed_description="File",
             reset_timeout=True,
             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
+            timeout_val=mk_timeout_val(test_runtime),
             display_source_to_error=False,
             display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
             **kwargs,
@@ -3322,6 +3350,7 @@ def inline_one_require(
                     # one failing doesn't hobble the
                     # ability of a later one to succeed
                     reset_timeout=True,
+                    timeout_val=mk_timeout_val(test_runtime_alt),
                     display_source_to_error=True,
                     display_extra_verbose_on_error=kwargs[
                         "verbose_include_failure_warning"
@@ -3335,7 +3364,11 @@ def inline_one_require(
                         }
                     ),
                 )
-                for (descr, test_output_alt), temp_file_name, temp_log_file_name in zip(
+                for (
+                    descr,
+                    test_output_alt,
+                    test_runtime_alt,
+                ), temp_file_name, temp_log_file_name in zip(
                     test_output_alts, temp_file_names, temp_log_file_names
                 )
             ):
@@ -3357,6 +3390,7 @@ def inline_one_require(
                     changed_description="File",
                     timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
                     reset_timeout=True,
+                    timeout_val=mk_timeout_val(test_runtime),
                     display_source_to_error=True,
                     display_extra_verbose_on_error=kwargs[
                         "verbose_include_failure_warning"
