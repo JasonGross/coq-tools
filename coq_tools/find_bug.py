@@ -1838,7 +1838,7 @@ def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
         + r"|Require|Import|Export|Include"
         + r"|Section|Module|End"
         + r"|Set"
-        + (r"|Hint|Obligation\s+Tactic" if not remove_hints else "")
+        + (r"|Hint|Obligation\s+Tactic|Arguments|Transparent|Opaque|Strategy" if not remove_hints else "")
         + r")(?:\.\s+|\.$|\s+|$)",
         flags=re.MULTILINE,
     )
