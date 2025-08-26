@@ -80,8 +80,8 @@ find_bug -y "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 (\* coqc version [^\*]*\*)
 
 \(Require [^
- ]*\)\?
-Inductive False : Prop := \.
+ ]*
+\)\?Inductive False : Prop := \.
 Axiom proof_admitted : False\.
 Import [^
  ]*

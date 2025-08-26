@@ -79,9 +79,9 @@ find_bug -y "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 (\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
 
-Require [^
+\(Require [^
  ]*
-Inductive False : Prop := \.
+\)\?Inductive False : Prop := \.
 Axiom proof_admitted : False\.
 Import [^
  ]*
