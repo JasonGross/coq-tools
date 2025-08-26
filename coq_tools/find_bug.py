@@ -2090,7 +2090,7 @@ def statements_are_only_admitted(statements):
 
 
 def extract_existing_proof_using(statements):
-    if len(statements) >= 2 and re.match(r"^\s*Proof\s+using\s+", statements[1]):
+    if len(statements) >= 2 and re.match(r"^\s*Proof\s+using", statements[1]):
         return [statements[1]]
     return []
 
