@@ -2,7 +2,6 @@
 import tempfile, sys, os, re, os.path, math
 import glob
 import traceback
-from hashlib import sha256
 from . import custom_arguments
 from .argparse_compat import argparse
 from .replace_imports import (
@@ -60,7 +59,12 @@ from .custom_arguments import (
     LOG_ALWAYS,
 )
 from .binding_util import process_maybe_list
-from .file_util import clean_v_file, read_from_file, write_to_file
+from .file_util import (
+    clean_v_file,
+    read_from_file,
+    write_to_file,
+    write_to_file_or_shorten_name,
+)
 from .util import yes_no_prompt, PY3, list_diff, BooleanOptionalAction
 from . import util
 
@@ -1221,20 +1225,6 @@ def classify_contents_change(
         )
 
 
-def make_shorter_file_name(output_file_name):
-    output_file_dir, output_file_name = os.path.split(output_file_name)
-    output_file_name, output_file_ext = os.path.splitext(output_file_name)
-    file_hash = sha256(output_file_name.encode("utf-8")).hexdigest()
-    file_hash = f"...{file_hash}..."
-    if len(output_file_name + output_file_ext) > 255:
-        max_len = 255
-    else:
-        max_len = int(0.75 * len(output_file_name))
-    max_len = max_len - len(output_file_ext) - len(file_hash)
-    output_file_name = f"{output_file_name[: max_len // 2]}{file_hash}{output_file_name[-max_len // 2 :]}{output_file_ext}"
-    return os.path.join(output_file_dir, output_file_name)
-
-
 def check_change_and_write_to_file(
     old_contents,
     new_contents,
@@ -1281,19 +1271,7 @@ def check_change_and_write_to_file(
             ),
             level=verbose_base,
         )
-        written = False
-        while not written:
-            try:
-                write_to_file(output_file_name, contents)
-                written = True
-            except OSError as e:
-                if e.errno != 36:
-                    raise e
-                kwargs["log"](
-                    f"Warning: {output_file_name} is too long, so we're trying again with a shorter name",
-                    level=verbose_base,
-                )
-                output_file_name = make_shorter_file_name(output_file_name)
+        write_to_file_or_shorten_name(output_file_name, contents)
         return True
     elif change_result == CHANGE_FAILURE:
         kwargs["log"](
@@ -1317,8 +1295,14 @@ def check_change_and_write_to_file(
         kwargs["log"](outputs[output_i], level=verbose_base)
         kwargs["log"]("All Outputs:\n%s" % "\n".join(outputs), level=verbose_base + 2)
         if write_to_temp_file and not kwargs["remove_temp_file"]:
-            write_to_file(kwargs["temp_file_name"], contents)
-            write_to_file(kwargs["temp_file_log_name"], outputs[output_i])
+            kwargs["temp_file_name"] = write_to_file_or_shorten_name(
+                kwargs["temp_file_name"],
+                contents,
+            )
+            kwargs["temp_file_log_name"] = write_to_file_or_shorten_name(
+                kwargs["temp_file_log_name"],
+                outputs[output_i],
+            )
         else:
             kwargs["log"](
                 util.color(
@@ -1838,7 +1822,11 @@ def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
         + r"|Require|Import|Export|Include"
         + r"|Section|Module|End"
         + r"|Set"
-        + (r"|Hint|Obligation\s+Tactic|Arguments|Transparent|Opaque|Strategy" if not remove_hints else "")
+        + (
+            r"|Hint|Obligation\s+Tactic|Arguments|Transparent|Opaque|Strategy"
+            if not remove_hints
+            else ""
+        )
         + r")(?:\.\s+|\.$|\s+|$)",
         flags=re.MULTILINE,
     )

@@ -1,6 +1,7 @@
 import os
 import tempfile
 import time
+from hashlib import sha256
 
 from . import util
 from .memoize import memoize
@@ -13,6 +14,8 @@ __all__ = [
     "write_to_file",
     "read_from_file",
     "restore_file",
+    "write_bytes_to_file_or_shorten_name",
+    "write_to_file_or_shorten_name",
 ]
 
 
@@ -99,6 +102,41 @@ def write_bytes_to_file(
 
 def write_to_file(file_name, contents, *args, **kwargs):
     return write_bytes_to_file(
+        file_name, contents.replace("\n", os.linesep).encode("utf-8"), *args, **kwargs
+    )
+
+
+def make_shorter_file_name(file_name):
+    file_dir, file_name = os.path.split(file_name)
+    file_name, output_file_ext = os.path.splitext(file_name)
+    file_hash = sha256(file_name.encode("utf-8")).hexdigest()
+    file_hash = f"...{file_hash}..."
+    if len(file_name + output_file_ext) > 255:
+        max_len = 255
+    else:
+        max_len = int(0.75 * len(file_name))
+    max_len = max_len - len(output_file_ext) - len(file_hash)
+    file_name = f"{file_name[: max_len // 2]}{file_hash}{file_name[-max_len // 2 :]}{output_file_ext}"
+    return os.path.join(file_dir, file_name)
+
+
+def write_bytes_to_file_or_shorten_name(file_name, contents, *args, **kwargs):
+    while True:
+        try:
+            write_bytes_to_file(file_name, contents, *args, **kwargs)
+            return file_name
+        except OSError as e:
+            if e.errno != 36:
+                raise e
+            kwargs["log"](
+                f"Warning: {file_name} is too long, so we're trying again with a shorter name",
+                level=kwargs.get("verbose_base", 0),
+            )
+            file_name = make_shorter_file_name(file_name)
+
+
+def write_to_file_or_shorten_name(file_name, contents, *args, **kwargs):
+    return write_bytes_to_file_or_shorten_name(
         file_name, contents.replace("\n", os.linesep).encode("utf-8"), *args, **kwargs
     )
 
