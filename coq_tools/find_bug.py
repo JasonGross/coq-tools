@@ -2,6 +2,7 @@
 import tempfile, sys, os, re, os.path
 import glob
 import traceback
+from hashlib import sha256
 from . import custom_arguments
 from .argparse_compat import argparse
 from .replace_imports import (
@@ -1220,6 +1221,20 @@ def classify_contents_change(
         )
 
 
+def make_shorter_file_name(output_file_name):
+    output_file_dir, output_file_name = os.path.split(output_file_name)
+    output_file_name, output_file_ext = os.path.splitext(output_file_name)
+    file_hash = sha256(output_file_name.encode("utf-8")).hexdigest()
+    file_hash = f"...{file_hash}..."
+    if len(output_file_name + output_file_ext) > 255:
+        max_len = 255
+    else:
+        max_len = int(0.75 * len(output_file_name))
+    max_len = max_len - len(output_file_ext) - len(file_hash)
+    output_file_name = f"{output_file_name[: max_len // 2]}{file_hash}{output_file_name[-max_len // 2 :]}{output_file_ext}"
+    return os.path.join(output_file_dir, output_file_name)
+
+
 def check_change_and_write_to_file(
     old_contents,
     new_contents,
@@ -1266,7 +1281,19 @@ def check_change_and_write_to_file(
             ),
             level=verbose_base,
         )
-        write_to_file(output_file_name, contents)
+        written = False
+        while not written:
+            try:
+                write_to_file(output_file_name, contents)
+                written = True
+            except OSError as e:
+                if e.errno != 36:
+                    raise e
+                kwargs["log"](
+                    f"Warning: {output_file_name} is too long, so we're trying again with a shorter name",
+                    level=verbose_base,
+                )
+                output_file_name = make_shorter_file_name(output_file_name)
         return True
     elif change_result == CHANGE_FAILURE:
         kwargs["log"](
