@@ -2852,7 +2852,8 @@ def minimize_file(
     ):
         env["log"]("I will not be able to proceed.")
         env["log"](
-            "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
+            "re.search(" + repr(env.get("error_reg_string")) + ", <output above>)",
+            level=2,
         )
         return die(None, **env)
 
