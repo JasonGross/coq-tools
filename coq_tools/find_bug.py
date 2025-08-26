@@ -2151,9 +2151,9 @@ def make_try_admit_matching_definitions(
 
     return try_admit_matching_definitions
 
+QED_REG = re.compile(r"(?<![\w'])(Qed|Admitted)\s*\.\s*$", flags=re.MULTILINE)
 
 def make_try_admit_qeds(**kwargs):
-    QED_REG = re.compile(r"(?<![\w'])Qed\s*\.\s*$", flags=re.MULTILINE)
     return make_try_admit_matching_definitions(
         (lambda definition: QED_REG.search(definition["statement"])),
         noun_description="Admitting Qeds",
@@ -2301,7 +2301,6 @@ def try_admit_matching_obligations(definitions, output_file_name, matcher, **kwa
 
 
 def try_admit_qed_obligations(definitions, output_file_name, **kwargs):
-    QED_REG = re.compile(r"(?<![\w'])(Qed|Admitted)\s*\.\s*$", flags=re.MULTILINE)
     return try_admit_matching_obligations(
         definitions,
         output_file_name,
