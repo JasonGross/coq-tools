@@ -1826,19 +1826,26 @@ EXTRA_DEFINITION_ISH = "|".join(
     + ["Instance", "Derive", "Declare"]
 )
 
-EXTRA_DEFINITION_ISH_REG = re.compile(
-    r"^\s*"
-    + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*"
-    + r"(?:"
-    + EXTRA_DEFINITION_ISH
-    + r"|Set\s+Universe\s+Polymorphism"
-    + r"|Unet\s+Universe\s+Polymorphism"
-    + r"|Require|Import|Export|Include"
-    + r"|Section|Module|End"
-    + r"|Set"
-    + r")(?:\.\s+|\.$|\s+|$)",
-    flags=re.MULTILINE,
-)
+
+def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
+    return re.compile(
+        r"^\s*"
+        + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*"
+        + r"(?:"
+        + EXTRA_DEFINITION_ISH
+        + r"|Set\s+Universe\s+Polymorphism"
+        + r"|Unet\s+Universe\s+Polymorphism"
+        + r"|Require|Import|Export|Include"
+        + r"|Section|Module|End"
+        + r"|Set"
+        + (r"|Hint|Obligation\s+Tactic" if not remove_hints else "")
+        + r")(?:\.\s+|\.$|\s+|$)",
+        flags=re.MULTILINE,
+    )
+
+
+EXTRA_DEFINITION_ISH_REG = make_EXTRA_DEFINITION_ISH_REG(remove_hints=False)
+EXTRA_DEFINITION_ISH_REG_WITH_HINTS = make_EXTRA_DEFINITION_ISH_REG(remove_hints=True)
 
 SECTION_REG = re.compile(r"^\s*(?:Section|Module|End)(?:\s+|$)", flags=re.MULTILINE)
 
@@ -1851,6 +1858,12 @@ def try_remove_each_and_every_non_definition_line(
             cur_definition["terms_defined"]
             or SECTION_REG.search(cur_definition["statement"])
             or EXTRA_DEFINITION_ISH_REG.search(cur_definition["statement"])
+            or (
+                not kwargs.get("remove_hints")
+                and EXTRA_DEFINITION_ISH_REG_WITH_HINTS.search(
+                    cur_definition["statement"]
+                )
+            )
         ):
             return cur_definition
         else:
@@ -2151,7 +2164,9 @@ def make_try_admit_matching_definitions(
 
     return try_admit_matching_definitions
 
+
 QED_REG = re.compile(r"(?<![\w'])(Qed|Admitted)\s*\.\s*$", flags=re.MULTILINE)
+
 
 def make_try_admit_qeds(**kwargs):
     return make_try_admit_matching_definitions(
