@@ -2879,6 +2879,7 @@ def minimize_file(
     statements = split_coq_file_contents(contents)
     env["log"]("I am using the following file: %s" % "\n".join(statements), level=3)
     definitions = split_statements_to_definitions(statements, **env)
+    env["log"](f"definitions: {definitions}", level=5)
     if not check_change_and_write_to_file(
         "",
         join_definitions(definitions),
