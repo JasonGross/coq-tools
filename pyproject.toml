@@ -1,6 +1,6 @@
 [project]
 name = "coq-tools"
-version = "0.0.19"
+version = "0.0.20"
 authors = [{ name = "Jason Gross", email = "jgross@mit.edu" }]
 description = "Some scripts to help manipulate Coq developments and minimize error-producing Coq code"
 readme = "README.md"
