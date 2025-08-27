@@ -128,9 +128,8 @@ def write_bytes_to_file_or_shorten_name(file_name, contents, *args, **kwargs):
         except OSError as e:
             if e.errno != 36:
                 raise e
-            kwargs["log"](
-                f"Warning: {file_name} is too long, so we're trying again with a shorter name",
-                level=kwargs.get("verbose_base", 0),
+            print(
+                f"Warning: {file_name} is too long, so we're trying again with a shorter name"
             )
             file_name = make_shorter_file_name(file_name)
 
