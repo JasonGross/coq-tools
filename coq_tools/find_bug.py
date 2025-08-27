@@ -3289,6 +3289,7 @@ def inline_one_require(
                         admit_tactic_wrapper_action=admit_tactic_wrapper_action,
                     ),
                 )
+                for without_require in (True, False)
                 for admit_tactic_wrapper_action in (
                     ADD_ADMIT_TACTIC_WRAPPER,
                     "",
@@ -3300,12 +3301,7 @@ def inline_one_require(
                     if kwargs["prefer_inline_via_include"]
                     else (False, True)
                 )
-                for without_require, insert_at_top in (
-                    (True, False),
-                    (False, True),
-                    (False, False),
-                    (True, True),
-                )
+                for insert_at_top in (False, True)
                 for extra_top_header in (None, "Import Coq.Init.Prelude.")
                 for include_options_settings in (False, True)
             ]
