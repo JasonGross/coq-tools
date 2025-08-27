@@ -2420,6 +2420,33 @@ def try_strip_comments(output_file_name, **kwargs):
     )
 
 
+def try_remove_duplicate_requires(definitions, output_file_name, **kwargs):
+    requires_seen = set()
+    def yield_definitions():
+        for definition in definitions:
+            cur_statement = definition["statements"][0].replace("\t", " ").replace("\n", " ").replace("\r", " ").strip()
+            if not (cur_statement.startswith("Require") and cur_statement.endswith(".")):
+                yield definition
+            mod = cur_statement[len("Require"):-1].strip()
+            if mod not in requires_seen:
+                requires_seen.add(mod)
+                yield definition
+
+    new_definitions = list(yield_definitions())
+
+    if check_change_and_write_to_file(
+        join_definitions(definitions),
+        join_definitions(new_definitions),
+        output_file_name,
+        success_message="Duplicate Require removal successful.",
+        failure_description="remove duplicate Requires",
+        changed_description="Intermediate code",
+        **kwargs,
+    ):
+        return new_definitions
+    return definitions
+
+
 def try_normalize_requires(output_file_name, **kwargs):
     contents = read_from_file(output_file_name)
     old_contents = contents
@@ -2427,7 +2454,7 @@ def try_normalize_requires(output_file_name, **kwargs):
     clear_libimport_cache(lib_of_filename(output_file_name, **kwargs))
     new_contents = normalize_requires(output_file_name, update_globs=True, **kwargs)
 
-    check_change_and_write_to_file(
+    return check_change_and_write_to_file(
         old_contents,
         new_contents,
         output_file_name,
@@ -2902,6 +2929,14 @@ def minimize_file(
 
     if return_after_splitting:
         return True
+
+    if env["normalize_requires"]:
+        env["log"]("Definitions:", level=2)
+        env["log"](definitions, level=2)
+        env["log"]("\nI will now attempt to reomve duplicate Requires")
+        definitions = try_remove_duplicate_requires(
+            definitions, output_file_name, **env
+        )
 
     recursive_tasks = ()
     if env["remove_abort"]:
