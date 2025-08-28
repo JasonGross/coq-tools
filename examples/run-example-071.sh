@@ -74,15 +74,6 @@ find_bug -y "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 Axiom proof_admitted : False\.
 Import [^
  ]*
-Tactic Notation "admit" := abstract case proof_admitted\.
-Section __\.
-  Context {A : Type}\.
-Theorem and_assoc2 : forall P Q R : Prop,
-  P /. (Q /. R) -> (P /. Q) /. R\.
-Proof using\.
-admit\.
-Defined\.
-End __\.
 
 EOF
 

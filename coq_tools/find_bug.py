@@ -1810,11 +1810,15 @@ EXTRA_DEFINITION_ISH = "|".join(
     + ["Instance", "Derive", "Declare"]
 )
 
+LOCAL_GLOBAL_OR_ATTRIBUTES = (
+    r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*"
+)
+
 
 def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
     return re.compile(
         r"^\s*"
-        + r"(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*"
+        + LOCAL_GLOBAL_OR_ATTRIBUTES
         + r"(?:"
         + EXTRA_DEFINITION_ISH
         + r"|Set\s+Universe\s+Polymorphism"
@@ -1836,6 +1840,13 @@ EXTRA_DEFINITION_ISH_REG = make_EXTRA_DEFINITION_ISH_REG(remove_hints=False)
 EXTRA_DEFINITION_ISH_REG_WITH_HINTS = make_EXTRA_DEFINITION_ISH_REG(remove_hints=True)
 
 SECTION_REG = re.compile(r"^\s*(?:Section|Module|End)(?:\s+|$)", flags=re.MULTILINE)
+DECLARE_CUSTOM_REG = re.compile(
+    rf"^\s*{LOCAL_GLOBAL_OR_ATTRIBUTES}Declare\s+Custom(?:\s+|$)", flags=re.MULTILINE
+)
+LTAC_REG = re.compile(
+    rf"^\s*{LOCAL_GLOBAL_OR_ATTRIBUTES}(?:Ltac|Ltac2|Tactic)(?:\s+|$)",
+    flags=re.MULTILINE,
+)
 
 
 def try_remove_each_and_every_non_definition_line(
@@ -1852,6 +1863,9 @@ def try_remove_each_and_every_non_definition_line(
                     cur_definition["statement"]
                 )
             )
+        ) and not (
+            DECLARE_CUSTOM_REG.search(cur_definition["statement"])
+            or LTAC_REG.search(cur_definition["statement"])
         ):
             return cur_definition
         else:

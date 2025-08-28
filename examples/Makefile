@@ -4,7 +4,7 @@ V = 0
 CAT_ALL_LOGS=0
 ####
 
-DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 040 041 043 045 047 050 051 060 062 064 065 066 068
+DEFAULT_TESTS = 000 001 002 003 004 005 007 008 008-2 008-3 009 011 012 014 015 016 017 019 021 022 023 024 025 028 029 030 031 035 036 037 038 040 041 043 045 047 050 051 060 062 064 065 066 068 071
 CONDITIONAL_TESTS = 006 018
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
@@ -23,6 +23,7 @@ ONLY_IF_GE_812_TESTS = 048
 ONLY_IF_SYS_V_FILES_TESTS = 055
 ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS =
 ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
+ONLY_IF_CUSTOM_ENTRY_TESTS = 070
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_TOP_TESTS) \
@@ -39,6 +40,7 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_SYS_V_FILES_TESTS) \
 	$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS) \
 	$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS) \
+	$(ONLY_IF_CUSTOM_ENTRY_TESTS) \
 	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
@@ -65,6 +67,7 @@ ONLY_IF_GE_812_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_GE_812_TESTS))
 ONLY_IF_SYS_V_FILES_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_V_FILES_TESTS))
 ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS))
 ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS))
+ONLY_IF_CUSTOM_ENTRY_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_CUSTOM_ENTRY_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
@@ -109,6 +112,7 @@ COQC_SUPPORTS_TOP:=$(shell { $(COQBIN)coqc -top foo empty.v 2>&1 | grep -q -- "-
 COQTOP_SUPPORTS_TOP:=$(shell { true | $(COQBIN)coqtop -top foo 2>&1 | grep -q -- "-top: no such file or directory"; } && echo 0 || echo 1)
 COQTOP_SUPPORTS_COMPILE:=$(shell $(COQBIN)coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
+COQC_SUPPORTS_CUSTOM_ENTRY:=$(shell echo "Declare Custom Entry foo." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
 COQC_SUPPORTS_PROOF_USING:=$(shell printf "Section foo.\nVariable x : nat.\nDefinition bar : nat.\nProof using x.\nAdmitted.\nEnd foo.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_SUGGEST_PROOF_USING:=$(shell printf "Set Suggest Proof Using.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'There is no option Suggest Proof Using.'; echo $$?)
 COQC_SUPPORTS_IMPORT_CATEGORIES:=$(shell echo "Require Import (hints) Coq.Init.Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
@@ -250,6 +254,15 @@ print-support::
 	@printf "coqc supports -vos:\t\t\t\tNo\n"
 endif
 
+ifneq (0,$(strip $(COQC_SUPPORTS_CUSTOM_ENTRY)))
+test-suite: $(ONLY_IF_CUSTOM_ENTRY_TESTS_LOGS)
+ENABLED_LOGS += $(ONLY_IF_CUSTOM_ENTRY_TESTS_LOGS)
+print-support::
+	@printf "coqc supports Declare Custom Entry:\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports Declare Custom Entry:\t\tNo\n"
+endif
 
 ifeq (,$(strip $(COQLIB_PRELUDE_V_FILE)))
 print-support::
