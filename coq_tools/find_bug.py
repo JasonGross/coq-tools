@@ -2818,7 +2818,6 @@ def minimize_file(
     """The workhorse of bug minimization.  The only thing it doesn't handle is inlining [Require]s and other preprocesing"""
     contents = read_from_file(output_file_name)
 
-    coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
     env["header_dict"] = get_header_dict(contents, **env)
 
     if not check_change_and_write_to_file(
