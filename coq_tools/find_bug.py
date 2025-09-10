@@ -3191,8 +3191,7 @@ def minimize_file(
     if not env["should_succeed"]:
         tasks += (("split := definitions", try_split_oneline_definitions),)
 
-    # Disabled for now, doesn't work well yet
-    if env["normalize_requires"] and False:
+    if env["normalize_requires"]:
         # this happens late: after admitting things, but before we go through and agressively remove all lines
         env["log"]("Definitions:", level=2)
         env["log"](definitions, level=2)
