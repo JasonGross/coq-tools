@@ -46,7 +46,11 @@ from .coq_version import (
     get_coq_accepts_compile,
     DEFAULT_COQTOP,
 )
-from .coq_running_support import get_ltac_support_snippet, get_default_options_settings
+from .coq_running_support import (
+    get_ltac_support_snippet,
+    get_default_options_settings,
+    get_raw_options_settings_and_values,
+)
 from .custom_arguments import (
     add_libname_arguments,
     add_passing_libname_arguments,
@@ -2434,24 +2438,32 @@ def try_strip_comments(output_file_name, **kwargs):
     )
 
 
+def get_mod_of_raw_require_of_definition(definition):
+    cur_statement = (
+        definition["statements"][0]
+        .replace("\t", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .strip()
+    )
+    if cur_statement.startswith("Require ") and cur_statement.endswith("."):
+        return cur_statement[len("Require ") : -1].strip()
+    return None
+
+
+def definition_is_raw_require(definition):
+    return get_mod_of_raw_require_of_definition(definition) is not None
+
+
 def try_remove_duplicate_requires(definitions, output_file_name, **kwargs):
     requires_seen = set()
 
     def yield_definitions():
         for definition in definitions:
-            cur_statement = (
-                definition["statements"][0]
-                .replace("\t", " ")
-                .replace("\n", " ")
-                .replace("\r", " ")
-                .strip()
-            )
-            if not (
-                cur_statement.startswith("Require ") and cur_statement.endswith(".")
-            ):
+            mod = get_mod_of_raw_require_of_definition(definition)
+            if mod is None:
                 yield definition
                 continue
-            mod = cur_statement[len("Require ") : -1].strip()
             if mod not in requires_seen:
                 requires_seen.add(mod)
                 yield definition
@@ -2488,6 +2500,82 @@ def try_normalize_requires(output_file_name, **kwargs):
         changed_descruption="Normalized Requires file",
         **kwargs,
     )
+
+
+def try_lift_requires_insert_options(definitions, output_file_name, **kwargs):
+    all_requires = []
+    pending_options_settings = []
+
+    def yield_definitions():
+        nonlocal pending_options_settings
+        options_settings_contents = get_default_options_settings(
+            kwargs["coqc"],
+            after_contents="",
+            prefix="Local ",
+            **kwargs,
+        )
+        pending_options_settings = split_statements_to_definitions(
+            split_coq_file_contents(options_settings_contents), **kwargs
+        )
+        for i, definition in enumerate(definitions):
+            if not definition_is_raw_require(definition):
+                if definition["statement"].strip() and pending_options_settings:
+                    yield from pending_options_settings
+                    pending_options_settings = []
+                yield definition
+                continue
+
+            all_requires.append(definition)
+            options_settings_contents = get_default_options_settings(
+                kwargs["coqc"],
+                after_contents=join_definitions(definitions[: i + 1]),
+                prefix="Local ",
+                **kwargs,
+            )
+            pending_options_settings = split_statements_to_definitions(
+                split_coq_file_contents(options_settings_contents), **kwargs
+            )
+
+    new_definitions_suffix = list(yield_definitions())
+    # don't read from all_requires until after yield_definitions is finished
+    new_definitions = all_requires + new_definitions_suffix
+
+    if check_change_and_write_to_file(
+        join_definitions(definitions),
+        join_definitions(new_definitions),
+        output_file_name,
+        success_message="Require lifting with insertion of option settings successful.",
+        failure_description="lift Requires while inserting option settings",
+        changed_description="Intermediate code",
+        **kwargs,
+    ):
+        return new_definitions
+    return definitions
+
+
+# def try_remove_duplicate_settings(definitions, output_file_name, **kwargs):
+#     all_requires = [
+#         definition
+#         for definition in definitions
+#         if definition_is_raw_require(definition)
+#     ]
+#     options_settings_and_values = get_raw_options_settings_and_values(
+#         kwargs["coqc"], after_contents=join_definitions(all_requires), **kwargs
+#     )
+#     # def transformer(cur_definition, rest_definitions):
+
+#     return try_transform_reversed(
+#         definitions,
+#         output_file_name,
+#         (
+#             lambda definition, rest: None
+#             if ABORT_REG.search(definition["statement"])
+#             else definition
+#         ),
+#         noun_description="Aborted removal",
+#         verb_description="remove Aborts",
+#         **kwargs,
+#     )
 
 
 def try_split_requires(output_file_name, **kwargs):
@@ -2960,6 +3048,11 @@ def minimize_file(
         definitions = try_remove_duplicate_requires(
             definitions, output_file_name, **env
         )
+        # we don't actually need to do this early
+        # env["log"]("Definitions:", level=2)
+        # env["log"](definitions, level=2)
+        # env["log"]("\nI will now attempt to lift Requires to the top of the file while inserting option settings")
+        # definitions = try_lift_requires_insert_options(definitions, output_file_name, **env)
 
     recursive_tasks = ()
     if env["remove_abort"]:
@@ -3097,6 +3190,18 @@ def minimize_file(
 
     if not env["should_succeed"]:
         tasks += (("split := definitions", try_split_oneline_definitions),)
+
+    # Disabled for now, doesn't work well yet
+    if env["normalize_requires"] and False:
+        # this happens late: after admitting things, but before we go through and agressively remove all lines
+        env["log"]("Definitions:", level=2)
+        env["log"](definitions, level=2)
+        env["log"](
+            "\nI will now attempt to lift Requires to the top of the file while inserting option settings"
+        )
+        definitions = try_lift_requires_insert_options(
+            definitions, output_file_name, **env
+        )
 
     if env["aggressive"] and not env["should_succeed"]:
         tasks += (
