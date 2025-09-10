@@ -2955,7 +2955,7 @@ def minimize_file(
     if env["normalize_requires"]:
         env["log"]("Definitions:", level=2)
         env["log"](definitions, level=2)
-        env["log"]("\nI will now attempt to reomve duplicate Requires")
+        env["log"]("\nI will now attempt to remove duplicate Requires")
         definitions = try_remove_duplicate_requires(
             definitions, output_file_name, **env
         )
