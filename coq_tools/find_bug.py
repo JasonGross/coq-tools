@@ -693,10 +693,17 @@ parser.add_argument(
 )
 parser.add_argument(
     "--lift-requires-and-custom-entry-declarations",
-    dest="lift_requires_and_custom_entry_declarations",
     action=BooleanOptionalAction,
     default=True,
     help=("Attempt to lift requires and custom entry declarations simultaneously"),
+)
+parser.add_argument(
+    "--insert-options-when-lifting-requires",
+    action=BooleanOptionalAction,
+    default=True,
+    help=(
+        "Attempt to insert option settings when lifting requires to the top of the file"
+    ),
 )
 parser.add_argument(
     "--split-requires",
@@ -2529,82 +2536,114 @@ def try_normalize_requires(output_file_name, **kwargs):
     )
 
 
-def try_lift_requires_and_custom_entry_declarations(
-    definitions, output_file_name, **kwargs
+def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options(
+    definitions,
+    output_file_name,
+    lift_custom_entries: bool = False,
+    insert_options: bool = False,
+    **kwargs,
 ):
-    all_requires = []
-    all_custom_entries = []
+    all_requires = [
+        definition
+        for definition in definitions
+        if definition_is_raw_require(definition)
+    ]
+    all_custom_entries = [
+        definition
+        for definition in definitions
+        if lift_custom_entries and definition_is_custom_entry_declaration(definition)
+    ]
+    all_requires_statements = [statement for definition in all_requires for statement in definition["statements"]]
+    all_requires_contents = join_definitions(all_requires)
+    new_definitions_suffix = []
+    init_new_options = []
+    init_requires = []
+    inserted_new_options = False
+    for definition in definitions:
+        if definition_is_raw_require(definition):
+            init_requires.append(definition)
+        elif not definition["statement"].strip():
+            continue
+        elif definition_is_custom_entry_declaration(definition):
+            continue
+        else:
+            if init_requires == all_requires:
+                # fast-path for no requires to lift (lifting custom entries alone doesn't really matter)
+                return definitions
+            if insert_options:
+                init_requires_contents = join_definitions(init_requires)
+                init_options_settings = get_raw_options_settings_and_values(
+                    kwargs["coqc"], after_contents=init_requires_contents, **kwargs
+                )
+                new_setting_statements = make_set_options_commands(
+                    kwargs["coqc"],
+                    init_options_settings,
+                    after_contents=all_requires_contents,
+                    prefix="Global ",
+                    **kwargs,
+                )
+                new_setting_definitions = split_statements_to_definitions_with_options(
+                    all_requires_statements + new_setting_statements, **kwargs
+                )
+                new_setting_definitions = [
+                    defn
+                    for defn in new_setting_definitions
+                    if not definition_is_raw_require(defn) and definition["new_options"]
+                ]
+                if new_setting_definitions:
+                    inserted_new_options = True
+                init_new_options = new_setting_definitions
+            break
+    for definition in definitions:
+        if lift_custom_entries and definition_is_custom_entry_declaration(definition):
+            continue
+        elif definition_is_raw_require(definition):
+            if (
+                insert_options
+                and definition.get("new_options")
+                and new_definitions_suffix
+            ):
+                new_setting_statements = make_set_options_commands(
+                    kwargs["coqc"],
+                    definition["new_options"],
+                    after_contents=all_requires_contents,
+                    prefix="Global ",
+                    **kwargs,
+                )
+                new_setting_definitions = split_statements_to_definitions_with_options(
+                    all_requires + new_setting_statements, **kwargs
+                )
+                new_setting_definitions = [
+                    defn
+                    for defn in new_setting_definitions
+                    if not definition_is_raw_require(defn)
+                ]
+                if new_setting_definitions:
+                    inserted_new_options = True
+                new_definitions_suffix.extend(new_setting_definitions)
+        else:
+            new_definitions_suffix.append(definition)
 
-    def yield_definitions():
-        for definition in definitions:
-            if definition_is_raw_require(definition):
-                all_requires.append(definition)
-            elif definition_is_custom_entry_declaration(definition):
-                all_custom_entries.append(definition)
-            else:
-                yield definition
+    new_definitions = (
+        all_custom_entries + all_requires + init_new_options + new_definitions_suffix
+    )
 
-    new_definitions_suffix = list(yield_definitions())
-    # don't read from all_requires until after yield_definitions is finished
-    new_definitions = all_custom_entries + all_requires + new_definitions_suffix
+    custom_entry_decl_singular = (
+        " and custom entry declaration" if lift_custom_entries else ""
+    )
+    custom_entry_decl_plural = (
+        f"{custom_entry_decl_singular}s" if custom_entry_decl_singular else ""
+    )
+    inserted_new_options_decl = (
+        " while inserting option settings" if insert_options else ""
+    )
 
-    if all_custom_entries and check_change_and_write_to_file(
+    if (all_custom_entries or inserted_new_options) and check_change_and_write_to_file(
         join_definitions(definitions),
         join_definitions(new_definitions),
         output_file_name,
-        success_message="Require and custom entry declaration lifting successful.",
-        failure_description="lift Requires and custom entry declarations",
-        changed_description="Intermediate code",
-        **kwargs,
-    ):
-        return new_definitions
-    return definitions
-
-
-def try_lift_requires_insert_options(definitions, output_file_name, **kwargs):
-    all_requires = []
-    pending_options_settings = []
-
-    def yield_definitions():
-        nonlocal pending_options_settings
-        options_settings_contents = get_default_options_settings(
-            kwargs["coqc"],
-            after_contents="",
-            prefix="Local ",
-            **kwargs,
-        )
-        pending_options_settings = split_statements_to_definitions(
-            split_coq_file_contents(options_settings_contents), **kwargs
-        )
-        for i, definition in enumerate(definitions):
-            if not definition_is_raw_require(definition):
-                if definition["statement"].strip() and pending_options_settings:
-                    yield from pending_options_settings
-                    pending_options_settings = []
-                yield definition
-                continue
-
-            all_requires.append(definition)
-            options_settings_contents = get_default_options_settings(
-                kwargs["coqc"],
-                after_contents=join_definitions(definitions[: i + 1]),
-                prefix="Local ",
-                **kwargs,
-            )
-            pending_options_settings = split_statements_to_definitions(
-                split_coq_file_contents(options_settings_contents), **kwargs
-            )
-
-    new_definitions_suffix = list(yield_definitions())
-    # don't read from all_requires until after yield_definitions is finished
-    new_definitions = all_requires + new_definitions_suffix
-
-    if check_change_and_write_to_file(
-        join_definitions(definitions),
-        join_definitions(new_definitions),
-        output_file_name,
-        success_message="Require lifting with insertion of option settings successful.",
-        failure_description="lift Requires while inserting option settings",
+        success_message=f"Require{custom_entry_decl_singular} lifting{inserted_new_options_decl} successful.",
+        failure_description=f"lift Requires{custom_entry_decl_plural}{inserted_new_options_decl}",
         changed_description="Intermediate code",
         **kwargs,
     ):
@@ -3100,7 +3139,9 @@ def minimize_file(
         timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
         **env,
     ):
-        env["log"]("Splitting to definitions with options settings failed, skipping useless option settings removal")
+        env["log"](
+            "Splitting to definitions with options settings failed, skipping useless option settings removal"
+        )
         env["remove_useless_option_settings"] = False
         definitions = split_statements_to_definitions(statements, **env)
         env["log"](f"definitions: {definitions}", level=5)
@@ -3117,7 +3158,8 @@ def minimize_file(
         ):
             env["log"]("I will not be able to proceed.")
             env["log"](
-                "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
+                "re.search(" + repr(env["error_reg_string"]) + ", <output above>)",
+                level=2,
             )
             return die(None, **env)
 
@@ -3128,7 +3170,9 @@ def minimize_file(
         env["log"]("Definitions:", level=2)
         env["log"](definitions, level=2)
         env["log"]("\nI will now attempt to remove useless option settings")
-        definitions = try_remove_useless_option_settings(definitions, output_file_name, **env)
+        definitions = try_remove_useless_option_settings(
+            definitions, output_file_name, **env
+        )
 
     if env["normalize_requires"]:
         env["log"]("Definitions:", level=2)
@@ -3143,15 +3187,40 @@ def minimize_file(
         # env["log"]("\nI will now attempt to lift Requires to the top of the file while inserting option settings")
         # definitions = try_lift_requires_insert_options(definitions, output_file_name, **env)
 
-    if env["lift_requires_and_custom_entry_declarations"]:
-        env["log"]("Definitions:", level=2)
-        env["log"](definitions, level=2)
-        env["log"](
-            "\nI will now attempt to lift Requires and custom entry declarations to the top of the file"
-        )
-        definitions = try_lift_requires_and_custom_entry_declarations(
-            definitions, output_file_name, **env
-        )
+    for lift_custom_entries in (
+        (True, False)
+        if env["lift_requires_and_custom_entry_declarations"]
+        else (False,)
+    ):
+        for insert_options in (
+            (True, False) if env["insert_options_when_lifting_requires"] else (False,)
+        ):
+            if lift_custom_entries or insert_options:
+                env["log"]("Definitions:", level=2)
+                env["log"](definitions, level=2)
+                custom_entry_decl = (
+                    " and custom entry declarations" if lift_custom_entries else ""
+                )
+                inserted_new_options_decl = (
+                    " while inserting option settings" if insert_options else ""
+                )
+                env["log"](
+                    f"\nI will now attempt to lift Requires{custom_entry_decl}{inserted_new_options_decl} to the top of the file"
+                )
+                old_contents = join_definitions(definitions)
+                definitions = try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options(
+                    definitions,
+                    output_file_name,
+                    lift_custom_entries=lift_custom_entries,
+                    insert_options=insert_options,
+                    **env,
+                )
+                new_contents = join_definitions(definitions)
+                if new_contents != old_contents:
+                    break
+        else:
+            continue
+        break
 
     recursive_tasks = ()
     if env["remove_abort"]:
@@ -3290,16 +3359,24 @@ def minimize_file(
     if not env["should_succeed"]:
         tasks += (("split := definitions", try_split_oneline_definitions),)
 
-    # Disabled for now, doesn't work well yet
-    if env["normalize_requires"] and False:
-        # this happens late: after admitting things, but before we go through and agressively remove all lines
+    if (
+        (
+            env["normalize_requires"]
+            or env["lift_requires_and_custom_entry_declarations"]
+        )
+        and env["insert_options_when_lifting_requires"]
+    ):  # this happens late: after admitting things, but before we go through and agressively remove all lines
         env["log"]("Definitions:", level=2)
         env["log"](definitions, level=2)
         env["log"](
             "\nI will now attempt to lift Requires to the top of the file while inserting option settings"
         )
-        definitions = try_lift_requires_insert_options(
-            definitions, output_file_name, **env
+        definitions = try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options(
+            definitions,
+            output_file_name,
+            lift_custom_entries=env["lift_requires_and_custom_entry_declarations"],
+            insert_options=True,
+            **env,
         )
 
     if env["aggressive"] and not env["should_succeed"]:
@@ -3891,6 +3968,7 @@ def main():
         "normalize_requires": args.normalize_requires,
         "recursive_requires_explicit": args.recursive_requires_explicit,
         "lift_requires_and_custom_entry_declarations": args.lift_requires_and_custom_entry_declarations,
+        "insert_options_when_lifting_requires": args.insert_options_when_lifting_requires,
         "split_requires": args.split_requires,
         "remove_hints": args.remove_hints,
         "remove_empty_sections": args.remove_empty_sections,
