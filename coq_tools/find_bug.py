@@ -2447,10 +2447,10 @@ def try_remove_duplicate_requires(definitions, output_file_name, **kwargs):
                 .strip()
             )
             if not (
-                cur_statement.startswith("Require") and cur_statement.endswith(".")
+                cur_statement.startswith("Require ") and cur_statement.endswith(".")
             ):
                 yield definition
-            mod = cur_statement[len("Require") : -1].strip()
+            mod = cur_statement[len("Require ") : -1].strip()
             if mod not in requires_seen:
                 requires_seen.add(mod)
                 yield definition
