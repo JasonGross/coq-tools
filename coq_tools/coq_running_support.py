@@ -216,7 +216,6 @@ def get_default_options_settings(
     options_settings = get_raw_options_settings_and_values(
         coqc_prog,
         after_contents,
-        prefix,
         coqc_args=coqc_args,
         coqc_is_coqtop=coqc_is_coqtop,
         **kwargs,
