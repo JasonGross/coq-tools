@@ -404,8 +404,9 @@ def update_env_with_coqpath_folders(passing_prefix, env, *coqpaths, skip_dirs=No
 
     existing_names = set()
     for libnames_key in ["libnames", "non_recursive_libnames"]:
-        for _, name in env.get(passing_prefix + libnames_key, []):
-            existing_names.add(name)
+        for d, name in env.get(passing_prefix + libnames_key, []):
+            if os.path.isdir(d):
+                existing_names.add(name)
 
     def do_with_path(path):
         env.get(passing_prefix + "non_recursive_libnames", []).extend(
