@@ -192,7 +192,9 @@ def split_statements_to_definitions(
         stdin=PIPE,
     )
     chars_time_reg = re.compile(
-        r"Chars ([0-9]+) - ([0-9]+) [^\s]+".replace(" ", r"\s*")
+        r"\s*Chars ([0-9]+) - ([0-9]+) [^\s]+(?: [0-9\.]+ secs \([0-9\.]+u,[0-9\.]+s\)\s*)?".replace(
+            " ", r"\s*"
+        )
     )
     prompt_reg = re.compile(
         r"^(.*)<prompt>([^<]*?) < ([0-9]+) ([^<]*?) ([0-9]+) < ([^<]*)$".replace(
@@ -224,6 +226,7 @@ def split_statements_to_definitions(
 
     rtn = []
     cur_definition = {}
+    cur_outputs = []
     last_definitions = "||"
     cur_definition_names = "||"
     last_char_end = 0
@@ -311,6 +314,7 @@ def split_statements_to_definitions(
                     "terms_defined": [],
                     "proof_using_options_map": [],
                     "proof_using_options": [],
+                    "outputs": [],
                 }
 
             log(
@@ -343,6 +347,7 @@ def split_statements_to_definitions(
             if definitions_removed:
                 cur_definition[last_definitions]["statements"].append(statement)
                 cur_definition[last_definitions]["terms_defined"] += terms_defined
+                cur_definition[last_definitions]["outputs"].append(response_text)
                 if proof_using_options:
                     cur_definition[last_definitions]["proof_using_options_map"].append(
                         (proof_using_thm_name, tuple(proof_using_options))
@@ -369,6 +374,9 @@ def split_statements_to_definitions(
                     cur_definition[cur_definition_names]["proof_using_options"] += (
                         cur_definition[last_definitions]["proof_using_options"]
                     )
+                    cur_definition[cur_definition_names]["outputs"] += cur_definition[
+                        last_definitions
+                    ]["outputs"]
                     del cur_definition[last_definitions]
                 else:
                     # we're at top-level, so add this as a new
@@ -392,6 +400,12 @@ def split_statements_to_definitions(
                             "proof_using_options": tuple(
                                 cur_definition[last_definitions]["proof_using_options"]
                             ),
+                            "outputs": tuple(
+                                cur_definition[last_definitions]["outputs"]
+                            ),
+                            "output": "\n".join(
+                                cur_definition[last_definitions]["outputs"]
+                            ),
                         }
                     )
                     del cur_definition[last_definitions]
@@ -408,6 +422,9 @@ def split_statements_to_definitions(
                     cur_definition[cur_definition_names]["terms_defined"] += (
                         terms_defined
                     )
+                    cur_definition[cur_definition_names]["outputs"].append(
+                        response_text
+                    )
                 else:
                     # we're at top level, so add this as a new
                     # definition
@@ -422,6 +439,8 @@ def split_statements_to_definitions(
                                 else ()
                             ),
                             "proof_using_options": tuple(proof_using_options),
+                            "outputs": (response_text,),
+                            "output": response_text,
                         }
                     )
                     proof_using_options_used = True
@@ -432,12 +451,16 @@ def split_statements_to_definitions(
             elif definitions_added:
                 # print(definitions_added)
                 cur_definition[cur_definition_names]["statements"].append(statement)
+                cur_definition[cur_definition_names]["outputs"].append(response_text)
             else:
                 # if we're in a definition, append the statement to
                 # the queue, otherwise, just add it as it's own
                 # statement
                 if cur_definition_names.strip("|"):
                     cur_definition[cur_definition_names]["statements"].append(statement)
+                    cur_definition[cur_definition_names]["outputs"].append(
+                        response_text
+                    )
                 else:
                     rtn.append(
                         {
@@ -450,6 +473,8 @@ def split_statements_to_definitions(
                                 else ()
                             ),
                             "proof_using_options": tuple(proof_using_options),
+                            "outputs": (response_text,),
+                            "output": response_text,
                         }
                     )
                     proof_using_options_used = True
@@ -478,6 +503,8 @@ def split_statements_to_definitions(
                 "proof_using_options": tuple(
                     cur_definition[cur_definition_names]["proof_using_options"]
                 ),
+                "outputs": tuple(cur_definition[cur_definition_names]["outputs"]),
+                "output": "\n".join(cur_definition[cur_definition_names]["outputs"]),
             }
         )
         del cur_definition[last_definitions]
@@ -507,6 +534,8 @@ def split_statements_to_definitions(
                     if proof_using_options and not proof_using_options_used
                     else ()
                 ),
+                "outputs": (),
+                "output": "",
             }
         )
     if rtn[0]["statement"].strip() == "Set Suggest Proof Using.":
