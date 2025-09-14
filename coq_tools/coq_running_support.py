@@ -18,6 +18,9 @@ __all__ = [
     "get_reserved_modnames",
     "get_default_options_settings",
     "get_raw_options_settings_and_values",
+    "parse_options_settings",
+    "make_raw_set_options_commands",
+    "make_set_options_commands",
 ]
 
 
@@ -169,20 +172,7 @@ def filter_check_options_after_success(
     ) + filter_check_options_after_success(coqc_prog, contents, options_2, **kwargs)
 
 
-def get_raw_options_settings_and_values(
-    coqc_prog, after_contents: str = "", coqc_args=(), coqc_is_coqtop=False, **kwargs
-):
-    options_contents = f"{after_contents}\nPrint Options.\n"
-    skip_args = {"-vos", "-vok"}
-    coqc_args = tuple([arg for arg in coqc_args if arg not in skip_args])
-    output, cmds, retcode, runtime = get_coq_output(
-        coqc_prog,
-        coqc_args,
-        options_contents,
-        None,
-        is_coqtop=coqc_is_coqtop,
-        **kwargs,
-    )
+def parse_options_settings(output: str):
     output = f"\n{output}"
     # compat with Coq 8.4, 8.5, 8.6, 8.7
     output = output.replace("\nSynchronous options:", "\nOptions:").replace(
@@ -205,6 +195,55 @@ def get_raw_options_settings_and_values(
     return options_settings
 
 
+def get_raw_options_settings_and_values(
+    coqc_prog, after_contents: str = "", coqc_args=(), coqc_is_coqtop=False, **kwargs
+):
+    options_contents = f"{after_contents}\nPrint Options.\n"
+    skip_args = {"-vos", "-vok"}
+    coqc_args = tuple([arg for arg in coqc_args if arg not in skip_args])
+    output, cmds, retcode, runtime = get_coq_output(
+        coqc_prog,
+        coqc_args,
+        options_contents,
+        None,
+        is_coqtop=coqc_is_coqtop,
+        **kwargs,
+    )
+    return parse_options_settings(output)
+
+
+def make_raw_set_options_commands(
+    options_settings: list[tuple[str, str]], prefix: str = ""
+):
+    commands = []
+    for opt_val in options_settings:
+        if len(opt_val) == 2:
+            opt, val = opt_val
+            if val in ("undefined", "off", "false"):
+                commands.append(f"{prefix}Unset {opt}.")
+            elif val in ("on", "true"):
+                commands.append(f"{prefix}Set {opt}.")
+            else:
+                commands.append(f"{prefix}Set {opt} {val}.")
+    return commands
+
+
+def make_set_options_commands(
+    coqc_prog,
+    options_settings: list[tuple[str, str]],
+    after_contents: str = "",
+    prefix: str = "",
+    coqc_args=(),
+    coqc_is_coqtop=False,
+    **kwargs,
+):
+    commands = make_raw_set_options_commands(options_settings, prefix)
+
+    return filter_check_options_after_success(
+        coqc_prog, after_contents, commands, **kwargs
+    )
+
+
 def get_default_options_settings(
     coqc_prog,
     after_contents: str = "",
@@ -220,19 +259,15 @@ def get_default_options_settings(
         coqc_is_coqtop=coqc_is_coqtop,
         **kwargs,
     )
-    commands = []
-    for opt_val in options_settings:
-        if len(opt_val) == 2:
-            opt, val = opt_val
-            if val in ("undefined", "off", "false"):
-                commands.append(f"{prefix}Unset {opt}.")
-            elif val in ("on", "true"):
-                commands.append(f"{prefix}Set {opt}.")
-            else:
-                commands.append(f"{prefix}Set {opt} {val}.")
 
     return "\n".join(
-        filter_check_options_after_success(
-            coqc_prog, after_contents, commands, **kwargs
+        make_set_options_commands(
+            coqc_prog,
+            options_settings,
+            after_contents,
+            prefix,
+            coqc_args=coqc_args,
+            coqc_is_coqtop=coqc_is_coqtop,
+            **kwargs,
         )
     )
