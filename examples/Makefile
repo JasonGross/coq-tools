@@ -9,6 +9,8 @@ CONDITIONAL_TESTS = 006 018
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 010 026
+ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS =
+ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS = 073
 ONLY_IF_TOP_TESTS = 063
 ONLY_IF_PROOF_USING_TESTS = 067 069
 ONLY_IF_W_TESTS = 044
@@ -26,6 +28,8 @@ ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
 ONLY_IF_CUSTOM_ENTRY_TESTS = 070
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
+	$(ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS) \
+	$(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS) \
 	$(ONLY_IF_TOP_TESTS) \
 	$(ONLY_IF_PROOF_USING_TESTS) \
 	$(ONLY_IF_W_TESTS) \
@@ -53,6 +57,8 @@ BROKEN_LOGS = $(patsubst %,example_%_result.log,$(BROKEN_TESTS))
 ALL_LOGS = $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) $(BROKEN_LOGS)
 ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
+ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS))
+ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS))
 ONLY_IF_TOP_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_TOP_TESTS))
 ONLY_IF_PROOF_USING_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_PROOF_USING_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
@@ -119,6 +125,7 @@ COQC_SUPPORTS_IMPORT_CATEGORIES:=$(shell echo "Require Import (hints) Coq.Init.N
 COQC_SUPPORTS_W:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-w ')
 COQC_SUPPORTS_VOS:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- '-vos ')
 COQC_SUPPORTS_UNSET:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-unset ')
+COQC_TYPE_IN_TYPE_WORKS:=$(shell printf "Check Set : Set." | $(COQBIN)coqtop -type-in-type 2>&1 | grep -q 'Error'; echo $$?)
 COQC_COQLIB:=$(shell $(COQBIN)coqc -config 2>&1 | grep -o 'COQLIB=.*' | sed s'/^COQLIB=//g')
 COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
 COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
@@ -168,6 +175,21 @@ else
 print-support::
 	@printf "coqc supports -Q:\t\t\t\tNo\n"
 endif
+
+ifneq (0,$(strip $(COQC_TYPE_IN_TYPE_WORKS)))
+test-suite: $(ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS)
+ENABLED_LOGS += $(ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS)
+print-support::
+	@printf "coqc supports Set:Set with -type-in-type:\tYes\n"
+ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
+test-suite: $(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS)
+ENABLED_LOGS += $(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS)
+endif
+else
+print-support::
+	@printf "coqc supports Set:Set with -type-in-type:\tNo\n"
+endif
+
 
 ifneq (0,$(strip $(COQC_SUPPORTS_PROOF_USING)))
 print-support::
