@@ -9,8 +9,6 @@ CONDITIONAL_TESTS = 006 018
 
 ONLY_IF_COQTOP_COMPILE_TESTS =
 ONLY_IF_Q_TESTS = 010 026
-ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS =
-ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS = 073
 ONLY_IF_TOP_TESTS = 063
 ONLY_IF_PROOF_USING_TESTS = 067 069
 ONLY_IF_W_TESTS = 044
@@ -26,10 +24,10 @@ ONLY_IF_SYS_V_FILES_TESTS = 055
 ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS =
 ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
 ONLY_IF_CUSTOM_ENTRY_TESTS = 070
+ONLY_IF_LTAC2_TESTS =
+ONLY_IF_LTAC2_LIST_MAP_TESTS =
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
-	$(ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS) \
-	$(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS) \
 	$(ONLY_IF_TOP_TESTS) \
 	$(ONLY_IF_PROOF_USING_TESTS) \
 	$(ONLY_IF_W_TESTS) \
@@ -45,6 +43,8 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS) \
 	$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS) \
 	$(ONLY_IF_CUSTOM_ENTRY_TESTS) \
+	$(ONLY_IF_LTAC2_TESTS) \
+	$(ONLY_IF_LTAC2_LIST_MAP_TESTS) \
 	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
@@ -57,8 +57,6 @@ BROKEN_LOGS = $(patsubst %,example_%_result.log,$(BROKEN_TESTS))
 ALL_LOGS = $(DEFAULT_LOGS) $(CONDITIONAL_LOGS) $(BROKEN_LOGS)
 ONLY_IF_COQTOP_COMPILE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_COQTOP_COMPILE_TESTS))
 ONLY_IF_Q_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_TESTS))
-ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS))
-ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_TESTS))
 ONLY_IF_TOP_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_TOP_TESTS))
 ONLY_IF_PROOF_USING_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_PROOF_USING_TESTS))
 ONLY_IF_W_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_W_TESTS))
@@ -74,6 +72,8 @@ ONLY_IF_SYS_V_FILES_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_V_FIL
 ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_TESTS))
 ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS))
 ONLY_IF_CUSTOM_ENTRY_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_CUSTOM_ENTRY_TESTS))
+ONLY_IF_LTAC2_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_LTAC2_TESTS))
+ONLY_IF_LTAC2_LIST_MAP_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_LTAC2_LIST_MAP_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
@@ -119,13 +119,14 @@ COQTOP_SUPPORTS_TOP:=$(shell { true | $(COQBIN)coqtop -top foo 2>&1 | grep -q --
 COQTOP_SUPPORTS_COMPILE:=$(shell $(COQBIN)coqtop --help 2>&1 | tr '\n' '~' | sed s'/Deprecated options.*//g' | tr '~' '\n' | grep -c -- '\s-compile\s')
 COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_CUSTOM_ENTRY:=$(shell echo "Declare Custom Entry foo." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
+COQC_SUPPORTS_LTAC2:=$(shell echo "Require Import Ltac2.Ltac2." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
+COQC_SUPPORTS_LTAC2_LIST_MAP:=$(shell echo "Require Import Ltac2.Ltac2. Ltac2 Eval List.map." | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_PROOF_USING:=$(shell printf "Section foo.\nVariable x : nat.\nDefinition bar : nat.\nProof using x.\nAdmitted.\nEnd foo.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_SUGGEST_PROOF_USING:=$(shell printf "Set Suggest Proof Using.\n" | $(COQBIN)coqtop 2>&1 | grep -q 'There is no option Suggest Proof Using.'; echo $$?)
 COQC_SUPPORTS_IMPORT_CATEGORIES:=$(shell echo "Require Import (hints) Coq.Init.Notations." | $(COQBIN)coqtop 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
 COQC_SUPPORTS_W:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-w ')
 COQC_SUPPORTS_VOS:=$(shell $(COQBIN)coqc --help 2>&1 | grep -c -- '-vos ')
 COQC_SUPPORTS_UNSET:=$(shell $(COQBIN)coqtop --help 2>&1 | grep -c -- '-unset ')
-COQC_TYPE_IN_TYPE_WORKS:=$(shell printf "Check Set : Set." | $(COQBIN)coqtop -type-in-type 2>&1 | grep -q 'Error'; echo $$?)
 COQC_COQLIB:=$(shell $(COQBIN)coqc -config 2>&1 | grep -o 'COQLIB=.*' | sed s'/^COQLIB=//g')
 COQLIB_V_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.v)
 COQLIB_GLOB_FILES:=$(wildcard $(COQC_COQLIB)/theories/Init/*.glob)
@@ -175,21 +176,6 @@ else
 print-support::
 	@printf "coqc supports -Q:\t\t\t\tNo\n"
 endif
-
-ifneq (0,$(strip $(COQC_TYPE_IN_TYPE_WORKS)))
-test-suite: $(ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS)
-ENABLED_LOGS += $(ONLY_IF_TYPE_IN_TYPE_WORKS_LOGS)
-print-support::
-	@printf "coqc supports Set:Set with -type-in-type:\tYes\n"
-ifneq (0,$(strip $(COQC_SUPPORTS_Q)))
-test-suite: $(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS)
-ENABLED_LOGS += $(ONLY_IF_Q_AND_TYPE_IN_TYPE_WORKS_LOGS)
-endif
-else
-print-support::
-	@printf "coqc supports Set:Set with -type-in-type:\tNo\n"
-endif
-
 
 ifneq (0,$(strip $(COQC_SUPPORTS_PROOF_USING)))
 print-support::
@@ -284,6 +270,26 @@ print-support::
 else
 print-support::
 	@printf "coqc supports Declare Custom Entry:\t\tNo\n"
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_LTAC2)))
+test-suite: $(ONLY_IF_LTAC2_LOGS)
+ENABLED_LOGS += $(ONLY_IF_LTAC2_LOGS)
+print-support::
+	@printf "coqc supports Ltac2:\t\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports Ltac2:\t\t\t\tNo\n"
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_LTAC2_LIST_MAP)))
+test-suite: $(ONLY_IF_LTAC2_LIST_MAP_LOGS)
+ENABLED_LOGS += $(ONLY_IF_LTAC2_LIST_MAP_LOGS)
+print-support::
+	@printf "coqc supports Ltac2 List.map:\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports Ltac2 List.map:\t\t\tNo\n"
 endif
 
 ifeq (,$(strip $(COQLIB_PRELUDE_V_FILE)))
