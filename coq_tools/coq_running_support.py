@@ -224,9 +224,9 @@ def get_default_options_settings(
     for opt_val in options_settings:
         if len(opt_val) == 2:
             opt, val = opt_val
-            if val == "undefined" or val == "off":
+            if val in ("undefined", "off", "false"):
                 commands.append(f"{prefix}Unset {opt}.")
-            elif val == "on":
+            elif val in ("on", "true"):
                 commands.append(f"{prefix}Set {opt}.")
             else:
                 commands.append(f"{prefix}Set {opt} {val}.")
