@@ -1,5 +1,6 @@
 from __future__ import with_statement
 import re
+from typing import List, Tuple
 from .diagnose_error import get_coq_output
 from .coq_version import (
     get_coq_native_compiler_ondemand_fragment,
@@ -213,7 +214,7 @@ def get_raw_options_settings_and_values(
 
 
 def make_raw_set_options_commands(
-    options_settings: list[tuple[str, str]], prefix: str = ""
+    options_settings: List[Tuple[str, str]], prefix: str = ""
 ):
     commands = []
     for opt_val in options_settings:
@@ -230,7 +231,7 @@ def make_raw_set_options_commands(
 
 def make_set_options_commands(
     coqc_prog,
-    options_settings: list[tuple[str, str]],
+    options_settings: List[Tuple[str, str]],
     after_contents: str = "",
     prefix: str = "",
     coqc_args=(),
