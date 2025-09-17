@@ -554,13 +554,16 @@ def split_statements_to_definitions_with_options(
 ):
     new_statements = []
     for statement in statements:
-        new_statements.append(" Print Options. ")
+        # work around COQBUG(https://github.com/rocq-prover/rocq/issues/21091)
+        parts = statement.strip().split()
+        if not (len(parts) >= 2 and parts[0] == "Proof" and parts[1].startswith("(")):
+            new_statements.append("Print Options.")
         new_statements.append(statement)
-    new_statements.append(" Print Options. ")
+    new_statements.append("Print Options.")
     definitions = split_statements_to_definitions(new_statements, **kwargs)
     new_definitions = []
     cur_options = set()
-    for definition in enumerate(definitions):
+    for definition in definitions:
         if definition["statement"].strip() == "Print Options.":
             new_options = parse_options_settings(definition["output"])
             if new_definitions and "new_options" not in new_definitions[-1]:
@@ -569,11 +572,17 @@ def split_statements_to_definitions_with_options(
                 )
             cur_options = set(new_options)
         else:
-            definition["statements"] = tuple(
-                stmt
-                for stmt in definition["statements"]
-                if stmt.strip() != "Print Options."
-            )
+            if len(definition["statements"]) == len(definition["outputs"]):
+                statement_outputs = [(stmt, output) for stmt, output in zip(definition["statements"], definition["outputs"]) if stmt.strip() != "Print Options."]
+                definition["statements"] = tuple(stmt for stmt, _ in statement_outputs)
+                definition["outputs"] = tuple(output for _, output in statement_outputs)
+            else:
+                definition["statements"] = tuple(
+                    stmt
+                    for stmt in definition["statements"]
+                    if stmt.strip() != "Print Options."
+                )
             definition["statement"] = "\n".join(definition["statements"])
+            definition["output"] = "\n".join(definition["outputs"])
             new_definitions.append(definition)
     return new_definitions
