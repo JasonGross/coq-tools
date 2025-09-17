@@ -684,6 +684,13 @@ parser.add_argument(
     help="When normalizing requires, include all recursive requires explicitly.  This is useful for removing unneeded intermediate requires rather than inlining them, but causes issues with minimization when requires are not pre-emptively removed if any require fails to inline.",
 )
 parser.add_argument(
+    "--lift-requires-and-custom-entry-declarations",
+    dest="lift_requires_and_custom_entry_declarations",
+    action=BooleanOptionalAction,
+    default=True,
+    help=("Attempt to lift requires and custom entry declarations simultaneously"),
+)
+parser.add_argument(
     "--split-requires",
     action=BooleanOptionalAction,
     default=True,
@@ -2455,6 +2462,10 @@ def definition_is_raw_require(definition):
     return get_mod_of_raw_require_of_definition(definition) is not None
 
 
+def definition_is_custom_entry_declaration(definition):
+    return DECLARE_CUSTOM_REG.match(definition["statement"].strip())
+
+
 def try_remove_duplicate_requires(definitions, output_file_name, **kwargs):
     requires_seen = set()
 
@@ -2500,6 +2511,38 @@ def try_normalize_requires(output_file_name, **kwargs):
         changed_descruption="Normalized Requires file",
         **kwargs,
     )
+
+
+def try_lift_requires_and_custom_entry_declarations(
+    definitions, output_file_name, **kwargs
+):
+    all_requires = []
+    all_custom_entries = []
+
+    def yield_definitions():
+        for definition in definitions:
+            if definition_is_raw_require(definition):
+                all_requires.append(definition)
+            elif definition_is_custom_entry_declaration(definition):
+                all_custom_entries.append(definition)
+            else:
+                yield definition
+
+    new_definitions_suffix = list(yield_definitions())
+    # don't read from all_requires until after yield_definitions is finished
+    new_definitions = all_custom_entries + all_requires + new_definitions_suffix
+
+    if all_custom_entries and check_change_and_write_to_file(
+        join_definitions(definitions),
+        join_definitions(new_definitions),
+        output_file_name,
+        success_message="Require and custom entry declaration lifting successful.",
+        failure_description="lift Requires and custom entry declarations",
+        changed_description="Intermediate code",
+        **kwargs,
+    ):
+        return new_definitions
+    return definitions
 
 
 def try_lift_requires_insert_options(definitions, output_file_name, **kwargs):
@@ -3053,6 +3096,16 @@ def minimize_file(
         # env["log"](definitions, level=2)
         # env["log"]("\nI will now attempt to lift Requires to the top of the file while inserting option settings")
         # definitions = try_lift_requires_insert_options(definitions, output_file_name, **env)
+
+    if env["lift_requires_and_custom_entry_declarations"]:
+        env["log"]("Definitions:", level=2)
+        env["log"](definitions, level=2)
+        env["log"](
+            "\nI will now attempt to lift Requires and custom entry declarations to the top of the file"
+        )
+        definitions = try_lift_requires_and_custom_entry_declarations(
+            definitions, output_file_name, **env
+        )
 
     recursive_tasks = ()
     if env["remove_abort"]:
@@ -3790,6 +3843,7 @@ def main():
         "remove_comments": args.remove_comments,
         "normalize_requires": args.normalize_requires,
         "recursive_requires_explicit": args.recursive_requires_explicit,
+        "lift_requires_and_custom_entry_declarations": args.lift_requires_and_custom_entry_declarations,
         "split_requires": args.split_requires,
         "remove_hints": args.remove_hints,
         "remove_empty_sections": args.remove_empty_sections,
