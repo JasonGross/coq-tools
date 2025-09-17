@@ -241,7 +241,12 @@ def make_set_options_commands(
     commands = make_raw_set_options_commands(options_settings, prefix)
 
     return filter_check_options_after_success(
-        coqc_prog, after_contents, commands, **kwargs
+        coqc_prog,
+        after_contents,
+        commands,
+        coqc_args=coqc_args,
+        is_coqtop=coqc_is_coqtop,
+        **kwargs,
     )
 
 
