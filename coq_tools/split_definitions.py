@@ -3,7 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 from . import split_definitions_old
 from .split_file import postprocess_split_proof_term
 from .coq_version import get_coq_accepts_time, get_coq_accepts_emacs
-from .coq_running_support import get_proof_term_works_with_time
+from .coq_running_support import get_proof_term_works_with_time, parse_options_settings
 from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from . import util
 from .util import shlex_join
@@ -546,3 +546,34 @@ def split_statements_to_definitions(
 
 def join_definitions(definitions):
     return "\n".join(i["statement"] for i in definitions)
+
+
+def split_statements_to_definitions_with_options(
+    statements,
+    **kwargs,
+):
+    new_statements = []
+    for statement in statements:
+        new_statements.append(" Print Options. ")
+        new_statements.append(statement)
+    new_statements.append(" Print Options. ")
+    definitions = split_statements_to_definitions(new_statements, **kwargs)
+    new_definitions = []
+    cur_options = set()
+    for definition in enumerate(definitions):
+        if definition["statement"].strip() == "Print Options.":
+            new_options = parse_options_settings(definition["output"])
+            if new_definitions and "new_options" not in new_definitions[-1]:
+                new_definitions[-1]["new_options"] = tuple(
+                    opt for opt in new_options if opt not in cur_options
+                )
+            cur_options = set(new_options)
+        else:
+            definition["statements"] = tuple(
+                stmt
+                for stmt in definition["statements"]
+                if stmt.strip() != "Print Options."
+            )
+            definition["statement"] = "\n".join(definition["statements"])
+            new_definitions.append(definition)
+    return new_definitions
