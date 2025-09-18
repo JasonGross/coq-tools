@@ -25,13 +25,13 @@ if [ -z "${GREP}" ]; then
 fi
 
 if [ -z "${FIND_BUG}" ]; then
-    function find_bug() {
+    find_bug() {
         ${PYTHON} "${FIND_BUG_PY}" "$@"
     }
 else
     FIND_BUG="$(cd "$DIR" && realpath "$(which "${FIND_BUG}")")"
     export FIND_BUG
-    function find_bug() {
+    find_bug() {
         "${FIND_BUG}" "$@"
     }
 fi
@@ -39,13 +39,13 @@ fi
 export -f find_bug
 
 if [ -z "${MINIMIZE_REQUIRES}" ]; then
-    function minimize_requires() {
+    minimize_requires() {
         ${PYTHON} "${MINIMIZE_REQUIRES_PY}" "$@"
     }
 else
     MINIMIZE_REQUIRES="$(cd "$DIR" && realpath "$(which "${MINIMIZE_REQUIRES}")")"
     export MINIMIZE_REQUIRES
-    function minimize_requires() {
+    minimize_requires() {
         "${MINIMIZE_REQUIRES}" "$@"
     }
 fi
@@ -53,13 +53,13 @@ fi
 export -f minimize_requires
 
 if [ -z "${ABSOLUTIZE_IMPORTS}" ]; then
-    function absolutize_imports() {
+    absolutize_imports() {
         "${PYTHON}" "${ABSOLUTIZE_IMPORTS_PY}" "$@"
     }
 else
     ABSOLUTIZE_IMPORTS="$(cd "$DIR" && realpath "$(which "${ABSOLUTIZE_IMPORTS}")")"
     export ABSOLUTIZE_IMPORTS
-    function absolutize_imports() {
+    absolutize_imports() {
         "${ABSOLUTIZE_IMPORTS}" "$@"
     }
 fi
@@ -68,13 +68,13 @@ export -f absolutize_imports
 
 
 if [ -z "${INLINE_IMPORTS}" ]; then
-    function inline_imports() {
+    inline_imports() {
         "${PYTHON}" "${INLINE_IMPORTS_PY}" "$@"
     }
 else
     INLINE_IMPORTS="$(cd "$DIR" && realpath "$(which "${INLINE_IMPORTS}")")"
     export INLINE_IMPORTS
-    function inline_imports() {
+    inline_imports() {
         "${INLINE_IMPORTS}" "$@"
     }
 fi
@@ -82,20 +82,20 @@ fi
 export -f inline_imports
 
 if [ -z "${RELPATH}" ]; then
-    function relpath() {
+    relpath() {
         "${PYTHON}" -c "import os, sys; print(os.path.relpath(*sys.argv[1:]))" "$@"
     }
 else
     RELPATH="$(cd "$DIR" && realpath "$(which "${RELPATH}")")"
     export RELPATH
-    function relpath() {
+    relpath() {
         "${RELPATH}" "$@"
     }
 fi
 
 export -f relpath
 
-function strip_for_grep() {
+strip_for_grep() {
     s="$(printf "%s" "$1" | "$GREP" -v '^$' | tr -d '\r')"
     # Trim leading whitespace
     s="${s#"${s%%[![:space:]]*}"}"
@@ -107,7 +107,7 @@ function strip_for_grep() {
 
 export -f strip_for_grep
 
-function grep_contains() {
+grep_contains() {
     count="$(printf '%s' "$1" | "$GREP" -c "$2")"
     if [ -z "$count" ]; then
         return 1
