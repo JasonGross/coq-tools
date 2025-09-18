@@ -2611,7 +2611,7 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                     **kwargs,
                 )
                 new_setting_definitions = split_statements_to_definitions_with_options(
-                    all_requires + new_setting_statements, **kwargs
+                    all_requires_statements + new_setting_statements, **kwargs
                 )
                 new_setting_definitions = [
                     defn
