@@ -222,6 +222,7 @@ jobs:
         inputs: >-
           ./dist/*
 
+  # TODO: Fix permissions with https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
   bump-package-version:
     name: Bump package version
     runs-on: ubuntu-latest
@@ -251,6 +252,7 @@ jobs:
         git add pyproject.toml
         timestamp=$(date -u)
         git commit -m "Automated Package Version Bump: ${timestamp} ${GITHUB_SHA}"
+        # TODO: Fix permissions with https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
         if git push publisher master; then
           echo "Push successful"
         else
