@@ -53,7 +53,7 @@ CONDITIONAL_TESTS += \
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
 OTHER_RUNS = run-example-008.py
-IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh memoize.py
+IGNORE = prefix-grep.py disable-parallel-make.sh init-settings.sh init-simple-settings.sh memoize.py
 
 DEFAULT_LOGS = $(patsubst %,example_%_result.log,$(DEFAULT_TESTS))
 CONDITIONAL_LOGS = $(patsubst %,example_%_result.log,$(CONDITIONAL_TESTS))
@@ -330,7 +330,7 @@ print-support::
 	@printf "coqc installs stdlib .glob files:\t\tYes\n"
 
 
-COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell . "$(MAKEFILE_DIR)/init-settings.sh"; $${PYTHON} -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
+COQLIB_PRELUDE_GLOB_FILE_NEWER:=$(shell . "$(MAKEFILE_DIR)/init-simple-settings.sh"; $${PYTHON} -c 'import sys, os; m1, m2 = os.stat(os.sys.argv[1]).st_mtime, os.stat(os.sys.argv[2]).st_mtime; print(m1 < m2 or "%s <= %s" % (m2, m1))' "$(COQLIB_PRELUDE_V_FILE)" "$(COQLIB_PRELUDE_GLOB_FILE)" 2>&1)
 ifeq (True,$(strip $(COQLIB_PRELUDE_GLOB_FILE_NEWER)))
 test-suite: $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
 ENABLED_LOGS += $(ONLY_IF_SYS_GLOB_FILES_GOOD_LOGS)
