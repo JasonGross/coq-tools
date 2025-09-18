@@ -22,6 +22,7 @@ __all__ = [
     "parse_options_settings",
     "make_raw_set_options_commands",
     "make_set_options_commands",
+    "filter_check_options_after_success",
 ]
 
 
@@ -175,6 +176,7 @@ def filter_check_options_after_success(
 
 def parse_options_settings(output: str):
     output = f"\n{output}"
+    output = re.sub("\n +", "\n", output)
     # compat with Coq 8.4, 8.5, 8.6, 8.7
     output = output.replace("\nSynchronous options:", "\nOptions:").replace(
         "\nAsynchronous options:", ""
@@ -192,7 +194,7 @@ def parse_options_settings(output: str):
         for opt in options
         if opt.endswith("[DEPRECATED]")
     ]
-    options_settings = [opt.split(": ", maxsplit=1) for opt in options]
+    options_settings = [tuple(opt.split(": ", maxsplit=1)) for opt in options]
     return options_settings
 
 

@@ -18,6 +18,7 @@ from .split_file import split_coq_file_contents, split_leading_comments_and_whit
 from . import split_definitions
 from .split_definitions import (
     split_statements_to_definitions,
+    split_statements_to_definitions_with_options,
     join_definitions,
     get_preferred_passing,
 )
@@ -50,6 +51,7 @@ from .coq_running_support import (
     get_ltac_support_snippet,
     get_default_options_settings,
     get_raw_options_settings_and_values,
+    make_set_options_commands,
 )
 from .custom_arguments import (
     add_libname_arguments,
@@ -198,6 +200,12 @@ parser.add_argument(
     action=BooleanOptionalAction,
     default=None,
     help=("Be aggressive; try to remove _all_ definitions/lines."),
+)
+parser.add_argument(
+    "--remove-useless-option-settings",
+    action=BooleanOptionalAction,
+    default=None,
+    help=("Remove useless option settings."),
 )
 parser.add_argument(
     "--no-remove-typeclasses",
@@ -779,7 +787,11 @@ def adjust_no_error_defaults(args: argparse.Namespace):
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
-    for arg in ("add_proof_using_before_admit", "remove_non_definitions"):
+    for arg in (
+        "add_proof_using_before_admit",
+        "remove_non_definitions",
+        "remove_useless_option_settings",
+    ):
         if getattr(args, arg) is None:
             setattr(args, arg, args.should_succeed)
 
@@ -1858,6 +1870,10 @@ LTAC_REG = re.compile(
     rf"^\s*{LOCAL_GLOBAL_OR_ATTRIBUTES}(?:Ltac|Ltac2|Tactic)(?:\s+|$)",
     flags=re.MULTILINE,
 )
+SET_REG = re.compile(
+    r"^\s*(" + LOCAL_GLOBAL_OR_ATTRIBUTES + r")(?:Set|Unset)(?:\s+|$)",
+    flags=re.MULTILINE,
+)
 
 
 def try_remove_each_and_every_non_definition_line(
@@ -2596,29 +2612,38 @@ def try_lift_requires_insert_options(definitions, output_file_name, **kwargs):
     return definitions
 
 
-# def try_remove_duplicate_settings(definitions, output_file_name, **kwargs):
-#     all_requires = [
-#         definition
-#         for definition in definitions
-#         if definition_is_raw_require(definition)
-#     ]
-#     options_settings_and_values = get_raw_options_settings_and_values(
-#         kwargs["coqc"], after_contents=join_definitions(all_requires), **kwargs
-#     )
-#     # def transformer(cur_definition, rest_definitions):
+def try_remove_useless_option_settings(definitions, output_file_name, **kwargs):
+    # if we can't make use of options (proxy: nothing has registered options settings), then we skip removing them
+    if not any(definition.get("new_options") for definition in definitions):
+        kwargs["log"](
+            "Warning: No options settings known, skipping useless option removal"
+        )
+        return definitions
 
-#     return try_transform_reversed(
-#         definitions,
-#         output_file_name,
-#         (
-#             lambda definition, rest: None
-#             if ABORT_REG.search(definition["statement"])
-#             else definition
-#         ),
-#         noun_description="Aborted removal",
-#         verb_description="remove Aborts",
-#         **kwargs,
-#     )
+    # all_requires = [
+    #     definition
+    #     for definition in definitions
+    #     if definition_is_raw_require(definition)
+    # ]
+    # all_requires_contents = join_definitions(all_requires)
+    # options_settings_and_values = get_raw_options_settings_and_values(
+    #     kwargs["coqc"], after_contents=join_definitions(all_requires), **kwargs
+    # )
+    def transformer(cur_definition, rest_definitions):
+        set_match = SET_REG.match(cur_definition["statement"])
+        if not set_match or len(cur_definition["statements"]) != 1:
+            return cur_definition
+        if cur_definition.get("new_options"):
+            return cur_definition
+
+    return try_transform_reversed(
+        definitions,
+        output_file_name,
+        transformer,
+        noun_description="Useless option removal",
+        verb_description="remove useless options",
+        **kwargs,
+    )
 
 
 def try_split_requires(output_file_name, **kwargs):
@@ -3062,7 +3087,7 @@ def minimize_file(
     contents = read_from_file(output_file_name)
     statements = split_coq_file_contents(contents)
     env["log"]("I am using the following file: %s" % "\n".join(statements), level=3)
-    definitions = split_statements_to_definitions(statements, **env)
+    definitions = split_statements_to_definitions_with_options(statements, **env)
     env["log"](f"definitions: {definitions}", level=5)
     if not check_change_and_write_to_file(
         "",
@@ -3075,14 +3100,35 @@ def minimize_file(
         timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
         **env,
     ):
-        env["log"]("I will not be able to proceed.")
-        env["log"](
-            "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
-        )
-        return die(None, **env)
+        env["log"]("Splitting to definitions with options settings failed, skipping useless option settings removal")
+        env["remove_useless_option_settings"] = False
+        definitions = split_statements_to_definitions(statements, **env)
+        env["log"](f"definitions: {definitions}", level=5)
+        if not check_change_and_write_to_file(
+            "",
+            join_definitions(definitions),
+            output_file_name,
+            unchanged_message="Invalid empty file!",
+            success_message="Splitting to definitions (without options settings) successful.",
+            failure_description="split file to definitions (without options settings)",
+            changed_description="Split",
+            timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,
+            **env,
+        ):
+            env["log"]("I will not be able to proceed.")
+            env["log"](
+                "re.search(" + repr(env["error_reg_string"]) + ", <output above>)", level=2
+            )
+            return die(None, **env)
 
     if return_after_splitting:
         return True
+
+    if env["remove_useless_option_settings"]:
+        env["log"]("Definitions:", level=2)
+        env["log"](definitions, level=2)
+        env["log"]("\nI will now attempt to remove useless option settings")
+        definitions = try_remove_useless_option_settings(definitions, output_file_name, **env)
 
     if env["normalize_requires"]:
         env["log"]("Definitions:", level=2)
@@ -3838,6 +3884,7 @@ def main():
         "extra_verbose_newline": args.verbose_include_failure_warning_newline,
         "cli_mapping": get_parser_name_mapping(parser),
         "should_succeed": args.should_succeed,
+        "remove_useless_option_settings": args.remove_useless_option_settings,
         "remove_modules": args.remove_modules,
         "remove_sections": args.remove_sections,
         "remove_comments": args.remove_comments,
