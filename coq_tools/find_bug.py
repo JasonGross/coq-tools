@@ -2553,7 +2553,11 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
         for definition in definitions
         if lift_custom_entries and definition_is_custom_entry_declaration(definition)
     ]
-    all_requires_statements = [statement for definition in all_requires for statement in definition["statements"]]
+    all_requires_statements = [
+        statement
+        for definition in all_requires
+        for statement in definition["statements"]
+    ]
     all_requires_contents = join_definitions(all_requires)
     new_definitions_suffix = []
     init_new_options = []
@@ -2638,6 +2642,18 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
         " while inserting option settings" if insert_options else ""
     )
 
+    temp_file_base, temp_ext = os.path.splitext(kwargs["temp_file_name"])
+    temp_log_file_base, temp_log_ext = os.path.splitext(kwargs["temp_file_log_name"])
+    suffix = (
+        f"LiftRequires{custom_entry_decl_plural}{inserted_new_options_decl}".replace(
+            " ", "-"
+        )
+        .replace(",", "-")
+        .replace(".", "-")
+    )
+    temp_file_name = f"{temp_file_base}.{suffix}{temp_ext}.orig"
+    temp_log_file_name = f"{temp_log_file_base}.{suffix}{temp_log_ext}.orig"
+
     if (all_custom_entries or inserted_new_options) and check_change_and_write_to_file(
         join_definitions(definitions),
         join_definitions(new_definitions),
@@ -2645,7 +2661,14 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
         success_message=f"Require{custom_entry_decl_singular} lifting{inserted_new_options_decl} successful.",
         failure_description=f"lift Requires{custom_entry_decl_plural}{inserted_new_options_decl}",
         changed_description="Intermediate code",
-        **kwargs,
+        write_to_temp_file=True,
+        **(
+            kwargs
+            | {
+                "temp_file_name": temp_file_name,
+                "temp_file_log_name": temp_log_file_name,
+            }
+        ),
     ):
         return new_definitions
     return definitions
