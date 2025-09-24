@@ -1,6 +1,9 @@
-import os, sys, re
+import os
+import re
+import sys
 from difflib import SequenceMatcher
 from typing import List
+
 from .argparse_compat import argparse
 
 __all__ = [
@@ -175,7 +178,9 @@ else:
     shlex_quote = shlex.quote
 
 if sys.version_info < (3, 8):
-    shlex_join = lambda split_command: " ".join(shlex_quote(arg) for arg in split_command)
+    shlex_join = lambda split_command: " ".join(
+        shlex_quote(arg) for arg in split_command
+    )
 else:
     import shlex
 
@@ -237,7 +242,9 @@ def group_by(ls, f):
     return list(group_by_iter(ls, f))
 
 
-def list_diff(old_strs: List[str], new_strs: List[str], *, autojunk: bool = False) -> str:
+def list_diff(
+    old_strs: List[str], new_strs: List[str], *, autojunk: bool = False
+) -> str:
     """
     >>> old = ["line1", "line2", "line3", "line4"]
     >>> new = ["line1", "line3", "line4", "line5"]
