@@ -3,7 +3,7 @@ import re
 import sys
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Dict, Hashable, Iterable, List, Set, TypeVar
+from typing import Any, Dict, Generic, Hashable, Iterable, List, Set, TypeVar, Protocol
 
 from .argparse_compat import argparse
 
@@ -78,6 +78,7 @@ cmp_compat = cmp
 
 K = TypeVar("K")
 V = TypeVar("V")
+T = TypeVar("T")
 TH = TypeVar("TH", bound=Hashable)
 
 
@@ -299,8 +300,16 @@ def list_diff(
     return "\n".join(diff_lines)
 
 
+class TransitiveClosureDict(Generic[TH], Protocol):
+    def __getitem__(self, key: TH, /) -> Iterable[TH]: ...
+
+    def keys(self) -> Iterable[TH]: ...
+
+    def values(self) -> Iterable[Iterable[TH]]: ...
+
+
 def transitive_closure(
-    graph: Dict[TH, Iterable[TH]],
+    graph: TransitiveClosureDict[TH],
 ) -> Dict[TH, Set[TH]]:
     """
     Computes the transitive closure of a directed graph represented as an adjacency list.
