@@ -5,8 +5,6 @@ from .import_util import (
     filename_of_lib,
     lib_of_filename,
     get_file,
-    run_recursively_get_imports,
-    run_maybe_recursively_get_imports,
     recursively_get_imports,
     absolutize_has_all_constants,
     is_local_import,
@@ -211,7 +209,7 @@ def normalize_requires(filename, recursive_requires_explicit: bool = True, **kwa
         filename += ".v"
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = run_maybe_recursively_get_imports(lib, recursively=recursive_requires_explicit, **kwargs)
+    all_imports = recursively_get_imports(lib, recursively=recursive_requires_explicit, **kwargs)
 
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_name, **kwargs)
@@ -230,7 +228,7 @@ def recursively_get_requires_from_file(filename, **kwargs):
         filename += ".v"
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
-    return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
+    return tuple(recursively_get_imports(lib, **kwargs)[:-1])
 
 
 def include_imports(filename, as_modules=True, absolutize=ALL_ABSOLUTIZE_TUPLE, **kwargs):

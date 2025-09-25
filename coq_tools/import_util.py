@@ -44,8 +44,7 @@ __all__ = [
     "IMPORT_ABSOLUTIZE_TUPLE",
     "ALL_ABSOLUTIZE_TUPLE",
     "absolutize_has_all_constants",
-    "run_recursively_get_imports",
-    "run_maybe_recursively_get_imports",
+    "recursively_get_imports",
     "clear_libimport_cache",
     "get_byte_references_for",
     "sort_files_by_dependency",
@@ -1447,56 +1446,6 @@ def norm_libname(lib, **kwargs):
         return lib
 
 
-def merge_imports(imports, **kwargs):
-    kwargs = fill_kwargs(kwargs)
-    rtn = []
-    for import_list in imports:
-        for i in import_list:
-            if norm_libname(i, **kwargs) not in rtn:
-                rtn.append(norm_libname(i, **kwargs))
-    return rtn
-
-
-# This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
-@memoize
-def internal_recursively_get_imports(lib, **kwargs):
-    return run_recursively_get_imports(
-        lib, recur=internal_recursively_get_imports, **kwargs
-    )
-
-
-def recursively_get_imports(lib, **kwargs):
-    return internal_recursively_get_imports(lib, **safe_kwargs(kwargs))
-
-
-def run_recursively_get_imports(
-    lib, recur=recursively_get_imports, fast=False, **kwargs
-):
-    kwargs = fill_kwargs(kwargs)
-    lib = norm_libname(lib, **kwargs)
-    glob_name = filename_of_lib(lib, ext=".glob", **kwargs)
-    v_name = filename_of_lib(lib, ext=".v", **kwargs)
-    if os.path.isfile(v_name):
-        imports = get_imports(lib, fast=fast, **kwargs)
-        if not fast:
-            make_globs(imports, **kwargs)
-        imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
-        return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
-    return [lib]
-
-
-def run_maybe_recursively_get_imports(lib, recursively: bool = True, **kwargs):
-    recursive_imports = run_recursively_get_imports(lib, **kwargs)
-    if recursively:
-        return recursive_imports
-    else:
-        # keep the order of the recursive version, but only keep the elements in the non-recursive list
-        direct_imports = run_recursively_get_imports(
-            lib, recur=lambda lib, **_kwargs: [lib], **kwargs
-        )
-        return [lib for lib in recursive_imports if lib in direct_imports]
-
-
 class DepGraph(Dict[str, Tuple[str, ...]]):
     def __init__(self, *args, fast=False, **kwargs):
         super().__init__(*args)
@@ -1518,7 +1467,7 @@ class DepGraph(Dict[str, Tuple[str, ...]]):
         return self[key]
 
 
-def recursively_get_imports_(
+def recursively_get_imports(
     lib,
     sort_requires_by_component: bool = True,
     fast: bool = False,
