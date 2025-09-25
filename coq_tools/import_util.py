@@ -1446,7 +1446,7 @@ def norm_libname(lib, **kwargs):
         return lib
 
 
-class DepGraph(Dict[str, Tuple[str, ...]]):
+class DepGraph(OrderedDict[str, Tuple[str, ...]]):
     def __init__(self, *args, fast=False, **kwargs):
         super().__init__(*args)
         self._fast = fast

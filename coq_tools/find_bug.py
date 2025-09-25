@@ -4009,7 +4009,7 @@ def main():
         "remove_abort": args.remove_abort,
         "remove_ltac": args.remove_ltac,
         "remove_section_variables": args.remove_section_variables,
-        "sort_requires_by_component": args.sort_requires_by_component,
+        "try_sort_requires_by_component": args.sort_requires_by_component,
         "prefer_inline_via_include": args.prefer_inline_via_include,
         "export_modules": args.export_modules,
         "split_imports": args.split_imports,
