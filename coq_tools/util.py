@@ -316,11 +316,6 @@ def transitive_closure(
     for neighbors in graph.values():
         all_nodes.update(neighbors)
 
-    # Use defaultdict for graph to handle missing keys implicitly as empty iterables
-    adj = defaultdict(list)
-    for k, v in graph.items():
-        adj[k].extend(v)
-
     closure = {}
     for start in all_nodes:
         visited = set()
@@ -329,7 +324,7 @@ def transitive_closure(
             node = stack.pop()
             if node not in visited:
                 visited.add(node)
-                for neighbor in adj[node]:
+                for neighbor in graph.get(node, ()):
                     if neighbor not in visited:
                         stack.append(neighbor)
         closure[start] = visited
