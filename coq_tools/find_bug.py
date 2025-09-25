@@ -284,6 +284,13 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--sort-requires-by-component",
+    dest="sort_requires_by_component",
+    action=BooleanOptionalAction,
+    default=True,
+    help=("Sort Requires by component."),
+)
+parser.add_argument(
     "--no-deps",
     dest="use_coq_makefile_for_deps",
     action="store_const",
@@ -3545,7 +3552,7 @@ def inline_one_require(
         if include_options_settings or without_require:
             all_imports = get_recursive_require_names(
                 req_module, reverse=False, **kwargs
-            )  # like run_recursively_get_imports, but get_recursive_require_names also strips off the self module
+            )  # like recursively_get_imports, but get_recursive_require_names also strips off the self module
             require_statements = "".join("Require %s.\n" % i for i in all_imports)
             if without_require:
                 require_statements_before_replacement = "\n" + require_statements
@@ -4002,6 +4009,7 @@ def main():
         "remove_abort": args.remove_abort,
         "remove_ltac": args.remove_ltac,
         "remove_section_variables": args.remove_section_variables,
+        "sort_requires_by_component": args.sort_requires_by_component,
         "prefer_inline_via_include": args.prefer_inline_via_include,
         "export_modules": args.export_modules,
         "split_imports": args.split_imports,
