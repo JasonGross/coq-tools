@@ -1,8 +1,9 @@
 import os
 import re
 import sys
+from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import List
+from typing import Dict, Hashable, Iterable, List, Set, TypeVar
 
 from .argparse_compat import argparse
 
@@ -23,6 +24,7 @@ __all__ = [
     "shlex_join",
     "resource_path",
     "group_by",
+    "transitive_closure",
 ]
 
 BooleanOptionalAction = argparse.BooleanOptionalAction
@@ -73,6 +75,10 @@ else:
     re_escape = re.escape
 
 cmp_compat = cmp
+
+K = TypeVar("K")
+V = TypeVar("V")
+TH = TypeVar("TH", bound=Hashable)
 
 
 def prompt(
@@ -291,6 +297,44 @@ def list_diff(
                 diff_lines.append("+ " + new_strs[j])
 
     return "\n".join(diff_lines)
+
+
+def transitive_closure(
+    graph: Dict[TH, Iterable[TH]],
+) -> Dict[TH, Set[TH]]:
+    """
+    Computes the transitive closure of a directed graph represented as an adjacency list.
+
+    The input is a dictionary where keys are nodes and values are iterables of neighboring nodes.
+    The output is a dictionary where each key is a node and the value is the set of all reachable nodes
+    from that key, including itself.
+
+    This implementation uses iterative DFS for each starting node to handle large graphs and avoid recursion depth issues.
+    """
+    # Collect all nodes (keys and those appearing in values)
+    all_nodes = set(graph.keys())
+    for neighbors in graph.values():
+        all_nodes.update(neighbors)
+
+    # Use defaultdict for graph to handle missing keys implicitly as empty iterables
+    adj = defaultdict(list)
+    for k, v in graph.items():
+        adj[k].extend(v)
+
+    closure = {}
+    for start in all_nodes:
+        visited = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node not in visited:
+                visited.add(node)
+                for neighbor in adj[node]:
+                    if neighbor not in visited:
+                        stack.append(neighbor)
+        closure[start] = visited
+
+    return closure
 
 
 if __name__ == "__main__":
