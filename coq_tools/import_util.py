@@ -9,7 +9,8 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from typing import Dict, Set, List, Tuple
 from functools import cmp_to_key
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from .memoize import memoize
 from .split_file import get_coq_statement_byte_ranges, split_coq_file_contents
 from .strip_comments import strip_comments, strip_trailing_comments
-from .util import cmp_compat as cmp
+from .util import cmp_compat as cmp, transitive_closure
 from .util import shlex_join, shlex_quote
 
 __all__ = [
@@ -43,8 +44,7 @@ __all__ = [
     "IMPORT_ABSOLUTIZE_TUPLE",
     "ALL_ABSOLUTIZE_TUPLE",
     "absolutize_has_all_constants",
-    "run_recursively_get_imports",
-    "run_maybe_recursively_get_imports",
+    "recursively_get_imports",
     "clear_libimport_cache",
     "get_byte_references_for",
     "sort_files_by_dependency",
@@ -1405,7 +1405,7 @@ def sort_files_by_dependency(filenames, reverse=True, **kwargs):
     return filenames
 
 
-def get_imports(lib, fast=False, **kwargs):
+def get_imports(lib, fast=False, **kwargs) -> Tuple[str, ...]:
     kwargs = fill_kwargs(kwargs)
     lib = norm_libname(lib, **kwargs)
     glob_name = filename_of_lib(lib, ext=".glob", **kwargs)
@@ -1446,53 +1446,104 @@ def norm_libname(lib, **kwargs):
         return lib
 
 
-def merge_imports(imports, **kwargs):
-    kwargs = fill_kwargs(kwargs)
-    rtn = []
-    for import_list in imports:
-        for i in import_list:
-            if norm_libname(i, **kwargs) not in rtn:
-                rtn.append(norm_libname(i, **kwargs))
-    return rtn
+class DepGraph(OrderedDict[str, Tuple[str, ...]]):
+    def __init__(self, *args, fast=False, **kwargs):
+        super().__init__(*args)
+        self._fast = fast
+        self._kwargs = fill_kwargs(kwargs)
+
+    def __missing__(self, key):
+        lib = norm_libname(key, **self._kwargs)
+        if key != lib:
+            return self[lib]
+        v_name = filename_of_lib(lib, ext=".v", **self._kwargs)
+        self[lib] = ()
+        if os.path.isfile(v_name):
+            imports = get_imports(lib, fast=self._fast, **self._kwargs)
+            if not self._fast:
+                make_globs(imports, **self._kwargs)
+            self[lib] = imports
+
+        return self[key]
 
 
-# This is a bottleneck for more than around 10,000 lines of code total with many imports (around 100)
-@memoize
-def internal_recursively_get_imports(lib, **kwargs):
-    return run_recursively_get_imports(
-        lib, recur=internal_recursively_get_imports, **kwargs
-    )
-
-
-def recursively_get_imports(lib, **kwargs):
-    return internal_recursively_get_imports(lib, **safe_kwargs(kwargs))
-
-
-def run_recursively_get_imports(
-    lib, recur=recursively_get_imports, fast=False, **kwargs
+def recursively_get_imports(
+    lib,
+    sort_requires_by_component: bool = True,
+    fast: bool = False,
+    recursively: bool = True,
+    **kwargs,
 ):
-    kwargs = fill_kwargs(kwargs)
-    lib = norm_libname(lib, **kwargs)
-    glob_name = filename_of_lib(lib, ext=".glob", **kwargs)
-    v_name = filename_of_lib(lib, ext=".v", **kwargs)
-    if os.path.isfile(v_name):
-        imports = get_imports(lib, fast=fast, **kwargs)
-        if not fast:
-            make_globs(imports, **kwargs)
-        imports_list = [recur(k, fast=fast, **kwargs) for k in imports]
-        return merge_imports(tuple(map(tuple, imports_list + [[lib]])), **kwargs)
-    return [lib]
+    dep_graph = DepGraph(fast=fast, **kwargs)
+    direct_imports = dep_graph[lib]
+    recur_dep_graph = transitive_closure(dep_graph)
+    # Create sorted list of recursive imports
+    all_libs = list(recur_dep_graph.keys())
 
+    def compare_libs(d1, d2):
+        if d1 == d2:
+            return 0
 
-def run_maybe_recursively_get_imports(lib, recursively: bool = True, **kwargs):
-    recursive_imports = run_recursively_get_imports(lib, **kwargs)
+        # Primary ordering: d1 comes before d2 if d1 in recur_dep_graph[d2]
+        if d1 in recur_dep_graph[d2]:
+            return -1
+        if d2 in recur_dep_graph[d1]:
+            return 1
+
+        # Intermediate tie-breaker: component-based comparison if sort_requires_by_component
+        if sort_requires_by_component:
+            d1_parts = d1.split(".")
+            d2_parts = d2.split(".")
+
+            # Find first non-equal component
+            min_len = min(len(d1_parts), len(d2_parts))
+            first_diff_idx = None
+            for i in range(min_len):
+                if d1_parts[i] != d2_parts[i]:
+                    first_diff_idx = i
+                    break
+
+            if first_diff_idx is not None:
+                # Check if there exist d1', d2' where:
+                # - d1.split(".")[i] == d1'.split(".")[i] for all i < first_diff_idx
+                # - d2.split(".")[i] == d2'.split(".")[i] for all i < first_diff_idx
+                # - d1' in recur_dep_graph[d2']
+                prefix1 = d1_parts[:first_diff_idx]
+                prefix2 = d2_parts[:first_diff_idx]
+
+                for d1_prime in all_libs:
+                    d1_prime_parts = d1_prime.split(".")
+                    if (
+                        len(d1_prime_parts) > first_diff_idx
+                        and d1_prime_parts[:first_diff_idx] == prefix1
+                    ):
+                        for d2_prime in all_libs:
+                            d2_prime_parts = d2_prime.split(".")
+                            if (
+                                len(d2_prime_parts) > first_diff_idx
+                                and d2_prime_parts[:first_diff_idx] == prefix2
+                            ):
+                                if d1_prime in recur_dep_graph[d2_prime]:
+                                    return -1
+                                elif d2_prime in recur_dep_graph[d1_prime]:
+                                    return 1
+
+        # Final tie-breaker: lexicographic comparison of split components
+        d1_parts = d1.split(".")
+        d2_parts = d2.split(".")
+        if d1_parts < d2_parts:
+            return -1
+        elif d1_parts > d2_parts:
+            return 1
+        else:
+            return 0
+
+    recursive_imports = sorted(all_libs, key=cmp_to_key(compare_libs))
+
     if recursively:
         return recursive_imports
     else:
         # keep the order of the recursive version, but only keep the elements in the non-recursive list
-        direct_imports = run_recursively_get_imports(
-            lib, recur=lambda lib, **_kwargs: [lib], **kwargs
-        )
         return [lib for lib in recursive_imports if lib in direct_imports]
 
 
