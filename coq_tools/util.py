@@ -1,9 +1,8 @@
 import os
 import re
 import sys
-from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Any, Dict, Generic, Hashable, Iterable, List, Set, TypeVar, Protocol
+from typing import Any, Callable, Dict, Generic, Hashable, Iterable, List, Literal, Set, TypeVar, Protocol
 
 from .argparse_compat import argparse
 
@@ -301,7 +300,7 @@ def list_diff(
 
 
 class TransitiveClosureDict(Generic[TH], Protocol):
-    def __getitem__(self, key: TH, /) -> Iterable[TH]: ...
+    def __getitem__(self, key: TH) -> Iterable[TH]: ...
 
     def keys(self) -> Iterable[TH]: ...
 
