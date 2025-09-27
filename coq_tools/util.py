@@ -2,7 +2,7 @@ import os
 import re
 import sys
 from difflib import SequenceMatcher
-from typing import Any, Callable, Dict, Generic, Hashable, Iterable, List, Literal, Set, TypeVar, Protocol
+from typing import Dict, Generic, Hashable, Iterable, List, Set, TypeVar, Protocol
 
 from .argparse_compat import argparse
 
