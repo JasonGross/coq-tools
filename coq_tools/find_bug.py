@@ -2592,7 +2592,7 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 new_setting_definitions = [
                     defn
                     for defn in new_setting_definitions
-                    if not definition_is_raw_require(defn) and defn["new_options"]
+                    if not definition_is_raw_require(defn) and defn.get("new_options")
                 ]
                 if new_setting_definitions:
                     inserted_new_options = True
