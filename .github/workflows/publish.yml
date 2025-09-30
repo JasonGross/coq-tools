@@ -232,37 +232,46 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: read
 
     steps:
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ vars.VERSION_BUMPER_APPID }}
+        private-key: ${{ secrets.VERSION_BUMPER_SECRET }}
     - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        token: ${{ steps.app-token.outputs.token }}
     - name: Bump Package version
       id: bumpPackageViaPush
       run: |
         etc/ci/bump-package-version.sh
-        remote_repo="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        # remote_repo="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
         git config http.sslVerify false
         git config user.name "Automated Publisher"
         git config user.email "actions@users.noreply.github.com"
-        git remote add publisher "${remote_repo}"
+        # git remote add publisher "${remote_repo}"
         git remote update
         git show-ref # useful for debugging
         git branch --verbose
 
         git checkout -b temp
         git branch -D master || true
-        git checkout -b master publisher/master
+        git checkout -b master origin/master
         git add pyproject.toml
         timestamp=$(date -u)
         git commit -m "Automated Package Version Bump: ${timestamp} ${GITHUB_SHA}"
         # TODO: Fix permissions with https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
-        if git push publisher master; then
+        if git push origin master; then
           echo "Push successful"
         else
           # If the push fails, get the short SHA of the latest commit
           SHORT_SHA=$(git rev-parse --short HEAD)
           # Create and push to a new branch
           git checkout -b package-version-bump-$SHORT_SHA
-          git push --set-upstream publisher package-version-bump-$SHORT_SHA
+          git push --set-upstream origin package-version-bump-$SHORT_SHA
           FAILURE_MESSAGE="PR creation failed"
           # Locate workflow file, remove the Git ref at the end
           WORKFLOW_PATH="${GITHUB_WORKFLOW_REF%@*}"
@@ -291,3 +300,4 @@ jobs:
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
