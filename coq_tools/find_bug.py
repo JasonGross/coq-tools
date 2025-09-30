@@ -1838,6 +1838,7 @@ EXTRA_DEFINITION_ISH = "|".join(
         "Conjecture",
     ]
     + ["Instance", "Derive", "Declare"]
+    + ["Function"]
 )
 
 LOCAL_GLOBAL_OR_ATTRIBUTES = (
