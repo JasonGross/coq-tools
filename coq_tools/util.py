@@ -1,9 +1,13 @@
 import os
 import re
 import sys
-from collections import defaultdict
 from difflib import SequenceMatcher
 from typing import Dict, Hashable, Iterable, List, Set, TypeVar
+
+try:
+    from typing import Protocol
+except ImportError:
+    Protocol = None
 
 from .argparse_compat import argparse
 
@@ -78,6 +82,7 @@ cmp_compat = cmp
 
 K = TypeVar("K")
 V = TypeVar("V")
+T = TypeVar("T")
 TH = TypeVar("TH", bound=Hashable)
 
 
@@ -297,6 +302,24 @@ def list_diff(
                 diff_lines.append("+ " + new_strs[j])
 
     return "\n".join(diff_lines)
+
+
+# if Protocol is not None:
+
+#     class _TransitiveClosureDict(Generic[TH], Protocol):
+#         def __getitem__(self, key: TH) -> Iterable[TH]: ...
+
+#         def keys(self) -> Iterable[TH]: ...
+
+#         def values(self) -> Iterable[Iterable[TH]]: ...
+
+#     TransitiveClosureDict = _TransitiveClosureDict
+# else:
+
+#     class _TransitiveClosureDictOld(Generic[TH], Dict[TH, Iterable[TH]]):
+#         pass
+
+#     TransitiveClosureDict = _TransitiveClosureDictOld
 
 
 def transitive_closure(
