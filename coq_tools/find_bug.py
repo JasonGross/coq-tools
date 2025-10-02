@@ -1850,6 +1850,7 @@ def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
     return re.compile(
         r"^\s*"
         + LOCAL_GLOBAL_OR_ATTRIBUTES
+        + r"(?:Program\s+)?"
         + r"(?:"
         + EXTRA_DEFINITION_ISH
         + r"|Set\s+Universe\s+Polymorphism"
