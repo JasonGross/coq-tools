@@ -284,6 +284,13 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--sort-requires-by-component",
+    dest="sort_requires_by_component",
+    action=BooleanOptionalAction,
+    default=True,
+    help=("Sort Requires by component."),
+)
+parser.add_argument(
     "--no-deps",
     dest="use_coq_makefile_for_deps",
     action="store_const",
@@ -2521,23 +2528,50 @@ def try_remove_duplicate_requires(definitions, output_file_name, **kwargs):
     return definitions
 
 
-def try_normalize_requires(output_file_name, **kwargs):
+def try_normalize_requires(
+    output_file_name, try_sort_requires_by_component: bool = False, **kwargs
+):
     contents = read_from_file(output_file_name)
     old_contents = contents
     # we need to clear the libimport cache to get an accurate list of requires
     clear_libimport_cache(lib_of_filename(output_file_name, **kwargs))
-    new_contents = normalize_requires(output_file_name, update_globs=True, **kwargs)
+    new_contents = normalize_requires(
+        output_file_name,
+        update_globs=True,
+        sort_requires_by_component=try_sort_requires_by_component,
+        **kwargs,
+    )
 
-    return check_change_and_write_to_file(
+    extra_desc = " (sorting by component)" if try_sort_requires_by_component else ""
+
+    if check_change_and_write_to_file(
         old_contents,
         new_contents,
         output_file_name,
         unchanged_message="No Requires to normalize.",
-        success_message="Succeeded in normalizing Requires.",
-        failure_description="normalize Requires",
-        changed_descruption="Normalized Requires file",
+        success_message=f"Succeeded in normalizing Requires{extra_desc}.",
+        failure_description=f"normalize Requires{extra_desc}",
+        changed_description=f"Normalized Requires file{extra_desc}",
         **kwargs,
-    )
+    ):
+        return True
+    if try_sort_requires_by_component:
+        new_contents = normalize_requires(
+            output_file_name,
+            update_globs=True,
+            sort_requires_by_component=False,
+            **kwargs,
+        )
+        return check_change_and_write_to_file(
+            old_contents,
+            new_contents,
+            output_file_name,
+            success_message="Succeeded in normalizing Requires (without sorting by component).",
+            failure_description="normalize Requires (without sorting by component)",
+            changed_description="Normalized Requires file (without sorting by component)",
+            **kwargs,
+        )
+    return False
 
 
 def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options(
@@ -4002,6 +4036,7 @@ def main():
         "remove_abort": args.remove_abort,
         "remove_ltac": args.remove_ltac,
         "remove_section_variables": args.remove_section_variables,
+        "try_sort_requires_by_component": args.sort_requires_by_component,
         "prefer_inline_via_include": args.prefer_inline_via_include,
         "export_modules": args.export_modules,
         "split_imports": args.split_imports,
