@@ -10,7 +10,8 @@ def DEFAULT_LOG(text, level=1):
 
 TERM_CHAR = r"[\w']"
 ABSTRACT_NO_PARENS_DOT = re.compile(
-    r"(^\s*|\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s|\.$)" % TERM_CHAR, re.MULTILINE
+    r"(^\s*|\.\s+|;\s*)abstract\s+(?:[^\(\);\.]|\.%s)+(?=\.\s|\.$)" % TERM_CHAR,
+    re.MULTILINE,
 )
 
 
@@ -50,7 +51,10 @@ def transform_abstract_to_admit_statement(statement, aggressive=False, log=DEFAU
                 cur = []
                 log("Setting in_abstract to false and emptying cur", level=3)
             elif abstract_paren_level < 0:
-                log("Warning: abstract_paren_level messed up on statement %s" % repr(statement))
+                log(
+                    "Warning: abstract_paren_level messed up on statement %s"
+                    % repr(statement)
+                )
                 in_abstract = False
                 cur.append(term)
                 rtn.append("".join(cur))
@@ -68,23 +72,36 @@ def transform_abstract_to_admit_statement(statement, aggressive=False, log=DEFAU
                     abstract_paren_level -= 1
                 cur.append(term)
                 log(
-                    "Setting abstract_paren_level to %d and\nappending %s to cur" % (abstract_paren_level, repr(term)),
+                    "Setting abstract_paren_level to %d and\nappending %s to cur"
+                    % (abstract_paren_level, repr(term)),
                     level=3,
                 )
         else:
             if ready_for_abstract and term.strip() == "abstract":
                 cur.append(term)
                 in_abstract = True
-                log("Found %s (appending to cur), now in_abstract" % repr(term), level=3)
+                log(
+                    "Found %s (appending to cur), now in_abstract" % repr(term), level=3
+                )
                 if abstract_paren_level != 0:
-                    log("Warning: abstract_paren_level messed up before abstract on statement %s" % repr(statement))
+                    log(
+                        "Warning: abstract_paren_level messed up before abstract on statement %s"
+                        % repr(statement)
+                    )
                     abstract_paren_level = 0
             else:
                 if term in tuple(".;"):
-                    log("Found %s (appending to rtn), ready for abstract" % repr(term), level=3)
+                    log(
+                        "Found %s (appending to rtn), ready for abstract" % repr(term),
+                        level=3,
+                    )
                     ready_for_abstract = True
                 elif term.strip():
-                    log("Found %s (appending to rtn), not ready for abstract" % repr(term), level=3)
+                    log(
+                        "Found %s (appending to rtn), not ready for abstract"
+                        % repr(term),
+                        level=3,
+                    )
                     ready_for_abstract = False
                 rtn.append(term)
     log("Done.  Appending %s to rtn." % repr("".join(cur)), level=3)
@@ -97,7 +114,8 @@ def transform_abstract_to_admit(cur_definition, rest_definitions, **kwargs):
     # shallow copy
     cur_definition = dict(cur_definition)
     cur_definition["statements"] = tuple(
-        transform_abstract_to_admit_statement(i, **kwargs) for i in cur_definition["statements"]
+        transform_abstract_to_admit_statement(i, **kwargs)
+        for i in cur_definition["statements"]
     )
     cur_definition["statement"] = "\n".join(cur_definition["statements"])
     return cur_definition
