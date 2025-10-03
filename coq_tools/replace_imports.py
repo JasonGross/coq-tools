@@ -1,19 +1,21 @@
-from __future__ import with_statement, print_function
+from __future__ import print_function, with_statement
+
 import re
-from .split_file import split_leading_comments_and_whitespace
-from .import_util import (
-    filename_of_lib,
-    lib_of_filename,
-    get_file,
-    run_recursively_get_imports,
-    run_maybe_recursively_get_imports,
-    recursively_get_imports,
-    absolutize_has_all_constants,
-    is_local_import,
-    ALL_ABSOLUTIZE_TUPLE,
-)
-from .custom_arguments import DEFAULT_LOG
+
 from .coq_running_support import get_reserved_modnames
+from .custom_arguments import DEFAULT_LOG
+from .import_util import (
+    ALL_ABSOLUTIZE_TUPLE,
+    absolutize_has_all_constants,
+    filename_of_lib,
+    get_file,
+    is_local_import,
+    lib_of_filename,
+    recursively_get_imports,
+    run_maybe_recursively_get_imports,
+    run_recursively_get_imports,
+)
+from .split_file import split_leading_comments_and_whitespace
 
 __all__ = [
     "include_imports",
@@ -48,9 +50,13 @@ def fill_kwargs(kwargs, for_makefile=True):
     }
     rtn.update(kwargs)
     if for_makefile:
-        if "make_coqc" in rtn.keys():  # handle the case where coqc for the makefile is different
+        if (
+            "make_coqc" in rtn.keys()
+        ):  # handle the case where coqc for the makefile is different
             rtn["coqc"] = rtn["make_coqc"]
-        if "passing_make_coqc" in rtn.keys():  # handle the case where coqc for the makefile is different
+        if (
+            "passing_make_coqc" in rtn.keys()
+        ):  # handle the case where coqc for the makefile is different
             rtn["passing_coqc"] = rtn["passing_make_coqc"]
     return rtn
 
@@ -59,7 +65,10 @@ def contents_without_imports(lib, **kwargs):
     v_file = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_file, **kwargs)
     if "(*" in " ".join(IMPORT_LINE_REG.findall(contents)):
-        print("Warning: There are comments in your Require/Import/Export lines in %s." % v_file)
+        print(
+            "Warning: There are comments in your Require/Import/Export lines in %s."
+            % v_file
+        )
     return IMPORT_LINE_REG.sub("", contents)
 
 
@@ -94,15 +103,32 @@ def construct_import_list(import_libs, import_all_directories=False, **kwargs):
 
     if import_all_directories:
         lib_components_list = [
-            (libname, tuple(reversed(list(nest_iter_up_to(map(escape_lib_local, libname.split("."))))[:-1])))
+            (
+                libname,
+                tuple(
+                    reversed(
+                        list(
+                            nest_iter_up_to(map(escape_lib_local, libname.split(".")))
+                        )[:-1]
+                    )
+                ),
+            )
             for libname in import_libs
         ]
         ret = list(map(escape_lib_local, import_libs))
         lib_components = [
-            (libname, i, max(map(len, lst)) - len(i)) for libname, lst in lib_components_list for i in lst
+            (libname, i, max(map(len, lst)) - len(i))
+            for libname, lst in lib_components_list
+            for i in lst
         ]
-        for libname, components, components_left in reversed(sorted(lib_components, key=(lambda x: x[2]))):
-            ret.append(escape_lib_local(libname) + "." + ".".join(map(escape_lib_local, components)))
+        for libname, components, components_left in reversed(
+            sorted(lib_components, key=(lambda x: x[2]))
+        ):
+            ret.append(
+                escape_lib_local(libname)
+                + "."
+                + ".".join(map(escape_lib_local, components))
+            )
         return ret
     else:
         return map(escape_lib_local, import_libs)
@@ -111,12 +137,18 @@ def construct_import_list(import_libs, import_all_directories=False, **kwargs):
 def strip_requires(contents):
     reg1 = re.compile(r"^\s*Require\s+((?:Import|Export)\s)", flags=re.MULTILINE)
     contents = reg1.sub(r"\1", contents)
-    reg2 = re.compile(r"^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))", flags=re.MULTILINE)
+    reg2 = re.compile(
+        r"^\s*Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))",
+        flags=re.MULTILINE,
+    )
     contents = reg2.sub(r"", contents)
-    reg3 = re.compile(r"^\s*(From\s+[^\s]+\s+)Require\s+((?:Import|Export)\s)", flags=re.MULTILINE)
+    reg3 = re.compile(
+        r"^\s*(From\s+[^\s]+\s+)Require\s+((?:Import|Export)\s)", flags=re.MULTILINE
+    )
     contents = reg3.sub(r"\1\2", contents)
     reg4 = re.compile(
-        r"^\s*(From\s+[^\s]+\s+)Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))", flags=re.MULTILINE
+        r"^\s*(From\s+[^\s]+\s+)Require\s+((?!Import\s+|Export\s+)(?:[^\.]|\.(?!\s|$))+\.(?:\s|$))",
+        flags=re.MULTILINE,
     )
     contents = reg4.sub(r"", contents)
     return contents
@@ -143,8 +175,10 @@ def get_module_name_and_lib_parts(lib, first_wrap_then_include=False, **kwargs):
 
 
 def absolutize_and_mangle_libname(lib, first_wrap_then_include=False, **kwargs):
-    module_name, mangled_module_name, lib_parts, full_module_name = get_module_name_and_lib_parts(
-        lib, first_wrap_then_include=first_wrap_then_include, **kwargs
+    module_name, mangled_module_name, lib_parts, full_module_name = (
+        get_module_name_and_lib_parts(
+            lib, first_wrap_then_include=first_wrap_then_include, **kwargs
+        )
     )
     return full_module_name
 
@@ -165,7 +199,9 @@ def contents_as_module(
         # that we use to fix
         # https://github.com/JasonGross/coq-tools/issues/67, so we disable it
         first_wrap_then_include = False
-        transform_base = lambda x: (escape_lib(x, **kwargs) + "." + x if is_local_import(x, **kwargs) else x)
+        transform_base = lambda x: (
+            escape_lib(x, **kwargs) + "." + x if is_local_import(x, **kwargs) else x
+        )
     else:
         transform_base = lambda x: x
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
@@ -180,7 +216,9 @@ def contents_as_module(
     if len(other_imports) > 0 and not export:
         # we need to import the contents in the correct order.  Namely, if we have a module whose name is also the name of a directory (in the same folder), we want to import the file first.
         for imp in reversed(
-            construct_import_list(other_imports, import_all_directories=import_all_directories, **kwargs)
+            construct_import_list(
+                other_imports, import_all_directories=import_all_directories, **kwargs
+            )
         ):
             contents = "Import %s.\n%s" % (imp, contents)
     # insert extra_top_header, e.g., Import Coq.Init.Prelude., at the top of the file
@@ -191,14 +229,32 @@ def contents_as_module(
     if extra_contents_inside_module:
         contents = extra_contents_inside_module + "\n" + contents
     early_contents = ""
-    if first_wrap_then_include:  # works around https://github.com/JasonGross/coq-tools/issues/67
-        early_contents, contents = contents, "Include %s.%s." % (mangled_module_name, lib_parts[-1])
-        early_contents = "Module %s.\n%s\nEnd %s.\n" % (lib_parts[-1], early_contents, lib_parts[-1])
-        early_contents = "Module %s.\n%s\nEnd %s.\n" % (mangled_module_name, early_contents, mangled_module_name)
+    if (
+        first_wrap_then_include
+    ):  # works around https://github.com/JasonGross/coq-tools/issues/67
+        early_contents, contents = (
+            contents,
+            "Include %s.%s." % (mangled_module_name, lib_parts[-1]),
+        )
+        early_contents = "Module %s.\n%s\nEnd %s.\n" % (
+            lib_parts[-1],
+            early_contents,
+            lib_parts[-1],
+        )
+        early_contents = "Module %s.\n%s\nEnd %s.\n" % (
+            mangled_module_name,
+            early_contents,
+            mangled_module_name,
+        )
     contents = "Module %s.\n%s\nEnd %s.\n" % (lib_parts[-1], contents, lib_parts[-1])
     for name in reversed(lib_parts[:-1]):
         contents = "Module %s%s.\n%s\nEnd %s.\n" % (maybe_export, name, contents, name)
-    contents = "Module %s%s.\n%s\nEnd %s.\n" % (maybe_export, module_name, contents, module_name)
+    contents = "Module %s%s.\n%s\nEnd %s.\n" % (
+        maybe_export,
+        module_name,
+        contents,
+        module_name,
+    )
     return early_contents + contents
 
 
@@ -211,18 +267,27 @@ def normalize_requires(filename, recursive_requires_explicit: bool = True, **kwa
         filename += ".v"
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = run_maybe_recursively_get_imports(lib, recursively=recursive_requires_explicit, **kwargs)
+    all_imports = run_maybe_recursively_get_imports(
+        lib, recursively=recursive_requires_explicit, **kwargs
+    )
 
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_name, **kwargs)
     header, contents = split_leading_comments_and_whitespace(contents)
     contents = strip_requires(contents)
-    contents = "".join("Require %s.\n" % i for i in all_imports[:-1]) + "\n" + contents.strip() + "\n"
+    contents = (
+        "".join("Require %s.\n" % i for i in all_imports[:-1])
+        + "\n"
+        + contents.strip()
+        + "\n"
+    )
     return header + contents
 
 
 def get_required_contents(libname, **kwargs):
-    return contents_as_module(libname, other_imports=[], export=True, **fill_kwargs(kwargs))
+    return contents_as_module(
+        libname, other_imports=[], export=True, **fill_kwargs(kwargs)
+    )
 
 
 def recursively_get_requires_from_file(filename, **kwargs):
@@ -233,7 +298,9 @@ def recursively_get_requires_from_file(filename, **kwargs):
     return tuple(run_recursively_get_imports(lib, **kwargs)[:-1])
 
 
-def include_imports(filename, as_modules=True, absolutize=ALL_ABSOLUTIZE_TUPLE, **kwargs):
+def include_imports(
+    filename, as_modules=True, absolutize=ALL_ABSOLUTIZE_TUPLE, **kwargs
+):
     """Return the contents of filename, with any top-level imports inlined.
 
     If as_modules == True, then the imports will be wrapped in modules.
@@ -301,7 +368,10 @@ def include_imports(filename, as_modules=True, absolutize=ALL_ABSOLUTIZE_TUPLE, 
                     + "\n"
                 )
             else:
-                rtn += contents_without_imports(import_name, absolutize=(), **kwargs) + "\n"
+                rtn += (
+                    contents_without_imports(import_name, absolutize=(), **kwargs)
+                    + "\n"
+                )
             imports_done.append(import_name)
         except IOError:
             remaining_imports.append(import_name)
