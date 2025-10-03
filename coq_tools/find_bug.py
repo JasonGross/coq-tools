@@ -1082,7 +1082,7 @@ def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwa
 
 INSTANCE_REG = re.compile(r"(?<![\w'])Instance\s")
 CANONICAL_STRUCTURE_REG = re.compile(r"(?<![\w'])Canonical\s+Structure\s")
-TC_HINT_REG = re.compile("(?<![\w'])Hint\s")
+TC_HINT_REG = re.compile(r"(?<![\w'])Hint\s")
 
 
 def get_header_dict(contents, old_header=None, original_line_count=0, **env):

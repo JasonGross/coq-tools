@@ -27,7 +27,7 @@ def transform_abstract_to_admit_statement(statement, aggressive=False, log=DEFAU
     abstract_paren_level = 0
     rtn = []
     cur = []
-    for term in re.split("([;\.\(\)])", statement):
+    for term in re.split(r"([;\.\(\)])", statement):
         log(
             "in_abstract: %d; abstract_paren_level: %d; aggressive: %d; ready_for_abstract: %d;\n^term: %s"
             % (in_abstract, abstract_paren_level, aggressive, ready_for_abstract, term),
