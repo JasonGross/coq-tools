@@ -9,10 +9,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections import OrderedDict
+# from collections import OrderedDict
 from functools import cmp_to_key, partial
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, OrderedDict, Tuple
 
 from . import util
 from .coq_version import (
