@@ -1839,6 +1839,7 @@ EXTRA_DEFINITION_ISH = "|".join(
     ]
     + ["Instance", "Derive", "Declare"]
     + ["Function"]
+    + ["Notation"]
 )
 
 LOCAL_GLOBAL_OR_ATTRIBUTES = (
@@ -1846,7 +1847,7 @@ LOCAL_GLOBAL_OR_ATTRIBUTES = (
 )
 
 
-def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
+def make_EXTRA_DEFINITION_ISH_REG(with_hints: bool):
     return re.compile(
         r"^\s*"
         + LOCAL_GLOBAL_OR_ATTRIBUTES
@@ -1857,10 +1858,11 @@ def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
         + r"|Unet\s+Universe\s+Polymorphism"
         + r"|Require|Import|Export|Include"
         + r"|Section|Module|End"
+        + r"|Obligation\s+[0-9]+|Next\s+Obligation"
         + r"|Set"
         + (
-            r"|Hint|Obligation\s+Tactic|Arguments|Transparent|Opaque|Strategy"
-            if not remove_hints
+            r"|Hint|Obligation\s+Tactic|Arguments|Transparent|Opaque|Strategy|Existing\s+Instance"
+            if not with_hints
             else ""
         )
         + r")(?:\.\s+|\.$|\s+|$)",
@@ -1868,8 +1870,8 @@ def make_EXTRA_DEFINITION_ISH_REG(remove_hints: bool):
     )
 
 
-EXTRA_DEFINITION_ISH_REG = make_EXTRA_DEFINITION_ISH_REG(remove_hints=False)
-EXTRA_DEFINITION_ISH_REG_WITH_HINTS = make_EXTRA_DEFINITION_ISH_REG(remove_hints=True)
+EXTRA_DEFINITION_ISH_REG = make_EXTRA_DEFINITION_ISH_REG(with_hints=False)
+EXTRA_DEFINITION_ISH_REG_WITH_HINTS = make_EXTRA_DEFINITION_ISH_REG(with_hints=True)
 
 SECTION_REG = re.compile(r"^\s*(?:Section|Module|End)(?:\s+|$)", flags=re.MULTILINE)
 DECLARE_CUSTOM_REG = re.compile(
