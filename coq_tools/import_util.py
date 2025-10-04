@@ -9,10 +9,10 @@ import subprocess
 import sys
 import tempfile
 import time
-# from collections import OrderedDict
+from collections import OrderedDict
 from functools import cmp_to_key, partial
 from pathlib import Path
-from typing import Callable, OrderedDict, Tuple
+from typing import Callable, Dict, Tuple
 
 from . import util
 from .coq_version import (
@@ -1586,7 +1586,7 @@ def run_maybe_recursively_get_imports(lib, recursively: bool = True, **kwargs):
         return [lib for lib in recursive_imports if lib in direct_imports]
 
 
-class DepGraph(OrderedDict[str, Tuple[str, ...]]):
+class DepGraph(OrderedDict, Dict[str, Tuple[str, ...]]):
     def __init__(self, *args, fast=False, **kwargs):
         super().__init__(*args)
         self._fast = fast
