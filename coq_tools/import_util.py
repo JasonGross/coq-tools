@@ -10,9 +10,9 @@ import sys
 import tempfile
 import time
 from collections import OrderedDict
-from functools import cmp_to_key, partial
+from functools import cache, cmp_to_key, partial
 from pathlib import Path
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 from . import util
 from .coq_version import (
@@ -1350,15 +1350,52 @@ def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
     return d
 
 
+@cache
+def compare_lib_prefixes(prefix1, prefix2, requires_dict_items):
+    requires_dict = dict(requires_dict_items)
+    all_libs = list(requires_dict.keys())
+    assert len(prefix1) == len(prefix2), (prefix1, prefix2)
+    first_diff_idx = len(prefix1)
+    any_d1_prime_in_d2_prime = False
+    any_d2_prime_in_d1_prime = False
+    for d1_prime in all_libs:
+        d1_prime_parts = d1_prime.split(".")
+        if (
+            len(d1_prime_parts) > first_diff_idx
+            and d1_prime_parts[:first_diff_idx] == prefix1
+        ):
+            for d2_prime in all_libs:
+                d2_prime_parts = d2_prime.split(".")
+                if (
+                    len(d2_prime_parts) > first_diff_idx
+                    and d2_prime_parts[:first_diff_idx] == prefix2
+                ):
+                    if d1_prime in requires_dict[d2_prime]:
+                        any_d1_prime_in_d2_prime = True
+                    elif d2_prime in requires_dict[d1_prime]:
+                        any_d2_prime_in_d1_prime = True
+    if any_d1_prime_in_d2_prime and not any_d2_prime_in_d1_prime:
+        return -1
+    elif any_d2_prime_in_d1_prime and not any_d1_prime_in_d2_prime:
+        return 1
+    else:
+        return 0
+
+
 def compare_libs(
     d1,
     d2,
     *,
     requires_dict: dict,
     sort_requires_by_component: bool = False,
+    requires_dict_items: Optional[Tuple[Tuple[str, Tuple[str, ...]], ...]] = None,
     all_libs=None,
     fallback_cmp=None,
 ):
+    if requires_dict_items is None:
+        requires_dict_items = tuple(
+            sorted((k, tuple(sorted(v))) for k, v in requires_dict.items())
+        )
     if all_libs is None:
         all_libs = list(requires_dict.keys())
     if d1 == d2:
@@ -1391,22 +1428,9 @@ def compare_libs(
             prefix1 = d1_parts[:first_diff_idx]
             prefix2 = d2_parts[:first_diff_idx]
 
-            for d1_prime in all_libs:
-                d1_prime_parts = d1_prime.split(".")
-                if (
-                    len(d1_prime_parts) > first_diff_idx
-                    and d1_prime_parts[:first_diff_idx] == prefix1
-                ):
-                    for d2_prime in all_libs:
-                        d2_prime_parts = d2_prime.split(".")
-                        if (
-                            len(d2_prime_parts) > first_diff_idx
-                            and d2_prime_parts[:first_diff_idx] == prefix2
-                        ):
-                            if d1_prime in requires_dict[d2_prime]:
-                                return -1
-                            elif d2_prime in requires_dict[d1_prime]:
-                                return 1
+            lib_cmp = compare_lib_prefixes(prefix1, prefix2, requires_dict_items)
+            if lib_cmp != 0:
+                return lib_cmp
 
     # Final tie-breaker: lexicographic comparison of split components
     if isinstance(fallback_cmp, str) and fallback_cmp.lower() == "lexicographic":
@@ -1436,6 +1460,9 @@ def get_recursive_requires(
     )
 
     all_libs = list(requires.keys())
+    requires_dict_items = tuple(
+        sorted((k, tuple(sorted(v))) for k, v in requires.items())
+    )
 
     def cmp_by_len(l1, l2):
         # this only works correctly if the closure is *reflexive* as
@@ -1456,6 +1483,7 @@ def get_recursive_requires(
             l2,
             requires_dict=requires,
             all_libs=all_libs,
+            requires_dict_items=requires_dict_items,
             sort_requires_by_component=sort_requires_by_component,
             fallback_cmp=cmp_by_len,
         )
