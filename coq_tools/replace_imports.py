@@ -9,6 +9,7 @@ from .import_util import (
     absolutize_has_all_constants,
     filename_of_lib,
     get_file,
+    get_recursive_require_names,
     is_local_import,
     lib_of_filename,
     recursively_get_imports,
@@ -258,7 +259,11 @@ def contents_as_module(
     return early_contents + contents
 
 
-def normalize_requires(filename, recursive_requires_explicit: bool = True, **kwargs):
+def normalize_requires(
+    filename,
+    recursive_requires_explicit: bool = True,
+    **kwargs,
+):
     """Return the contents of filename, with all [Require]s split out and ordered at the top.
 
     Preserve any leading whitespace/comments.
@@ -267,9 +272,12 @@ def normalize_requires(filename, recursive_requires_explicit: bool = True, **kwa
         filename += ".v"
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
-    all_imports = run_maybe_recursively_get_imports(
-        lib, recursively=recursive_requires_explicit, **kwargs
-    )
+    if kwargs.get("sort_requires_by_component") and recursive_requires_explicit:
+        all_imports = get_recursive_require_names(lib, **kwargs)
+    else:
+        all_imports = run_maybe_recursively_get_imports(
+            lib, recursively=recursive_requires_explicit, **kwargs
+        )
 
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_name, **kwargs)
