@@ -9,10 +9,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections import OrderedDict, defaultdict
-from typing import Dict, Set, List, Tuple
-from functools import cmp_to_key
+from collections import OrderedDict
+from functools import cmp_to_key, partial
 from pathlib import Path
+from typing import Callable, Dict, Tuple
 
 from . import util
 from .coq_version import (
@@ -26,8 +26,8 @@ from .custom_arguments import DEFAULT_LOG, LOG_ALWAYS
 from .memoize import memoize
 from .split_file import get_coq_statement_byte_ranges, split_coq_file_contents
 from .strip_comments import strip_comments, strip_trailing_comments
-from .util import cmp_compat as cmp, transitive_closure
-from .util import shlex_join, shlex_quote
+from .util import cmp_compat as cmp
+from .util import shlex_join, shlex_quote, transitive_closure
 
 __all__ = [
     "filename_of_lib",
@@ -1350,7 +1350,83 @@ def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
     return d
 
 
-def get_recursive_requires(*libnames, **kwargs):
+def compare_libs(
+    d1,
+    d2,
+    *,
+    requires_dict: dict,
+    sort_requires_by_component: bool = False,
+    all_libs=None,
+    fallback_cmp=None,
+):
+    if all_libs is None:
+        all_libs = list(requires_dict.keys())
+    if d1 == d2:
+        return 0
+
+    # Primary ordering: d1 comes before d2 if d1 in requires_dict[d2]
+    if d1 in requires_dict[d2]:
+        return -1
+    if d2 in requires_dict[d1]:
+        return 1
+
+    # Intermediate tie-breaker: component-based comparison if sort_requires_by_component
+    if sort_requires_by_component:
+        d1_parts = d1.split(".")
+        d2_parts = d2.split(".")
+
+        # Find first non-equal component
+        min_len = min(len(d1_parts), len(d2_parts))
+        first_diff_idx = None
+        for i in range(min_len):
+            if d1_parts[i] != d2_parts[i]:
+                first_diff_idx = i
+                break
+
+        if first_diff_idx is not None:
+            # Check if there exist d1', d2' where:
+            # - d1.split(".")[i] == d1'.split(".")[i] for all i < first_diff_idx
+            # - d2.split(".")[i] == d2'.split(".")[i] for all i < first_diff_idx
+            # - d1' in recur_dep_graph[d2']
+            prefix1 = d1_parts[:first_diff_idx]
+            prefix2 = d2_parts[:first_diff_idx]
+
+            for d1_prime in all_libs:
+                d1_prime_parts = d1_prime.split(".")
+                if (
+                    len(d1_prime_parts) > first_diff_idx
+                    and d1_prime_parts[:first_diff_idx] == prefix1
+                ):
+                    for d2_prime in all_libs:
+                        d2_prime_parts = d2_prime.split(".")
+                        if (
+                            len(d2_prime_parts) > first_diff_idx
+                            and d2_prime_parts[:first_diff_idx] == prefix2
+                        ):
+                            if d1_prime in requires_dict[d2_prime]:
+                                return -1
+                            elif d2_prime in requires_dict[d1_prime]:
+                                return 1
+
+    # Final tie-breaker: lexicographic comparison of split components
+    if isinstance(fallback_cmp, str) and fallback_cmp.lower() == "lexicographic":
+        d1_parts = d1.split(".")
+        d2_parts = d2.split(".")
+        if d1_parts < d2_parts:
+            return -1
+        elif d1_parts > d2_parts:
+            return 1
+        else:
+            return 0
+    elif fallback_cmp is not None and isinstance(fallback_cmp, Callable):
+        return fallback_cmp(d1, d2)
+    else:
+        return 0
+
+
+def get_recursive_requires(
+    *libnames, sort_requires_by_component: bool = False, **kwargs
+):
     reverse = kwargs.get("reverse", True)
     requires = dict((lib, get_require_names(lib, **kwargs)) for lib in libnames)
     transitively_close(
@@ -1359,10 +1435,9 @@ def get_recursive_requires(*libnames, **kwargs):
         reflexive=True,
     )
 
-    def lcmp(l1, l2):
-        l1, l2 = l1[0], l2[0]  # strip off value part
-        if l1 == l2:
-            return cmp(l1, l2)
+    all_libs = list(requires.keys())
+
+    def cmp_by_len(l1, l2):
         # this only works correctly if the closure is *reflexive* as
         # well as transitive, because we require that if A requires B,
         # then A must have strictly more requires than B (i.e., it
@@ -1370,6 +1445,20 @@ def get_recursive_requires(*libnames, **kwargs):
         if len(requires[l1]) != len(requires[l2]):
             return cmp(len(requires[l1]), len(requires[l2]))
         return cmp(l1, l2)
+
+    def lcmp(l1, l2):
+        l1, l2 = l1[0], l2[0]  # strip off value part
+        if l1 == l2:
+            return cmp(l1, l2)
+
+        return compare_libs(
+            l1,
+            l2,
+            requires_dict=requires,
+            all_libs=all_libs,
+            sort_requires_by_component=sort_requires_by_component,
+            fallback_cmp=cmp_by_len,
+        )
 
     return OrderedDict(sorted(requires.items(), key=cmp_to_key(lcmp), reverse=reverse))
 
@@ -1497,7 +1586,7 @@ def run_maybe_recursively_get_imports(lib, recursively: bool = True, **kwargs):
         return [lib for lib in recursive_imports if lib in direct_imports]
 
 
-class DepGraph(Dict[str, Tuple[str, ...]]):
+class DepGraph(OrderedDict, Dict[str, Tuple[str, ...]]):
     def __init__(self, *args, fast=False, **kwargs):
         super().__init__(*args)
         self._fast = fast
@@ -1531,65 +1620,17 @@ def recursively_get_imports_(
     # Create sorted list of recursive imports
     all_libs = list(recur_dep_graph.keys())
 
-    def compare_libs(d1, d2):
-        if d1 == d2:
-            return 0
-
-        # Primary ordering: d1 comes before d2 if d1 in recur_dep_graph[d2]
-        if d1 in recur_dep_graph[d2]:
-            return -1
-        if d2 in recur_dep_graph[d1]:
-            return 1
-
-        # Intermediate tie-breaker: component-based comparison if sort_requires_by_component
-        if sort_requires_by_component:
-            d1_parts = d1.split(".")
-            d2_parts = d2.split(".")
-
-            # Find first non-equal component
-            min_len = min(len(d1_parts), len(d2_parts))
-            first_diff_idx = None
-            for i in range(min_len):
-                if d1_parts[i] != d2_parts[i]:
-                    first_diff_idx = i
-                    break
-
-            if first_diff_idx is not None:
-                # Check if there exist d1', d2' where:
-                # - d1.split(".")[i] == d1'.split(".")[i] for all i < first_diff_idx
-                # - d2.split(".")[i] == d2'.split(".")[i] for all i < first_diff_idx
-                # - d1' in recur_dep_graph[d2']
-                prefix1 = d1_parts[:first_diff_idx]
-                prefix2 = d2_parts[:first_diff_idx]
-
-                for d1_prime in all_libs:
-                    d1_prime_parts = d1_prime.split(".")
-                    if (
-                        len(d1_prime_parts) > first_diff_idx
-                        and d1_prime_parts[:first_diff_idx] == prefix1
-                    ):
-                        for d2_prime in all_libs:
-                            d2_prime_parts = d2_prime.split(".")
-                            if (
-                                len(d2_prime_parts) > first_diff_idx
-                                and d2_prime_parts[:first_diff_idx] == prefix2
-                            ):
-                                if d1_prime in recur_dep_graph[d2_prime]:
-                                    return -1
-                                elif d2_prime in recur_dep_graph[d1_prime]:
-                                    return 1
-
-        # Final tie-breaker: lexicographic comparison of split components
-        d1_parts = d1.split(".")
-        d2_parts = d2.split(".")
-        if d1_parts < d2_parts:
-            return -1
-        elif d1_parts > d2_parts:
-            return 1
-        else:
-            return 0
-
-    recursive_imports = sorted(all_libs, key=cmp_to_key(compare_libs))
+    recursive_imports = sorted(
+        all_libs,
+        key=cmp_to_key(
+            partial(
+                compare_libs,
+                requires_dict=recur_dep_graph,
+                all_libs=all_libs,
+                sort_requires_by_component=sort_requires_by_component,
+            )
+        ),
+    )
 
     if recursively:
         return recursive_imports
