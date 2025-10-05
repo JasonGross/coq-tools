@@ -7,6 +7,7 @@ import re
 import sys
 import tempfile
 import traceback
+from functools import partial
 
 from . import custom_arguments, split_definitions, util
 from .admit_abstract import transform_abstract_to_admit
@@ -2585,6 +2586,11 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
     insert_options: bool = False,
     **kwargs,
 ):
+    kwargs["log"]("Definitions:", level=2)
+    kwargs["log"](definitions, level=2)
+    kwargs["log"](
+        "\nI will now attempt to lift Requires to the top of the file while inserting option settings"
+    )
     all_requires = [
         definition
         for definition in definitions
@@ -3445,17 +3451,17 @@ def minimize_file(
         )
         and env["insert_options_when_lifting_requires"]
     ):  # this happens late: after admitting things, but before we go through and agressively remove all lines
-        env["log"]("Definitions:", level=2)
-        env["log"](definitions, level=2)
-        env["log"](
-            "\nI will now attempt to lift Requires to the top of the file while inserting option settings"
-        )
-        definitions = try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options(
-            definitions,
-            output_file_name,
-            lift_custom_entries=env["lift_requires_and_custom_entry_declarations"],
-            insert_options=True,
-            **env,
+        tasks += (
+            (
+                "lift Requires to the top of the file while inserting option settings",
+                partial(
+                    try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options,
+                    lift_custom_entries=env[
+                        "lift_requires_and_custom_entry_declarations"
+                    ],
+                    insert_options=True,
+                ),
+            ),
         )
 
     if env["aggressive"] and not env["should_succeed"]:
