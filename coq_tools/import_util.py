@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from collections import OrderedDict
-from functools import cache, cmp_to_key, partial
+from functools import cmp_to_key, partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
@@ -1350,7 +1350,7 @@ def transitively_close(d, make_new_value=(lambda x: tuple()), reflexive=True):
     return d
 
 
-@cache
+@memoize
 def compare_lib_prefixes(prefix1, prefix2, requires_dict_items):
     requires_dict = dict(requires_dict_items)
     all_libs = list(requires_dict.keys())
