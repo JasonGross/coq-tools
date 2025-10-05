@@ -1,78 +1,82 @@
 #!/usr/bin/env python3
-import tempfile, sys, os, re, os.path, math
 import glob
+import math
+import os
+import os.path
+import re
+import sys
+import tempfile
 import traceback
-from . import custom_arguments
-from .argparse_compat import argparse
-from .replace_imports import (
-    include_imports,
-    normalize_requires,
-    get_required_contents,
-    recursively_get_requires_from_file,
-    absolutize_and_mangle_libname,
-)
-from .import_util import get_file, get_recursive_require_names
-from .strip_comments import strip_comments
-from .strip_newlines import strip_newlines
-from .split_file import split_coq_file_contents, split_leading_comments_and_whitespace
-from . import split_definitions
-from .split_definitions import (
-    split_statements_to_definitions,
-    split_statements_to_definitions_with_options,
-    join_definitions,
-    get_preferred_passing,
-)
+
+from . import custom_arguments, split_definitions, util
 from .admit_abstract import transform_abstract_to_admit
-from .import_util import (
-    lib_of_filename,
-    clear_libimport_cache,
-    IMPORT_ABSOLUTIZE_TUPLE,
-    ALL_ABSOLUTIZE_TUPLE,
-)
-from .import_util import (
-    split_requires_of_statements,
-    get_file_statements_insert_references,
-)
-from .import_util import has_dir_binding, deduplicate_trailing_dir_bindings_get_topname
-from .memoize import memoize
-from .coq_version import (
-    get_coqc_version,
-    get_coqtop_version,
-    get_coqc_help,
-    get_coq_accepts_top,
-    get_coq_native_compiler_ondemand_fragment,
-    group_coq_args,
-    group_coq_args_split_recognized,
-    get_coqc_coqlib,
-    get_coq_accepts_compile,
-    DEFAULT_COQTOP,
-)
+from .argparse_compat import argparse
+from .binding_util import process_maybe_list
 from .coq_running_support import (
-    get_ltac_support_snippet,
     get_default_options_settings,
+    get_ltac_support_snippet,
     get_raw_options_settings_and_values,
     make_set_options_commands,
 )
+from .coq_version import (
+    DEFAULT_COQTOP,
+    get_coq_accepts_compile,
+    get_coq_accepts_top,
+    get_coq_native_compiler_ondemand_fragment,
+    get_coqc_coqlib,
+    get_coqc_help,
+    get_coqc_version,
+    get_coqtop_version,
+    group_coq_args,
+    group_coq_args_split_recognized,
+)
 from .custom_arguments import (
-    add_libname_arguments,
-    add_passing_libname_arguments,
-    update_env_with_libnames,
-    update_env_with_coqpath_folders,
-    add_logging_arguments,
-    process_logging_arguments,
-    get_parser_name_mapping,
     DEFAULT_LOG,
     LOG_ALWAYS,
+    add_libname_arguments,
+    add_logging_arguments,
+    add_passing_libname_arguments,
+    get_parser_name_mapping,
+    process_logging_arguments,
+    update_env_with_coqpath_folders,
+    update_env_with_libnames,
 )
-from .binding_util import process_maybe_list
 from .file_util import (
     clean_v_file,
     read_from_file,
     write_to_file,
     write_to_file_or_shorten_name,
 )
-from .util import yes_no_prompt, PY3, list_diff, BooleanOptionalAction
-from . import util
+from .import_util import (
+    ALL_ABSOLUTIZE_TUPLE,
+    IMPORT_ABSOLUTIZE_TUPLE,
+    clear_libimport_cache,
+    deduplicate_trailing_dir_bindings_get_topname,
+    get_file,
+    get_file_statements_insert_references,
+    get_recursive_require_names,
+    has_dir_binding,
+    lib_of_filename,
+    split_requires_of_statements,
+)
+from .memoize import memoize
+from .replace_imports import (
+    absolutize_and_mangle_libname,
+    get_required_contents,
+    include_imports,
+    normalize_requires,
+    recursively_get_requires_from_file,
+)
+from .split_definitions import (
+    get_preferred_passing,
+    join_definitions,
+    split_statements_to_definitions,
+    split_statements_to_definitions_with_options,
+)
+from .split_file import split_coq_file_contents, split_leading_comments_and_whitespace
+from .strip_comments import strip_comments
+from .strip_newlines import strip_newlines
+from .util import PY3, BooleanOptionalAction, list_diff, yes_no_prompt
 
 if PY3:
     raw_input = util.raw_input
