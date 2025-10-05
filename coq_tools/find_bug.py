@@ -126,6 +126,28 @@ parser.add_argument(
     help="Use a faster method for combining imports",
 )
 parser.add_argument(
+    "--faster-skip-repeat-edit-suffixes",
+    dest="faster_skip_repeat_edit_suffixes",
+    action=BooleanOptionalAction,
+    default=True,
+    help=(
+        "Skip attempting edits on suffixes (from edit point to end) "
+        + "that have already failed, even if the prefix is different. "
+        + "This can significantly speed up minimization but may miss some reductions."
+    ),
+)
+parser.add_argument(
+    "--try-all-inlining-and-minimization-again-at-end",
+    dest="try_all_inlining_and_minimization_again_at_end",
+    action=BooleanOptionalAction,
+    default=True,
+    help=(
+        "After minimization completes, reset all caches (failed inlining and "
+        + "failed edit suffixes) and try the entire minimization routine again. "
+        + "Only effective when --faster-skip-repeat-edit-suffixes is enabled."
+    ),
+)
+parser.add_argument(
     "--no-wrap-modules",
     dest="wrap_modules",
     action="store_const",
@@ -1445,6 +1467,50 @@ def check_change_and_write_to_file(
     return None
 
 
+# Cache for tracking failed edit suffixes when --faster-skip-repeat-edit-suffixes is enabled
+_failed_suffix_cache = set()
+
+
+def _clear_failed_suffix_cache():
+    """Clear the cache of failed edit suffixes."""
+    global _failed_suffix_cache
+    _failed_suffix_cache = set()
+
+
+def _compute_suffix_hash(definitions, start_index=0):
+    """Compute a hash of the suffix starting at start_index."""
+    # Hash based on the statements in the suffix
+    suffix_statements = tuple(d["statement"] for d in definitions[start_index:])
+    return hash(suffix_statements)
+
+
+def _should_skip_suffix(definitions, start_index=0, **kwargs):
+    """Check if we should skip trying to edit this suffix based on cache."""
+    if not kwargs.get("faster_skip_repeat_edit_suffixes", False):
+        return False
+
+    suffix_hash = _compute_suffix_hash(definitions, start_index)
+    if suffix_hash in _failed_suffix_cache:
+        kwargs["log"](
+            f"Skipping edit at position {start_index} - suffix already failed", level=3
+        )
+        return True
+    return False
+
+
+def _mark_suffix_failed(definitions, start_index=0, **kwargs):
+    """Mark this suffix as having failed an edit attempt."""
+    if not kwargs.get("faster_skip_repeat_edit_suffixes", False):
+        return
+
+    suffix_hash = _compute_suffix_hash(definitions, start_index)
+    _failed_suffix_cache.add(suffix_hash)
+    kwargs["log"](
+        f"Marking suffix at position {start_index} as failed (cache size: {len(_failed_suffix_cache)})",
+        level=4,
+    )
+
+
 def try_transform_each(
     definitions,
     output_file_name,
@@ -1547,7 +1613,12 @@ def try_transform_each(
                     definitions[:i] + new_definitions + new_rest_definitions
                 )
 
-            if check_change_and_write_to_file(
+            # Check if we should skip this suffix based on the cache
+            if _should_skip_suffix(try_definitions, i, **kwargs):
+                kwargs["log"](
+                    f"Skipping (at position {i}) based on cached failure", level=3
+                )
+            elif check_change_and_write_to_file(
                 "",
                 join_definitions(try_definitions),
                 output_file_name,
@@ -1558,6 +1629,9 @@ def try_transform_each(
                 definitions = try_definitions
                 # make a copy for saving
                 save_definitions = [dict(defn) for defn in try_definitions]
+            else:
+                # The edit failed, mark this suffix as failed
+                _mark_suffix_failed(try_definitions, i, **kwargs)
         else:
             kwargs["log"]("No change to %s" % old_definition["statement"], level=3)
         i -= 1
@@ -2663,7 +2737,9 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 and definition.get("new_options")
                 and new_definitions_suffix
             ):
-                kwargs["log"](f"Inserting new options of definition={definition}", level=5)
+                kwargs["log"](
+                    f"Inserting new options of definition={definition}", level=5
+                )
                 new_setting_statements = make_set_options_commands(
                     kwargs["coqc"],
                     definition["new_options"],
@@ -2683,7 +2759,9 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                     inserted_new_options = True
                 new_definitions_suffix.extend(new_setting_definitions)
             elif insert_options and new_definitions_suffix:
-                kwargs["log"](f"Skipping new options of definition={definition}", level=5)
+                kwargs["log"](
+                    f"Skipping new options of definition={definition}", level=5
+                )
             elif not new_definitions_suffix:
                 kwargs["log"](
                     f"Skipping new options of definition={definition} because no new definitions have been added yet",
@@ -3930,6 +4008,8 @@ def main():
     output_file_name = args.output_file
     env = {
         "fast_merge_imports": args.fast_merge_imports,
+        "faster_skip_repeat_edit_suffixes": args.faster_skip_repeat_edit_suffixes,
+        "try_all_inlining_and_minimization_again_at_end": args.try_all_inlining_and_minimization_again_at_end,
         "log": args.log,
         "coqc": prepend_coqbin(args.coqc or "coqc"),
         "coqtop": prepend_coqbin(args.coqtop or DEFAULT_COQTOP),
@@ -4428,26 +4508,62 @@ def main():
                 env["log"]("Failed to inline inputs.")
                 sys.exit(1)
 
-        # initial run before we (potentially) do fancy things with the requires
-        minimize_file(output_file_name, **env)
+        # Wrapper function for the minimization routine that can be retried
+        def run_minimization_routine(**env):
+            # initial run before we (potentially) do fancy things with the requires
+            minimize_file(output_file_name, **env)
 
-        if env["minimize_before_inlining"]:
-            # if we've not already inlined everything
-            # so long as we keep changing, we will pull all the
-            # requires to the top, then try to replace them in reverse
-            # order.  As soon as we succeed, we reset the list
-            inline_all_requires(
-                output_file_name,
-                (
-                    lambda: minimize_file(
-                        output_file_name, die=(lambda *args, **kargs: False), **env
-                    )
-                ),
-                **env,
+            if env["minimize_before_inlining"]:
+                # if we've not already inlined everything
+                # so long as we keep changing, we will pull all the
+                # requires to the top, then try to replace them in reverse
+                # order.  As soon as we succeed, we reset the list
+                inline_all_requires(
+                    output_file_name,
+                    (
+                        lambda: minimize_file(
+                            output_file_name, die=(lambda *args, **kargs: False), **env
+                        )
+                    ),
+                    **env,
+                )
+
+                # and we make one final run, or, in case there are no requires, one run
+                minimize_file(output_file_name, **env)
+
+        # Run minimization at least once
+        run_minimization_routine(**env)
+
+        # If requested and caching is enabled, reset caches and try again
+        if (
+            env["try_all_inlining_and_minimization_again_at_end"]
+            and env["faster_skip_repeat_edit_suffixes"]
+        ):
+            env["log"]("\n" + "=" * 80)
+            env["log"](
+                "Resetting caches and trying minimization again to catch any missed opportunities..."
+            )
+            env["log"]("=" * 80 + "\n")
+
+            # Clear the failed suffix cache
+            _clear_failed_suffix_cache()
+            env["log"]("Cleared failed edit suffix cache", level=2)
+
+            # Clear the inlining blacklist
+            original_inline_failures = env["inline_failure_libnames"][:]
+            env["inline_failure_libnames"].clear()
+            env["log"](
+                f"Cleared inlining blacklist (had {len(original_inline_failures)} entries)",
+                level=2,
             )
 
-            # and we make one final run, or, in case there are no requires, one run
-            minimize_file(output_file_name, **env)
+            # disable the behavior of caching failure suffixes
+            env["faster_skip_repeat_edit_suffixes"] = False
+
+            # Run the minimization routine again
+            run_minimization_routine(**env)
+
+            env["log"]("\nCompleted second minimization pass.")
 
     except EOFError:
         env["log"](traceback.format_exc(), level=LOG_ALWAYS)
