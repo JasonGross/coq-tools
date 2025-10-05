@@ -13,7 +13,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="generated_example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=("$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

@@ -21,6 +21,7 @@ cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
@@ -76,7 +77,7 @@ fi
 #####################################################################
 # Run the bug minimizer on this example; error if it fails to run
 # correctly.  Make sure you update the arguments, etc.
-find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo || exit $?
+find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" -R . Foo "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Put some segment that you expect to see in the file here.  Or count
