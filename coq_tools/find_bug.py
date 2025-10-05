@@ -2720,13 +2720,11 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
         failure_description=f"lift Requires{custom_entry_decl_plural}{inserted_new_options_decl}",
         changed_description="Intermediate code",
         write_to_temp_file=True,
-        **(
-            kwargs
-            | {
-                "temp_file_name": temp_file_name,
-                "temp_file_log_name": temp_log_file_name,
-            }
-        ),
+        **{
+            **kwargs,
+            "temp_file_name": temp_file_name,
+            "temp_file_log_name": temp_log_file_name,
+        },
     ):
         return new_definitions
     return definitions
@@ -3777,7 +3775,7 @@ def inline_one_require(
             timeout_retry_count=SENSITIVE_TIMEOUT_RETRY_COUNT,  # is this the right retry count?
             display_source_to_error=False,
             display_extra_verbose_on_error=kwargs["verbose_include_failure_warning"],
-            **(kwargs | {"timeout": mk_timeout(test_runtime)}),
+            **{**kwargs, "timeout": mk_timeout(test_runtime)},
         ):
             # any lazily evaluates the iterator, so we'll
             # only run the check up to the point of the
@@ -3802,14 +3800,12 @@ def inline_one_require(
                         "verbose_include_failure_warning"
                     ],
                     write_to_temp_file=True,
-                    **(
-                        kwargs
-                        | {
-                            "temp_file_name": temp_file_name,
-                            "temp_file_log_name": temp_log_file_name,
-                            "timeout": mk_timeout(test_runtime_alt),
-                        }
-                    ),
+                    **{
+                        **kwargs,
+                        "temp_file_name": temp_file_name,
+                        "temp_file_log_name": temp_log_file_name,
+                        "timeout": mk_timeout(test_runtime_alt),
+                    },
                 )
                 for (
                     descr,
@@ -3841,7 +3837,7 @@ def inline_one_require(
                         "verbose_include_failure_warning"
                     ],
                     write_to_temp_file=True,
-                    **(kwargs | {"timeout": mk_timeout(test_runtime)}),
+                    **{**kwargs, "timeout": mk_timeout(test_runtime)},
                 )
 
                 for fname in temp_file_names + temp_log_file_names:
