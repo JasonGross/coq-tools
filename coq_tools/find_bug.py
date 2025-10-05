@@ -2644,7 +2644,7 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                     level=4,
                 )
                 kwargs["log"](
-                    f"try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options:\n{init_requires_contents=}\n{init_options_settings=}\n{new_setting_statements=}\n{new_setting_definitions=}",
+                    f"try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options:\ninit_requires_contents={init_requires_contents}\ninit_options_settings={init_options_settings}\nnew_setting_statements={new_setting_statements}\nnew_setting_definitions={new_setting_definitions}",
                     level=5,
                 )
             break
@@ -2657,7 +2657,7 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 and definition.get("new_options")
                 and new_definitions_suffix
             ):
-                kwargs["log"](f"Inserting new options of {definition=}", level=5)
+                kwargs["log"](f"Inserting new options of definition={definition}", level=5)
                 new_setting_statements = make_set_options_commands(
                     kwargs["coqc"],
                     definition["new_options"],
@@ -2677,10 +2677,10 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                     inserted_new_options = True
                 new_definitions_suffix.extend(new_setting_definitions)
             elif insert_options and new_definitions_suffix:
-                kwargs["log"](f"Skipping new options of {definition=}", level=5)
+                kwargs["log"](f"Skipping new options of definition={definition}", level=5)
             elif not new_definitions_suffix:
                 kwargs["log"](
-                    f"Skipping new options of {definition=} because no new definitions have been added yet",
+                    f"Skipping new options of definition={definition} because no new definitions have been added yet",
                     level=5,
                 )
         else:
