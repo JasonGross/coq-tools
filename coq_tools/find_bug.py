@@ -2639,6 +2639,14 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 if new_setting_definitions:
                     inserted_new_options = True
                 init_new_options = new_setting_definitions
+                kwargs["log"](
+                    f"Trying new options after initial requires: {new_setting_definitions}",
+                    level=4,
+                )
+                kwargs["log"](
+                    f"try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_options:\n{init_requires_contents=}\n{init_options_settings=}\n{new_setting_statements=}\n{new_setting_definitions=}",
+                    level=5,
+                )
             break
     for definition in definitions:
         if lift_custom_entries and definition_is_custom_entry_declaration(definition):
@@ -2649,6 +2657,7 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 and definition.get("new_options")
                 and new_definitions_suffix
             ):
+                kwargs["log"](f"Inserting new options of {definition=}", level=5)
                 new_setting_statements = make_set_options_commands(
                     kwargs["coqc"],
                     definition["new_options"],
@@ -2667,6 +2676,13 @@ def try_lift_requires_and_maybe_custom_entry_declarations_and_maybe_insert_optio
                 if new_setting_definitions:
                     inserted_new_options = True
                 new_definitions_suffix.extend(new_setting_definitions)
+            elif insert_options and new_definitions_suffix:
+                kwargs["log"](f"Skipping new options of {definition=}", level=5)
+            elif not new_definitions_suffix:
+                kwargs["log"](
+                    f"Skipping new options of {definition=} because no new definitions have been added yet",
+                    level=5,
+                )
         else:
             new_definitions_suffix.append(definition)
 
