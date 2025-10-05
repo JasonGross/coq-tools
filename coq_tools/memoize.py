@@ -9,6 +9,8 @@ def to_immutable(arg):
         return tuple(to_immutable(e) for e in arg)
     elif isinstance(arg, dict):
         return tuple((k, to_immutable(arg[k])) for k in sorted(arg.keys()))
+    elif isinstance(arg, set):
+        return tuple(to_immutable(e) for e in sorted(arg))
     else:
         return arg
 
