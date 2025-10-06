@@ -14,7 +14,7 @@ EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
 # order is important, we're testing success when neither the first nor the last -R binding has the real file
-EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" -R Foo2 Foo -R Foo1 Foo -R Foo3 Foo "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" -R Foo2 Foo -R Foo1 Foo -R Foo3 Foo "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
