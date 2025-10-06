@@ -13,7 +13,8 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N/example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=(-Q ../foo/bar qux "$@")
+COQC_EXTRA_ARGS=(-Q ../foo/bar qux)
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "${COQC_EXTRA_ARGS[@]}" "$@")
 FILES_TO_REMOVE="../foo/bar/A.vo ../foo/bar/A.glob"
 EXTRA_FILES="../foo/bar/A.v"
 ##########################################################
@@ -52,11 +53,11 @@ EOF
 # pre-build the files to normalize the output for the run we're testing
 rm -f ${FILES_TO_REMOVE}
 for i in ${EXTRA_FILES}; do
-    coqc -q "${EXTRA_ARGS[@]}" "${i}"
+    coqc -q "${COQC_EXTRA_ARGS[@]}" "${i}"
 done
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 for i in ${EXTRA_FILES}; do
-    coqc -q "${EXTRA_ARGS[@]}" "${i}"
+    coqc -q "${COQC_EXTRA_ARGS[@]}" "${i}"
 done
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"

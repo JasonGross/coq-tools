@@ -3,6 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 N="${0##*-}"; N="${N%.sh}"
 cd "$DIR/example_${N}" || exit $?
 . "$DIR/init-settings.sh"
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 PS4='$ '
 set -x
 # Disable parallel make in subcalls to the bug minimizer because it screws with things
@@ -21,7 +22,7 @@ then
     echo "$ACTUAL_PRE"
     exit 1
 fi
-find_bug example_${N}.v bug_${N}.v || exit $?
+find_bug example_${N}.v bug_${N}.v "${EXTRA_ARGS[@]}" || exit $?
 EXPECTED='^(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)$'
 LINES="$(grep -c "$EXPECTED" bug_${N}.v)"
 if [ "$LINES" -ne 1 ]

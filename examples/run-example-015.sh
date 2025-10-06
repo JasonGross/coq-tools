@@ -14,7 +14,7 @@ EXAMPLE_DIRECTORY="example_$N"
 SUBDIRECTORY="example_$N"
 EXAMPLE_INPUT="$SUBDIRECTORY/example_$N.v"
 EXAMPLE_OUTPUT="$SUBDIRECTORY/bug_$N.v"
-EXTRA_ARGS=(-R "$SUBDIRECTORY" Top "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" -R "$SUBDIRECTORY" Top "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

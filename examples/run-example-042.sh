@@ -13,7 +13,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=(-R . Foo --no-admit-transparent --no-admit-opaque "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" -R . Foo --no-admit-transparent --no-admit-opaque "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

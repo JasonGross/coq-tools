@@ -13,7 +13,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N/bad"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=(-R . Top --passing-base-dir ../good --passing-coqc coqc "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" -R . Top --passing-base-dir ../good --passing-coqc coqc "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

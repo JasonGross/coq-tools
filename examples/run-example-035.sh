@@ -13,7 +13,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="input/example_$N.v"
 EXAMPLE_OUTPUT="output/bug_$N.v"
-EXTRA_ARGS=(--passing-coqc="${COQBIN}coqc" --coqc="${COQBIN}coqc" -R input Top --passing-R Passing Foo --nonpassing-R NonPassing Foo --no-deps "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" --passing-coqc="${COQBIN}coqc" --coqc="${COQBIN}coqc" -R input Top --passing-R Passing Foo --nonpassing-R NonPassing Foo --no-deps "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory

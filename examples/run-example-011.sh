@@ -3,6 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 N="${0##*-}"; N="${N%.sh}"
 cd "$DIR/example_${N}" || exit $?
 . "$DIR/init-settings.sh"
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 PS4='$ '
 set -x
 # check that the regex doesn't split the unicode characters in φ
@@ -20,4 +21,4 @@ then
     exit 1
 fi
 
-find_bug example_${N}.v bug_${N}.v || exit $?
+find_bug example_${N}.v bug_${N}.v "${EXTRA_ARGS[@]}" || exit $?

@@ -13,7 +13,7 @@ EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
 # passing coqc gets -Q binding, failing coqc gets -R binding
 # This mimics the situation where passing dev has installed lib, failing dev has local lib
-EXTRA_ARGS=(--passing-coqc="${COQBIN}coqc" --passing-arg=-type-in-type --passing-Q . Qux --nonpassing-R . Qux --no-deps "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" --passing-coqc="${COQBIN}coqc" --passing-arg=-type-in-type --passing-Q . Qux --nonpassing-R . Qux --no-deps "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
