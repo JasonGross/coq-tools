@@ -55,8 +55,11 @@ def make_logger(log_files, log_class_config=None):
         # Determine which files to write to
         selected_log_files = []
         for flevel, f in log_files:
+            # LOG_ALWAYS overrides everything
+            if level is LOG_ALWAYS:
+                selected_log_files.append(f)
             # Check if this log should be written based on kind (class)
-            if kind is not None:
+            elif kind is not None:
                 # Get the class configuration for this file
                 file_class_config = log_class_config.get(f, {})
                 class_setting = file_class_config.get(kind, None)
@@ -69,11 +72,11 @@ def make_logger(log_files, log_class_config=None):
                     continue
                 else:
                     # Class is not configured, fall back to verbosity level
-                    if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level)):
+                    if level <= flevel and (max_level is None or flevel < max_level):
                         selected_log_files.append(f)
             else:
                 # No kind specified, use standard verbosity filtering
-                if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level)):
+                if level <= flevel and (max_level is None or flevel < max_level):
                     selected_log_files.append(f)
         
         for i in selected_log_files:
