@@ -289,7 +289,7 @@ def add_logging_arguments(parser):
     parser.add_argument(
         "--log-class",
         dest="log_classes_enabled",
-        nargs="+",
+        action="append",
         type=LogClassFileType,
         default=[],
         help=(
@@ -303,7 +303,7 @@ def add_logging_arguments(parser):
     parser.add_argument(
         "--disable-log-class",
         dest="log_classes_disabled",
-        nargs="+",
+        action="append",
         type=LogClassFileType,
         default=[],
         help=(
@@ -348,8 +348,9 @@ def process_logging_arguments(args):
                     log_class_config[file_obj] = {}
                 log_class_config[file_obj][class_name] = True
                 # Also add this file to log_files if not already there
+                # Use verbosity 0 for class-specific files so only explicit classes go there
                 if file_obj not in all_files:
-                    log_files.append((args.verbose, file_obj))
+                    log_files.append((0, file_obj))
     
     # Process disabled log classes
     if hasattr(args, 'log_classes_disabled'):
