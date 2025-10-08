@@ -36,8 +36,13 @@ DEFAULT_VERBOSITY = 1
 LOG_ALWAYS = None
 
 
-def make_logger(log_files):
+def make_logger(log_files, log_class_config=None):
     # log if level <= the level of the logger
+    # log_class_config is a dict mapping file objects to dicts of {class_name: enabled/disabled}
+    # where enabled=True, disabled=False, unset=None (fallback to verbosity)
+    if log_class_config is None:
+        log_class_config = {}
+    
     def log(
         text,
         level=DEFAULT_VERBOSITY,
@@ -45,13 +50,32 @@ def make_logger(log_files):
         force_stdout=False,
         force_stderr=False,
         end="\n",
+        kind=None,
     ):
-        selected_log_files = [
-            f
-            for flevel, f in log_files
-            if level is LOG_ALWAYS
-            or (level <= flevel and (max_level is None or flevel < max_level))
-        ]
+        # Determine which files to write to
+        selected_log_files = []
+        for flevel, f in log_files:
+            # Check if this log should be written based on kind (class)
+            if kind is not None:
+                # Get the class configuration for this file
+                file_class_config = log_class_config.get(f, {})
+                class_setting = file_class_config.get(kind, None)
+                
+                if class_setting is True:
+                    # Class is explicitly enabled for this file
+                    selected_log_files.append(f)
+                elif class_setting is False:
+                    # Class is explicitly disabled for this file
+                    continue
+                else:
+                    # Class is not configured, fall back to verbosity level
+                    if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level)):
+                        selected_log_files.append(f)
+            else:
+                # No kind specified, use standard verbosity filtering
+                if level is LOG_ALWAYS or (level <= flevel and (max_level is None or flevel < max_level)):
+                    selected_log_files.append(f)
+        
         for i in selected_log_files:
             if force_stderr and i.fileno() == 1 and not force_stdout:
                 continue  # skip stdout if we write to stderr
@@ -207,6 +231,23 @@ def TupleType(*types):
     return call
 
 
+def LogClassFileType(strings):
+    """Parse log class file specification: classname,filename or classname for default files"""
+    parts = strings.split(",", 1)
+    if len(parts) == 1:
+        # Just a class name, applies to default log files
+        return (parts[0], None)
+    else:
+        # Class name and file
+        class_name = parts[0]
+        file_name = parts[1]
+        if file_name == "-":
+            file_obj = sys.stdout
+        else:
+            file_obj = argparse.FileType("w")(file_name)
+        return (class_name, file_obj)
+
+
 def add_logging_arguments(parser):
     parser.add_argument(
         "--verbose",
@@ -242,6 +283,34 @@ def add_logging_arguments(parser):
             % DEFAULT_VERBOSITY
         ),
     )
+    parser.add_argument(
+        "--log-class",
+        dest="log_classes_enabled",
+        nargs="+",
+        type=LogClassFileType,
+        default=[],
+        help=(
+            "Enable logging for specific classes. "
+            "Each argument should be either 'classname' (applies to default log files) "
+            "or 'classname,filename' (applies to specific file). "
+            "Use - for stdout. "
+            "When a class is enabled, logs with that kind will be written regardless of verbosity level."
+        ),
+    )
+    parser.add_argument(
+        "--disable-log-class",
+        dest="log_classes_disabled",
+        nargs="+",
+        type=LogClassFileType,
+        default=[],
+        help=(
+            "Disable logging for specific classes. "
+            "Each argument should be either 'classname' (applies to default log files) "
+            "or 'classname,filename' (applies to specific file). "
+            "Use - for stdout. "
+            "When a class is disabled, logs with that kind will not be written regardless of verbosity level."
+        ),
+    )
 
 
 def process_logging_arguments(args):
@@ -250,9 +319,51 @@ def process_logging_arguments(args):
     if args.quiet is None:
         args.quiet = 0
     args.verbose -= args.quiet
-    args.log = make_logger(
-        [(args.verbose, f) for f in args.log_files] + args.verbose_log_files
-    )
+    
+    # Build the log files list
+    log_files = [(args.verbose, f) for f in args.log_files] + args.verbose_log_files
+    
+    # Build the log class configuration
+    # This is a dict mapping file objects to dicts of {class_name: True/False}
+    log_class_config = {}
+    
+    # Get all unique file objects from log_files
+    all_files = [f for _, f in log_files]
+    
+    # Process enabled log classes
+    if hasattr(args, 'log_classes_enabled'):
+        for class_name, file_obj in args.log_classes_enabled:
+            if file_obj is None:
+                # Apply to all default log files
+                for f in args.log_files:
+                    if f not in log_class_config:
+                        log_class_config[f] = {}
+                    log_class_config[f][class_name] = True
+            else:
+                # Apply to specific file
+                if file_obj not in log_class_config:
+                    log_class_config[file_obj] = {}
+                log_class_config[file_obj][class_name] = True
+                # Also add this file to log_files if not already there
+                if file_obj not in all_files:
+                    log_files.append((args.verbose, file_obj))
+    
+    # Process disabled log classes
+    if hasattr(args, 'log_classes_disabled'):
+        for class_name, file_obj in args.log_classes_disabled:
+            if file_obj is None:
+                # Apply to all default log files
+                for f in args.log_files:
+                    if f not in log_class_config:
+                        log_class_config[f] = {}
+                    log_class_config[f][class_name] = False
+            else:
+                # Apply to specific file
+                if file_obj not in log_class_config:
+                    log_class_config[file_obj] = {}
+                log_class_config[file_obj][class_name] = False
+    
+    args.log = make_logger(log_files, log_class_config=log_class_config)
     del args.quiet
     del args.verbose
     return args
