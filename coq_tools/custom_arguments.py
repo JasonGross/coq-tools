@@ -103,7 +103,17 @@ def make_logger(log_files, log_class_config=None):
         force_stderr=False,
         end="\n",
         kind=None,
+        kind_suffix=None,
     ):
+        # Construct the full kind from kind and kind_suffix
+        if kind is not None and kind_suffix is not None:
+            full_kind = kind + "." + kind_suffix
+        elif kind_suffix is not None:
+            # If only suffix is provided, use it as the kind
+            full_kind = kind_suffix
+        else:
+            full_kind = kind
+        
         # Determine which files to write to
         selected_log_files = []
         for flevel, f in log_files:
@@ -111,12 +121,12 @@ def make_logger(log_files, log_class_config=None):
             if level is LOG_ALWAYS:
                 selected_log_files.append(f)
             # Check if this log should be written based on kind (class)
-            elif kind is not None:
+            elif full_kind is not None:
                 # Get the class configuration for this file
                 file_class_config = log_class_config.get(f, {})
                 
                 # Check if this kind is explicitly enabled/disabled
-                class_setting = file_class_config.get(kind, None)
+                class_setting = file_class_config.get(full_kind, None)
                 
                 if class_setting is True:
                     # Class is explicitly enabled for this file
@@ -130,12 +140,12 @@ def make_logger(log_files, log_class_config=None):
                     for configured_kind, setting in file_class_config.items():
                         if setting is True:
                             # Check if this configured kind includes our log kind
-                            if check_kind_inclusion(configured_kind, kind):
+                            if check_kind_inclusion(configured_kind, full_kind):
                                 should_log_via_hierarchy = True
                                 break
                         elif setting is False:
                             # Check if this configured kind includes our log kind for exclusion
-                            if check_kind_inclusion(configured_kind, kind):
+                            if check_kind_inclusion(configured_kind, full_kind):
                                 should_log_via_hierarchy = False
                                 break
                     
@@ -144,7 +154,7 @@ def make_logger(log_files, log_class_config=None):
                     else:
                         # Class is not configured, fall back to verbosity level
                         # Use the default verbosity for this kind if available
-                        kind_level = DEFAULT_KIND_VERBOSITY.get(kind, level)
+                        kind_level = DEFAULT_KIND_VERBOSITY.get(full_kind, level)
                         if kind_level <= flevel and (max_level is None or flevel < max_level):
                             selected_log_files.append(f)
             else:
