@@ -17,6 +17,7 @@ __all__ = [
     "get_parser_name_mapping",
     "DEFAULT_KIND_VERBOSITY",
     "KIND_INCLUDES",
+    "check_kind_inclusion",
 ]
 
 
