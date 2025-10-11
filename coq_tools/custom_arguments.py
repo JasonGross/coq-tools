@@ -41,8 +41,16 @@ LOG_ALWAYS = None
 # This maps kind names to the minimum verbosity level at which they should be logged
 # This allows backwards compatibility with level-based logging
 DEFAULT_KIND_VERBOSITY = {
-    # Add default kinds and their verbosity levels here as needed
-    # Example: "debug.trace": 3, "debug.info": 2, "info": 1
+    # Common logging kinds based on usage patterns in the codebase
+    "error": 0,              # Always log errors
+    "warning": 1,            # Log warnings at default verbosity
+    "info": 1,               # Log info at default verbosity
+    "debug": 2,              # Log debug info at verbosity 2
+    "debug.detail": 3,       # Log detailed debug info at verbosity 3
+    "debug.trace": 4,        # Log trace-level debug at verbosity 4
+    "command": 2,            # Log commands being run at verbosity 2
+    "contents": 2,           # Log file contents at verbosity 2
+    "cache": 3,              # Log cache operations at verbosity 3
 }
 
 # Kind hierarchy/inclusion mapping
