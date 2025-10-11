@@ -15,6 +15,8 @@ __all__ = [
     "DEFAULT_VERBOSITY",
     "LOG_ALWAYS",
     "get_parser_name_mapping",
+    "DEFAULT_KIND_VERBOSITY",
+    "KIND_INCLUDES",
 ]
 
 
@@ -34,6 +36,56 @@ class CoqLibnameAction(argparse.Action):
 
 DEFAULT_VERBOSITY = 1
 LOG_ALWAYS = None
+
+# Default verbosity levels for logging kinds
+# This maps kind names to the minimum verbosity level at which they should be logged
+# This allows backwards compatibility with level-based logging
+DEFAULT_KIND_VERBOSITY = {
+    # Add default kinds and their verbosity levels here as needed
+    # Example: "debug.trace": 3, "debug.info": 2, "info": 1
+}
+
+# Kind hierarchy/inclusion mapping
+# This defines which kinds include other kinds
+# If a file is tagged with kind k1, and kind_includes[k1][k2] is True,
+# then logs with kind k2 will be written to that file
+def make_kind_includes():
+    from collections import defaultdict
+    
+    includes = {}
+    
+    # "all" includes everything
+    includes["all"] = defaultdict(lambda: True)
+    
+    # You can add specific hierarchies here
+    # Example: includes["debug"] = defaultdict(lambda: None, {"debug.trace": True, "debug.info": True})
+    
+    return includes
+
+def check_kind_inclusion(configured_kind, log_kind):
+    """
+    Check if a configured kind includes a log kind.
+    
+    This handles:
+    1. Exact matches
+    2. Hierarchical matches (e.g., "debug" includes "debug.trace")
+    3. Special cases defined in KIND_INCLUDES
+    """
+    # Exact match
+    if configured_kind == log_kind:
+        return True
+    
+    # Check if it's in the KIND_INCLUDES mapping
+    if configured_kind in KIND_INCLUDES:
+        return KIND_INCLUDES[configured_kind][log_kind]
+    
+    # Check for prefix-based hierarchy (e.g., "debug" includes "debug.trace")
+    if log_kind.startswith(configured_kind + "."):
+        return True
+    
+    return False
+
+KIND_INCLUDES = make_kind_includes()
 
 
 def make_logger(log_files, log_class_config=None):
@@ -62,6 +114,8 @@ def make_logger(log_files, log_class_config=None):
             elif kind is not None:
                 # Get the class configuration for this file
                 file_class_config = log_class_config.get(f, {})
+                
+                # Check if this kind is explicitly enabled/disabled
                 class_setting = file_class_config.get(kind, None)
                 
                 if class_setting is True:
@@ -71,9 +125,28 @@ def make_logger(log_files, log_class_config=None):
                     # Class is explicitly disabled for this file
                     continue
                 else:
-                    # Class is not configured, fall back to verbosity level
-                    if level <= flevel and (max_level is None or flevel < max_level):
+                    # Check if any configured kind includes this kind
+                    should_log_via_hierarchy = False
+                    for configured_kind, setting in file_class_config.items():
+                        if setting is True:
+                            # Check if this configured kind includes our log kind
+                            if check_kind_inclusion(configured_kind, kind):
+                                should_log_via_hierarchy = True
+                                break
+                        elif setting is False:
+                            # Check if this configured kind includes our log kind for exclusion
+                            if check_kind_inclusion(configured_kind, kind):
+                                should_log_via_hierarchy = False
+                                break
+                    
+                    if should_log_via_hierarchy:
                         selected_log_files.append(f)
+                    else:
+                        # Class is not configured, fall back to verbosity level
+                        # Use the default verbosity for this kind if available
+                        kind_level = DEFAULT_KIND_VERBOSITY.get(kind, level)
+                        if kind_level <= flevel and (max_level is None or flevel < max_level):
+                            selected_log_files.append(f)
             else:
                 # No kind specified, use standard verbosity filtering
                 if level <= flevel and (max_level is None or flevel < max_level):
