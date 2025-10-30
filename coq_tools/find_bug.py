@@ -551,6 +551,22 @@ parser.add_argument(
     help=("The path to the coqtop program that should compile the file successfully."),
 )
 parser.add_argument(
+    "--min-inline-timeout",
+    metavar="SECONDS",
+    dest="min_inline_timeout",
+    type=int,
+    default=3,
+    help="The minimum time budget for inlining a require.",
+)
+parser.add_argument(
+    "--default-timeout",
+    metavar="SECONDS",
+    dest="default_timeout",
+    type=int,
+    default=1,
+    help="The default timeout for inlining a require when there is no timeout recorded for the current file.",
+)
+parser.add_argument(
     "--parse-with",
     choices=[
         split_definitions.PREFER_PASSING,
@@ -3841,9 +3857,9 @@ def inline_one_require(
             for suffix in file_suffixes
         ]
 
-        mk_timeout = lambda runtime: 3 * max((1, int(math.ceil(runtime)))) + max(
-            cur_timeout.values()
-        )
+        mk_timeout = lambda runtime: max(
+            (kwargs["min_inline_timeout"], 3 * int(math.ceil(runtime)))
+        ) + (max(cur_timeout.values()) if cur_timeout else kwargs["default_timeout"])
 
         if not check_change_and_write_to_file(
             cur_output,
@@ -4111,6 +4127,8 @@ def main():
         "strict_whitespace": args.strict_whitespace,
         "temp_file_name": args.temp_file,
         "temp_file_log_name": args.temp_file_log,
+        "min_inline_timeout": args.min_inline_timeout,
+        "default_timeout": args.default_timeout,
         "coqc_is_coqtop": args.coqc_is_coqtop,
         "passing_coqc_is_coqtop": args.passing_coqc_is_coqtop,
         "coqpath_paths": [],
