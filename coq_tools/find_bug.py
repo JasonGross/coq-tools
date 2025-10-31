@@ -742,6 +742,12 @@ parser.add_argument(
     help="When normalizing requires, include all recursive requires explicitly.  This is useful for removing unneeded intermediate requires rather than inlining them, but causes issues with minimization when requires are not pre-emptively removed if any require fails to inline.",
 )
 parser.add_argument(
+    "--split-oneline-definitions",
+    action=BooleanOptionalAction,
+    default=None,
+    help="Split oneline definitions (default: False if --no-error is passed, True otherwise).",
+)
+parser.add_argument(
     "--lift-requires-and-custom-entry-declarations",
     action=BooleanOptionalAction,
     default=True,
@@ -841,6 +847,7 @@ def adjust_no_error_defaults(args: argparse.Namespace):
         "admit_obligations",
         "split_imports",
         "recursive_requires_explicit",
+        "split_oneline_definitions",
     ):
         if getattr(args, arg) is None:
             setattr(args, arg, not args.should_succeed)
@@ -3535,7 +3542,7 @@ def minimize_file(
     if env["split_imports"]:
         tasks += (("split imports and exports", try_split_imports),)
 
-    if not env["should_succeed"]:
+    if env["split_oneline_definitions"]:
         tasks += (("split := definitions", try_split_oneline_definitions),)
 
     if (
@@ -4137,6 +4144,7 @@ def main():
         "color_on": args.color_on,
         "inline_failure_libnames": [],
         "parse_with": args.parse_with,
+        "split_oneline_definitions": args.split_oneline_definitions,
         "verbose_include_failure_warning": args.verbose_include_failure_warning,
         "extra_verbose_prefix": args.verbose_include_failure_warning_prefix,
         "extra_verbose_newline": args.verbose_include_failure_warning_newline,
