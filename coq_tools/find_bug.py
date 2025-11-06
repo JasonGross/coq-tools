@@ -137,6 +137,15 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--only-inline",
+    dest="only_inline",
+    action=BooleanOptionalAction,
+    default=False,
+    help=(
+        "Only inline [Require] statements, don't attempt to minimize the file."
+    ),
+)
+parser.add_argument(
     "--try-all-inlining-and-minimization-again-at-end",
     dest="try_all_inlining_and_minimization_again_at_end",
     action=BooleanOptionalAction,
@@ -3222,7 +3231,7 @@ def minimize_file(
             os.remove(output_file_name)
         return die("Fatal error: Sanity check failed.", **env)
 
-    if env["admit_transparent"] or env["admit_opaque"]:
+    if not env["only_inline"] and (env["admit_transparent"] or env["admit_opaque"]):
         env["log"](
             "\nNow, I will attempt to add an admit tactic wrapper to this file..."
         )
@@ -3288,7 +3297,7 @@ def minimize_file(
         )
         return die(None, **env)
 
-    if not env["should_succeed"]:
+    if not env["should_succeed"] and not env["only_inline"]:
         env["log"](
             "\nI will now attempt to remove any lines after the line which generates the error."
         )
@@ -3352,7 +3361,7 @@ def minimize_file(
     if return_after_splitting:
         return True
 
-    if env["remove_useless_option_settings"]:
+    if not env["only_inline"] and env["remove_useless_option_settings"]:
         env["log"]("Definitions:", level=2)
         env["log"](definitions, level=2)
         env["log"]("\nI will now attempt to remove useless option settings")
@@ -3411,9 +3420,9 @@ def minimize_file(
     recursive_tasks = ()
     if env["remove_abort"]:
         recursive_tasks += (("remove goals ending in [Abort.]", try_remove_aborted),)
-    if env["remove_ltac"]:
+    if not env["only_inline"] and env["remove_ltac"]:
         recursive_tasks += (("remove unused Ltacs", try_remove_ltac),)
-    if not env["should_succeed"]:
+    if not env["should_succeed"] and not env["only_inline"]:
         recursive_tasks += (
             ("remove unused definitions", try_remove_definitions),
             (
@@ -3421,18 +3430,18 @@ def minimize_file(
                 try_remove_non_instance_definitions,
             ),
         )
-    if env["remove_section_variables"]:
+    if not env["only_inline"] and env["remove_section_variables"]:
         recursive_tasks += (
             ("remove unused variables", try_remove_variables),
             ("remove unused contexts", try_remove_contexts),
         )
 
     tasks = recursive_tasks
-    if env["add_proof_using_before_admit"] and not (
+    if not env["only_inline"] and env["add_proof_using_before_admit"] and not (
         env["admit_opaque"] and env["admit_transparent"]
     ):
         tasks += (("add Proof using lines", try_add_proof_using),)
-    if env["admit_opaque"]:
+    if not env["only_inline"] and env["admit_opaque"]:
         if env["admit_obligations"]:
             tasks += (
                 (
@@ -3476,12 +3485,12 @@ def minimize_file(
             recursive_tasks
         )
 
-    if not env["aggressive"] and not env["should_succeed"]:
+    if not env["aggressive"] and not env["should_succeed"] and not env["only_inline"]:
         tasks += (
             ("remove unused definitions, one at a time", try_remove_each_definition),
         )
 
-    if env["admit_transparent"]:
+    if not env["only_inline"] and env["admit_transparent"]:
         if env["admit_obligations"]:
             tasks += (
                 ("replace Obligation with Admit Obligations", try_admit_obligations),
@@ -3530,19 +3539,19 @@ def minimize_file(
                 ),
             )
 
-    if env["add_proof_using"]:
+    if not env["only_inline"] and env["add_proof_using"]:
         tasks += (("add Proof using lines", try_add_proof_using),)
 
-    if not env["aggressive"] and not env["save_typeclasses"] and env["remove_hints"]:
+    if not env["aggressive"] and not env["save_typeclasses"] and env["remove_hints"] and not env["only_inline"]:
         tasks += (("remove hints", try_remove_hints),)
 
-    if env["export_modules"]:
+    if not env["only_inline"] and env["export_modules"]:
         tasks += (("export modules", try_export_modules),)
 
-    if env["split_imports"]:
+    if not env["only_inline"] and env["split_imports"]:
         tasks += (("split imports and exports", try_split_imports),)
 
-    if env["split_oneline_definitions"]:
+    if not env["only_inline"] and env["split_oneline_definitions"]:
         tasks += (("split := definitions", try_split_oneline_definitions),)
 
     if (
@@ -3565,7 +3574,7 @@ def minimize_file(
             ),
         )
 
-    if env["aggressive"] and not env["should_succeed"]:
+    if env["aggressive"] and not env["should_succeed"] and not env["only_inline"]:
         tasks += (
             (("remove all lines, one at a time", try_remove_each_and_every_line),)
             +
@@ -3573,7 +3582,7 @@ def minimize_file(
             recursive_tasks
         )
 
-    if env["remove_non_definitions"]:
+    if not env["only_inline"] and env["remove_non_definitions"]:
         tasks += (
             (
                 (
@@ -3586,9 +3595,9 @@ def minimize_file(
             recursive_tasks
         )
 
-    if env["remove_modules"]:
+    if not env["only_inline"] and env["remove_modules"]:
         tasks += (("remove modules", try_remove_modules),)
-    if env["remove_sections"]:
+    if not env["only_inline"] and env["remove_sections"]:
         tasks += (("remove sections", try_remove_sections),)
 
     old_definitions = ""
@@ -3601,7 +3610,7 @@ def minimize_file(
             env["log"]("\nI will now attempt to %s" % description)
             definitions = task(definitions, output_file_name, **env)
 
-    if env["remove_empty_sections"]:
+    if not env["only_inline"] and env["remove_empty_sections"]:
         env["log"]("\nI will now attempt to remove empty sections")
         try_strip_empty_sections(output_file_name, **env)
 
@@ -4030,6 +4039,7 @@ def main():
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
     env = {
+        "only_inline": args.only_inline,
         "fast_merge_imports": args.fast_merge_imports,
         "faster_skip_repeat_edit_suffixes": args.faster_skip_repeat_edit_suffixes,
         "try_all_inlining_and_minimization_again_at_end": args.try_all_inlining_and_minimization_again_at_end,
