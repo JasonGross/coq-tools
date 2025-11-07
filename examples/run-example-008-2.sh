@@ -10,9 +10,9 @@ set -x
 rm -f *.vo *.glob *.d .*.d
 find_bug example_008.v bug_008_2.v "${EXTRA_ARGS[@]}" || exit $?
 LINES="$(cat bug_008_2.v | "$GREP" -v '^$' | wc -l)"
-if [ "$LINES" -ne 9 ]
+if [ "$LINES" -ne 10 ]
 then
-    echo "Expected 9 lines"
+    echo "Expected 10 lines"
     cat bug_008_2.v
     exit 1
 fi

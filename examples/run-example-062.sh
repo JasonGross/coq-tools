@@ -75,16 +75,16 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # Put some segment that you expect to see in the file here.  Or count
 # the number of lines.  Or make some other test.  Or remove this block
 # entirely if you don't care about the minimized file.
-EXPECTED="$(cat "${EXAMPLE_OUTPUT}.expected" | "$GREP" -v '^$' | tail +6)"
+EXPECTED="$(cat "${EXAMPLE_OUTPUT}.expected" | "$GREP" -v '^$' | tail +7)"
 EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
-ACTUAL="$(cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +6)"
+ACTUAL="$(cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +7)"
 ACTUAL_ONE_LINE="$(strip_for_grep "$ACTUAL")"
 if [ "$EXPECTED" != "$ACTUAL" ]
 then
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
-    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +6
+    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +7
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL_ONE_LINE" "$EXPECTED_ONE_LINE"
     exit 1

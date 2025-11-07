@@ -2,7 +2,7 @@ from __future__ import with_statement, print_function
 import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from .memoize import memoize
 from .file_util import clean_v_file
-from .util import re_escape
+from .util import re_escape, get_peak_rss_bytes
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
@@ -255,7 +255,7 @@ def reset_timeout():
 
 
 def timeout_Popen_communicate(log, *args, **kwargs):
-    ret = {"value": ("", ""), "returncode": None}
+    ret = {"value": ("", ""), "returncode": None, "rusage": None}
     timeout = kwargs.get("timeout")
     del kwargs["timeout"]
     input_val = kwargs.get("input")
@@ -268,18 +268,59 @@ def timeout_Popen_communicate(log, *args, **kwargs):
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
         ret["returncode"] = p.returncode
 
+    def wait4_target():
+        # Try to get rusage using os.wait4 in a separate thread
+        # Poll with WNOHANG to avoid blocking, then do a blocking wait if needed
+        try:
+            if hasattr(os, "wait4"):
+                # First try non-blocking
+                try:
+                    pid, status, rusage = os.wait4(p.pid, os.WNOHANG)
+                    if pid == p.pid:
+                        ret["rusage"] = rusage
+                        return
+                except (OSError, ChildProcessError):
+                    pass
+
+                # If non-blocking didn't work, do blocking wait
+                # This will race with communicate(), but one will succeed
+                try:
+                    pid, status, rusage = os.wait4(p.pid, 0)
+                    if pid == p.pid:
+                        ret["rusage"] = rusage
+                except (OSError, ChildProcessError):
+                    # Process was already reaped by communicate()
+                    pass
+        except Exception:
+            # Ignore any other errors
+            pass
+
     thread = threading.Thread(target=target)
     thread.start()
 
+    # Start wait4 in a separate thread to run in parallel
+    wait4_thread = None
+    if hasattr(os, "wait4"):
+        wait4_thread = threading.Thread(target=wait4_target, daemon=True)
+        wait4_thread.start()
+
     thread.join(timeout)
     if not thread.is_alive():
-        return (ret["value"], ret["returncode"])
+        # Wait for wait4 thread to finish if it's still running
+        if wait4_thread:
+            wait4_thread.join(timeout=1.0)
+        peak_rss_bytes = get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
+        return (ret["value"], ret["returncode"], peak_rss_bytes)
 
     p.terminate()
     thread.join()
+    if wait4_thread:
+        wait4_thread.join(timeout=1.0)
+    peak_rss_bytes = get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
+        peak_rss_bytes,
     )
 
 
@@ -515,22 +556,27 @@ def get_coq_output(
         return COQ_OUTPUT[key][1]
 
     start = time.time()
-    ((stdout, stderr), returncode) = memory_robust_timeout_Popen_communicate(
-        kwargs["log"],
-        cmds,
-        stderr=subprocess.STDOUT,
-        stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
-        timeout=(timeout_val if timeout_val is not None and timeout_val > 0 else None),
-        input=input_val,
-        cwd=cwd,
-        env=env,
+    ((stdout, stderr), returncode, peak_rss_bytes) = (
+        memory_robust_timeout_Popen_communicate(
+            kwargs["log"],
+            cmds,
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            timeout=(
+                timeout_val if timeout_val is not None and timeout_val > 0 else None
+            ),
+            input=input_val,
+            cwd=cwd,
+            env=env,
+        )
     )
     finish = time.time()
     runtime = finish - start
+    peak_rss_kb = peak_rss_bytes / 1024
     kwargs["log"](
-        "\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\n\n"
-        % (returncode, util.s(stdout), util.s(stderr), runtime),
+        "\nretcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\npeak_rss:\n%f kb\n\n"
+        % (returncode, util.s(stdout), util.s(stderr), runtime, peak_rss_kb),
         level=verbose_base + 1,
     )
     if get_timeout(coqc_prog) is None and timeout_val is not None:
@@ -538,7 +584,7 @@ def get_coq_output(
     cleaner()
     COQ_OUTPUT[key] = (
         file_name,
-        (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime),
+        (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime, peak_rss_kb),
     )
     kwargs["log"](
         "Storing result: COQ_OUTPUT[%s]:\n%s" % (repr(key), repr(COQ_OUTPUT[key])),

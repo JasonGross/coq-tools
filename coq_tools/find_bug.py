@@ -283,14 +283,14 @@ parser.add_argument(
     dest="header",
     nargs="?",
     type=str,
-    default="(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s\n   Expected coqc runtime on this file: %(recent_runtime).3f sec *)",
+    default="(* coqc version %(coqc_version)s\n   coqtop version %(coqtop_version)s%(module_inline_failure_string)s\n   Expected coqc runtime on this file: %(recent_runtime).3f sec\n   Expected coqc peak memory usage on this file: %(recent_peak_rss_kb).1f kb *)",
     help=(
         "A line to be placed at the top of the "
         + "output file, below the dynamic header, "
         + "followed by a newline.  The variables "
         + "coqtop_version and coqc_version will be "
         + "available for substitution.  The default is "
-        + "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version)s%%(module_inline_failure_string)s\\n   Expected coqc runtime on this file: %%(recent_runtime).3f sec *)'"
+        + "`(* coqc version %%(coqc_version)s\\n   coqtop version %%(coqtop_version)s%%(module_inline_failure_string)s\\n   Expected coqc runtime on this file: %%(recent_runtime).3f sec\\n   Expected coqc peak memory usage on this file: %%(recent_peak_rss_kb).1f kb *)'"
     ),
 )
 parser.add_argument(
@@ -975,7 +975,7 @@ def get_error_reg_string(output_file_name, **kwargs):
         contents = read_from_file(output_file_name)
         diagnose_error.reset_timeout()
         kwargs["log"]("\nContents:\n\n%s\n\n" % contents, level=3)
-        output, cmds, retcode, runtime = diagnose_error.get_coq_output(
+        output, cmds, retcode, runtime, peak_rss_kb = diagnose_error.get_coq_output(
             kwargs["coqc"],
             kwargs["coqc_args"],
             contents,
@@ -1160,6 +1160,7 @@ def get_header_dict(contents, old_header=None, original_line_count=0, **env):
         "coqc_version": coqc_version,
         "coqtop_version": coqtop_version,
         "recent_runtime": 0,
+        "recent_peak_rss_kb": 0,
     }
 
 
@@ -1215,7 +1216,7 @@ def classify_contents_change(
             ocamlpath=kwargs["nonpassing_ocamlpath"],
             **kwargs,
         )
-    output, cmds, retcode, runtime = diagnose_error.get_coq_output(
+    output, cmds, retcode, runtime, peak_rss_kb = diagnose_error.get_coq_output(
         kwargs["coqc"],
         kwargs["coqc_args"],
         new_contents,
@@ -1242,18 +1243,22 @@ def classify_contents_change(
                     ocamlpath=kwargs["passing_ocamlpath"],
                     **kwargs,
                 )
-            passing_output, cmds, passing_retcode, passing_runtime = (
-                diagnose_error.get_coq_output(
-                    kwargs["passing_coqc"],
-                    kwargs["passing_coqc_args"],
-                    new_contents,
-                    kwargs["passing_timeout"],
-                    cwd=kwargs["passing_base_dir"],
-                    is_coqtop=kwargs["passing_coqc_is_coqtop"],
-                    verbose_base=2,
-                    ocamlpath=kwargs["passing_ocamlpath"],
-                    **kwargs,
-                )
+            (
+                passing_output,
+                cmds,
+                passing_retcode,
+                passing_runtime,
+                passing_peak_rss_kb,
+            ) = diagnose_error.get_coq_output(
+                kwargs["passing_coqc"],
+                kwargs["passing_coqc_args"],
+                new_contents,
+                kwargs["passing_timeout"],
+                cwd=kwargs["passing_base_dir"],
+                is_coqtop=kwargs["passing_coqc_is_coqtop"],
+                verbose_base=2,
+                ocamlpath=kwargs["passing_ocamlpath"],
+                **kwargs,
             )
             if not (
                 diagnose_error.has_error(passing_output)
@@ -1263,6 +1268,7 @@ def classify_contents_change(
                 # that in Coq's test-suite, the file should pass, and
                 # so this is a better indicator of how long it'll take
                 kwargs["header_dict"]["recent_runtime"] = passing_runtime
+                kwargs["header_dict"]["recent_peak_rss_kb"] = passing_peak_rss_kb
                 return (
                     CHANGE_SUCCESS,
                     get_padded_contents(),
@@ -1285,6 +1291,7 @@ def classify_contents_change(
                 )
         else:
             kwargs["header_dict"]["recent_runtime"] = runtime
+            kwargs["header_dict"]["recent_peak_rss_kb"] = peak_rss_kb
             return (
                 CHANGE_SUCCESS,
                 get_padded_contents(),
@@ -1296,6 +1303,7 @@ def classify_contents_change(
             )
     elif should_succeed and not diagnose_error.has_error(output):
         kwargs["header_dict"]["recent_runtime"] = runtime
+        kwargs["header_dict"]["recent_peak_rss_kb"] = peak_rss_kb
         return (
             CHANGE_SUCCESS,
             get_padded_contents(),
@@ -3299,7 +3307,7 @@ def minimize_file(
         env["log"](
             "\nI will now attempt to remove any lines after the line which generates the error."
         )
-        output, cmds, retcode, runtime = diagnose_error.get_coq_output(
+        output, cmds, retcode, runtime, peak_rss_kb = diagnose_error.get_coq_output(
             env["coqc"],
             env["coqc_args"],
             "\n".join(statements),
@@ -3687,16 +3695,18 @@ def inline_one_require(
         )
         # since we'll be resetting the timeout shortly anyway, we get the time here manually
         if new_req_module not in mod_timeouts:
-            _output, _cmds, _retcode, runtime = diagnose_error.get_coq_output(
-                kwargs["coqc"],
-                kwargs["coqc_args"],
-                new_req_module,
-                timeout_val=None,  # no timeout
-                cwd=kwargs["base_dir"],
-                is_coqtop=kwargs["coqc_is_coqtop"],
-                verbose_base=2,
-                ocamlpath=kwargs["nonpassing_ocamlpath"],
-                **kwargs,
+            _output, _cmds, _retcode, runtime, _peak_rss_kb = (
+                diagnose_error.get_coq_output(
+                    kwargs["coqc"],
+                    kwargs["coqc_args"],
+                    new_req_module,
+                    timeout_val=None,  # no timeout
+                    cwd=kwargs["base_dir"],
+                    is_coqtop=kwargs["coqc_is_coqtop"],
+                    verbose_base=2,
+                    ocamlpath=kwargs["nonpassing_ocamlpath"],
+                    **kwargs,
+                )
             )
             mod_timeouts[new_req_module] = runtime
         else:
