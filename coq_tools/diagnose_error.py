@@ -3,7 +3,7 @@ import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from subprocess4 import Popen
 from .memoize import memoize
 from .file_util import clean_v_file
-from .util import re_escape, get_peak_rss_bytes
+from .util import re_escape, get_peak_rss_bytes, run_with_cgroup_memlimit, limit_as
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
@@ -263,7 +263,51 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     if input_val is not None:
         input_val = input_val.encode("utf-8")
     del kwargs["input"]
-    p = Popen(*args, allow_non_posix=True, **kwargs)
+
+    # Extract memory limit parameters
+    max_mem_rss = kwargs.pop("max_mem_rss", None)
+    max_mem_as = kwargs.pop("max_mem_as", None)
+    cgroup = kwargs.pop("cgroup", None)
+    cgexec = kwargs.pop("cgexec", False)
+
+    # Handle cgroup and memory limits
+    cmd = list(args[0]) if args else []
+    preexec_fn = kwargs.get("preexec_fn")
+    cg_path = None
+
+    # If cgexec is True, wrap command with cgexec
+    if cgexec:
+        if cgroup is None:
+            raise ValueError("cgexec requires cgroup to be set")
+        cmd = ["cgexec", "-g", f"memory:{cgroup}"] + cmd
+        args = (cmd,) + args[1:]
+        p = Popen(*args, allow_non_posix=True, **kwargs)
+
+    # If cgroup is set but cgexec is False, use run_with_cgroup_memlimit
+    elif cgroup is not None and max_mem_rss is not None and max_mem_rss > 0:
+        # Use cgroup v2 memory limit
+        p, cg_path = run_with_cgroup_memlimit(
+            cmd, max_mem_rss, swap_bytes=0, Popen=Popen, allow_non_posix=True
+        )
+
+    else:
+        # Set up preexec_fn for RLIMIT_AS if max_mem_as is set
+        if max_mem_as is not None and max_mem_as > 0 and max_mem_as != -1:
+            as_limit_fn = limit_as(max_mem_as)
+            if preexec_fn is not None:
+                # Chain preexec functions
+                def chained_preexec():
+                    preexec_fn()
+                    as_limit_fn()
+
+                preexec_fn = chained_preexec
+            else:
+                preexec_fn = as_limit_fn
+            kwargs["preexec_fn"] = preexec_fn
+
+        # Only create Popen if we didn't already create it via run_with_cgroup_memlimit
+        if cg_path is None:
+            p = Popen(*args, allow_non_posix=True, **kwargs)
 
     def target():
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
@@ -275,10 +319,22 @@ def timeout_Popen_communicate(log, *args, **kwargs):
 
     thread.join(timeout)
     if not thread.is_alive():
+        # Clean up cgroup if we created one
+        if cg_path is not None:
+            try:
+                shutil.rmtree(cg_path, ignore_errors=True)
+            except Exception:
+                pass
         return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
 
     p.terminate()
     thread.join()
+    # Clean up cgroup if we created one
+    if cg_path is not None:
+        try:
+            shutil.rmtree(cg_path, ignore_errors=True)
+        except Exception:
+            pass
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
