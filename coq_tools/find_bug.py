@@ -77,7 +77,13 @@ from .split_definitions import (
 from .split_file import split_coq_file_contents, split_leading_comments_and_whitespace
 from .strip_comments import strip_comments
 from .strip_newlines import strip_newlines
-from .util import PY3, BooleanOptionalAction, list_diff, yes_no_prompt
+from .util import (
+    PY3,
+    BooleanOptionalAction,
+    list_diff,
+    yes_no_prompt,
+    parse_memory_bytes,
+)
 
 if PY3:
     raw_input = util.raw_input
@@ -833,6 +839,60 @@ parser.add_argument(
     action=BooleanOptionalAction,
     default=None,
     help="Remove all statements that don't add constants to the global environment, where possible.",
+)
+parser.add_argument(
+    "--max-mem-rss",
+    dest="max_mem_rss",
+    metavar="MEMORY",
+    type=str,
+    default=None,
+    help=(
+        "Maximum RSS (Resident Set Size) memory limit in bytes. "
+        "Supports formats like: 5M, 5G, 5GB, 5GiB, 512, unlimited, 0. "
+        "Case-insensitive. Use 'unlimited' or '0' for no limit."
+    ),
+)
+parser.add_argument(
+    "--max-mem-as",
+    dest="max_mem_as",
+    metavar="MEMORY",
+    type=str,
+    default=None,
+    help=(
+        "Maximum virtual memory (address space) limit in bytes. "
+        "Supports formats like: 5M, 5G, 5GB, 5GiB, 512, unlimited, 0. "
+        "Case-insensitive. Use 'unlimited' or '0' for no limit."
+    ),
+)
+parser.add_argument(
+    "--cgroup",
+    dest="cgroup",
+    metavar="CGROUP_NAME",
+    type=str,
+    default=None,
+    help=(
+        "Name of cgroup to use for memory limits. "
+        "For enforceable RSS limits without relying on rlimit:\n"
+        "Set up a cgroup (requires root or sudo; example for memory limit):\n"
+        "  Install cgroup-tools (e.g., sudo apt install cgroup-tools on Ubuntu).\n"
+        "  Create a cgroup: sudo cgcreate -g memory:/limited_group\n"
+        "  Set limit: echo 100M > /sys/fs/cgroup/memory/limited_group/memory.limit_in_bytes"
+    ),
+)
+parser.add_argument(
+    "--cgexec",
+    dest="cgexec",
+    action=BooleanOptionalAction,
+    default=False,
+    help=(
+        "Use cgexec to run commands in the specified cgroup. "
+        "Requires --cgroup to be set. "
+        "For enforceable RSS limits without relying on rlimit:\n"
+        "Set up a cgroup (requires root or sudo; example for memory limit):\n"
+        "  Install cgroup-tools (e.g., sudo apt install cgroup-tools on Ubuntu).\n"
+        "  Create a cgroup: sudo cgcreate -g memory:/limited_group\n"
+        "  Set limit: echo 100M > /sys/fs/cgroup/memory/limited_group/memory.limit_in_bytes"
+    ),
 )
 
 add_libname_arguments(parser)
@@ -4197,6 +4257,16 @@ def main():
         "add_proof_using_before_admit": args.add_proof_using_before_admit,
         "prefer_final_proof_using": args.prefer_final_proof_using,
         "remove_non_definitions": args.remove_non_definitions,
+        "max_mem_rss": (
+            parse_memory_bytes(args.max_mem_rss)
+            if args.max_mem_rss is not None
+            else None
+        ),
+        "max_mem_as": (
+            parse_memory_bytes(args.max_mem_as) if args.max_mem_as is not None else None
+        ),
+        "cgroup": args.cgroup,
+        "cgexec": args.cgexec,
     }
 
     try:
@@ -4235,6 +4305,13 @@ def main():
                     level=LOG_ALWAYS,
                 )
                 sys.exit(1)
+        if env["cgexec"] and env["cgroup"] is None:
+            env["log"](
+                "\nError: --cgexec requires --cgroup to be set.",
+                force_stdout=True,
+                level=LOG_ALWAYS,
+            )
+            sys.exit(1)
 
         env["remove_temp_file"] = False
         if env["temp_file_name"] == "":
