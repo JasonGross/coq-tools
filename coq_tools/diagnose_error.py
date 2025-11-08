@@ -20,16 +20,19 @@ __all__ = [
     "is_timeout",
 ]
 
-ACTUAL_ERROR_REG_STRING = (
-    "(?!Warning)(?!The command has indeed failed with message:)"  # maybe we should just require Error or Timeout?
-)
+ACTUAL_ERROR_REG_STRING = "(?!Warning)(?!The command has indeed failed with message:)"  # maybe we should just require Error or Timeout?
 DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
-DEFAULT_PRE_ERROR_REG_STRING = DEFAULT_PRE_PRE_ERROR_REG_STRING + ACTUAL_ERROR_REG_STRING
+DEFAULT_PRE_ERROR_REG_STRING = (
+    DEFAULT_PRE_PRE_ERROR_REG_STRING + ACTUAL_ERROR_REG_STRING
+)
 DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES = (
-    'File "[^"]+", line ([0-9]+), characters ([0-9]+)-([0-9]+):\n' + ACTUAL_ERROR_REG_STRING
+    'File "[^"]+", line ([0-9]+), characters ([0-9]+)-([0-9]+):\n'
+    + ACTUAL_ERROR_REG_STRING
 )
 DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + "((?:.|\n)+)"
-DEFAULT_ERROR_REG_STRING_WITH_BYTES = DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES + "((?:.|\n)+)"
+DEFAULT_ERROR_REG_STRING_WITH_BYTES = (
+    DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES + "((?:.|\n)+)"
+)
 DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + "(%s)"
 
 
@@ -42,7 +45,9 @@ def get_coq_accepts_fine_grained_debug(coqc, debug_kind):
     temp_file = tempfile.NamedTemporaryFile(suffix=".v", dir=".", delete=True)
     temp_file_name = temp_file.name
     p = subprocess.Popen(
-        [coqc, "-q", "-d", debug_kind, temp_file_name], stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+        [coqc, "-q", "-d", debug_kind, temp_file_name],
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
     )
     (stdout, stderr) = p.communicate()
     temp_file.close()
@@ -61,7 +66,11 @@ def get_coq_debug_native_compiler_args(coqc):
 
 
 @memoize
-def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
+def get_error_match(
+    output,
+    reg_string=DEFAULT_ERROR_REG_STRING,
+    pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING,
+):
     """Returns the final match of reg_string"""
     locations = [0] + [m.start() for m in re.finditer(pre_reg_string, output)]
     reg = re.compile(reg_string)
@@ -73,11 +82,17 @@ def get_error_match(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=
 
 
 @memoize
-def has_error(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
+def has_error(
+    output,
+    reg_string=DEFAULT_ERROR_REG_STRING,
+    pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING,
+):
     """Returns True if the coq output encoded in output has an error
     matching the given regular expression, False otherwise.
     """
-    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    errors = get_error_match(
+        output, reg_string=reg_string, pre_reg_string=pre_reg_string
+    )
     if errors:
         return True
     else:
@@ -94,36 +109,52 @@ def is_timeout(output):
 
 
 @memoize
-def get_error_line_number(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
+def get_error_line_number(
+    output,
+    reg_string=DEFAULT_ERROR_REG_STRING,
+    pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING,
+):
     """Returns the line number that the error matching reg_string
     occured on.
 
     Precondition: has_error(output, reg_string)
     """
-    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    errors = get_error_match(
+        output, reg_string=reg_string, pre_reg_string=pre_reg_string
+    )
     return int(errors.groups()[0])
 
 
 @memoize
 def get_error_byte_locations(
-    output, reg_string=DEFAULT_ERROR_REG_STRING_WITH_BYTES, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES
+    output,
+    reg_string=DEFAULT_ERROR_REG_STRING_WITH_BYTES,
+    pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES,
 ):
     """Returns the byte locations that the error matching reg_string
     occured on.
 
     Precondition: has_error(output, reg_string)
     """
-    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    errors = get_error_match(
+        output, reg_string=reg_string, pre_reg_string=pre_reg_string
+    )
     return (int(errors.groups()[1]), int(errors.groups()[2]))
 
 
 @memoize
-def get_error_string(output, reg_string=DEFAULT_ERROR_REG_STRING, pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING):
+def get_error_string(
+    output,
+    reg_string=DEFAULT_ERROR_REG_STRING,
+    pre_reg_string=DEFAULT_PRE_ERROR_REG_STRING,
+):
     """Returns the error string of the error matching reg_string.
 
     Precondition: has_error(output, reg_string)
     """
-    errors = get_error_match(output, reg_string=reg_string, pre_reg_string=pre_reg_string)
+    errors = get_error_match(
+        output, reg_string=reg_string, pre_reg_string=pre_reg_string
+    )
     return errors.groups()[1]
 
 
@@ -140,7 +171,11 @@ def make_reg_string(output, strict_whitespace=False):
             lambda s: re.sub(
                 r"(?:\\s\\+)+",
                 r"\\s+",
-                re.sub(r"(?:\\ )+", r"\\s+", re.sub(r"(\\n|\n)(?:\\ )+", r"\\s+", s.replace("\\\n", "\n"))),
+                re.sub(
+                    r"(?:\\ )+",
+                    r"\\s+",
+                    re.sub(r"(\\n|\n)(?:\\ )+", r"\\s+", s.replace("\\\n", "\n")),
+                ),
             )
             .replace("\n", r"\s")
             .replace(r"\s+\s", r"\s+")
@@ -150,12 +185,27 @@ def make_reg_string(output, strict_whitespace=False):
     error_string = get_error_string(output).strip()
     if not util.PY3:
         error_string = error_string.decode("utf-8")
-    if "Anomaly" in error_string and re.search(r"Constant [^\s]+\s+does not appear in the environment", error_string):
-        re_string = re.sub(r"(Constant\\ )[^\s]+(\\ )", r"\1[^\\s]+\2", re_escape(error_string))
-    elif "Anomaly" in error_string and re.search(r"Universe [^\s]+ undefined", error_string):
-        re_string = re.sub(r"(Universe\\ )[^\s]+(\\ )", r"\1[^\\s]+\2", re_escape(error_string))
-    elif "Universe inconsistency" in error_string or "universe inconsistency" in error_string:
-        re_string = re.sub(r"([Uu]niverse\\ inconsistency.*) because(.|\n)*", r"\1 because.*", re_escape(error_string))
+    if "Anomaly" in error_string and re.search(
+        r"Constant [^\s]+\s+does not appear in the environment", error_string
+    ):
+        re_string = re.sub(
+            r"(Constant\\ )[^\s]+(\\ )", r"\1[^\\s]+\2", re_escape(error_string)
+        )
+    elif "Anomaly" in error_string and re.search(
+        r"Universe [^\s]+ undefined", error_string
+    ):
+        re_string = re.sub(
+            r"(Universe\\ )[^\s]+(\\ )", r"\1[^\\s]+\2", re_escape(error_string)
+        )
+    elif (
+        "Universe inconsistency" in error_string
+        or "universe inconsistency" in error_string
+    ):
+        re_string = re.sub(
+            r"([Uu]niverse\\ inconsistency.*) because(.|\n)*",
+            r"\1 because.*",
+            re_escape(error_string),
+        )
         re_string = re.sub(r"(\s)[^\s]+?\.([0-9]+)", r"\1[^\\s]+?\\.\2", re_string)
     elif "Unsatisfied constraints" in error_string:
         re_string = re.sub(
@@ -166,7 +216,9 @@ def make_reg_string(output, strict_whitespace=False):
         )
     elif re.search(r"Universe [^ ]* is unbound", error_string):
         re_string = re.sub(
-            r"Universe\\ [^ ]*\\ is\\ unbound", r"Universe\\ [^ ]*\\ is\\ unbound", re_escape(error_string)
+            r"Universe\\ [^ ]*\\ is\\ unbound",
+            r"Universe\\ [^ ]*\\ is\\ unbound",
+            re_escape(error_string),
         )
     elif re.search(r"Compilation of file /tmp/[^ ]*", error_string):
         re_string = re.sub(
@@ -225,7 +277,10 @@ def timeout_Popen_communicate(log, *args, **kwargs):
 
     p.terminate()
     thread.join()
-    return (tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])), ret["returncode"])
+    return (
+        tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
+        ret["returncode"],
+    )
 
 
 def memory_robust_timeout_Popen_communicate(log, *args, **kwargs):
@@ -246,7 +301,11 @@ COQ_OUTPUT = {}
 
 
 def sanitize_cmd(cmd):
-    return re.sub(r'("/tmp/tmp|"/var/folders/.*?tmp)[^/"]*?((?:/[^"]*?)?(?:\.v)?")', r"\1XXXXXXXX\2", cmd)
+    return re.sub(
+        r'("/tmp/tmp|"/var/folders/.*?tmp)[^/"]*?((?:/[^"]*?)?(?:\.v)?")',
+        r"\1XXXXXXXX\2",
+        cmd,
+    )
 
 
 def get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs):
@@ -261,28 +320,52 @@ def get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs):
 prepare_cmds_for_coq_output_printed_cmd_already = set()
 
 
-def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, timeout_val=0, ocamlpath=None, **kwargs):
+def prepare_cmds_for_coq_output(
+    coqc_prog,
+    coqc_prog_args,
+    contents,
+    cwd=None,
+    timeout_val=0,
+    ocamlpath=None,
+    **kwargs,
+):
     def make_rmtree_onerror(file_name):
         def rmtree_onerror(function, path, exc_info):
-            kwargs["log"]("Non-fatal error encountered when cleaning up %s:\n" % file_name)
+            kwargs["log"](
+                "Non-fatal error encountered when cleaning up %s:\n" % file_name
+            )
             etype, value, tb = exc_info
             if hasattr(traceback, "TracebackException"):
                 kwargs["log"](
-                    "".join(traceback.TracebackException(type(value), value, tb, capture_locals=True).format())
+                    "".join(
+                        traceback.TracebackException(
+                            type(value), value, tb, capture_locals=True
+                        ).format()
+                    )
                 )
             else:
                 kwargs["log"](traceback.format_exception(type(value), value, tb))
 
         return rmtree_onerror
 
-    key = (coqc_prog, tuple(coqc_prog_args), kwargs["pass_on_stdin"], contents, timeout_val, cwd, ocamlpath)
+    key = (
+        coqc_prog,
+        tuple(coqc_prog_args),
+        kwargs["pass_on_stdin"],
+        contents,
+        timeout_val,
+        cwd,
+        ocamlpath,
+    )
     assert isinstance(coqc_prog, tuple), coqc_prog
     cmds = list(coqc_prog) + list(coqc_prog_args)
     if key in COQ_OUTPUT.keys():
         file_name = COQ_OUTPUT[key][0]
         cleaner = lambda: None
     else:
-        intermediate_dirs, topfilename = get_filepath_of_coq_args(coqc_prog, coqc_prog_args, **kwargs)
+        intermediate_dirs, topfilename = get_filepath_of_coq_args(
+            coqc_prog, coqc_prog_args, **kwargs
+        )
         if topfilename is None:
             with tempfile.NamedTemporaryFile(suffix=".v", delete=False, mode="wb") as f:
                 f.write(contents.encode("utf-8"))
@@ -296,11 +379,15 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
             file_name = os.path.join(file_path, topfilename)
             with open(file_name, mode="wb") as f:
                 f.write(contents.encode("utf-8"))
-            cleaner = lambda: shutil.rmtree(temp_dir_name, onerror=make_rmtree_onerror(file_name))
+            cleaner = lambda: shutil.rmtree(
+                temp_dir_name, onerror=make_rmtree_onerror(file_name)
+            )
             if get_coq_accepts_Q(coqc_prog, **kwargs):
                 cmds.extend(["-Q", temp_dir_name, ""])
             else:
-                cmds.extend(["-R", temp_dir_name, ""])  # make sure we bind the entire tree; use -R for compat with 8.4
+                cmds.extend(
+                    ["-R", temp_dir_name, ""]
+                )  # make sure we bind the entire tree; use -R for compat with 8.4
 
     file_name_root = os.path.splitext(file_name)[0]
 
@@ -321,7 +408,12 @@ def prepare_cmds_for_coq_output(coqc_prog, coqc_prog_args, contents, cwd=None, t
         "\nRunning command%s: %s" % (extra_cmd, cmd_to_print),
         level=(
             kwargs["verbose_base"]
-            - (1 if sanitize_cmd(cmd_to_print) not in prepare_cmds_for_coq_output_printed_cmd_already else 0)
+            - (
+                1
+                if sanitize_cmd(cmd_to_print)
+                not in prepare_cmds_for_coq_output_printed_cmd_already
+                else 0
+            )
         ),
     )
     prepare_cmds_for_coq_output_printed_cmd_already.add(sanitize_cmd(cmd_to_print))
@@ -378,13 +470,19 @@ def get_coq_output(
     is_coqtop=False,
     pass_on_stdin=False,
     verbose_base=1,
-    retry_with_debug_when=(lambda output: "is not a compiled interface for this version of OCaml" in output),
+    retry_with_debug_when=(
+        lambda output: "is not a compiled interface for this version of OCaml" in output
+    ),
     ocamlpath=None,
     **kwargs,
 ):
     """Returns the coqc output of running through the given
     contents.  Pass timeout_val = None for no timeout."""
-    if timeout_val is not None and timeout_val < 0 and get_timeout(coqc_prog) is not None:
+    if (
+        timeout_val is not None
+        and timeout_val < 0
+        and get_timeout(coqc_prog) is not None
+    ):
         return get_coq_output(
             coqc_prog,
             coqc_prog_args,
@@ -438,11 +536,19 @@ def get_coq_output(
     if get_timeout(coqc_prog) is None and timeout_val is not None:
         set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
     cleaner()
-    COQ_OUTPUT[key] = (file_name, (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime))
-    kwargs["log"]("Storing result: COQ_OUTPUT[%s]:\n%s" % (repr(key), repr(COQ_OUTPUT[key])), level=verbose_base + 2)
+    COQ_OUTPUT[key] = (
+        file_name,
+        (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime),
+    )
+    kwargs["log"](
+        "Storing result: COQ_OUTPUT[%s]:\n%s" % (repr(key), repr(COQ_OUTPUT[key])),
+        level=verbose_base + 2,
+    )
     if retry_with_debug_when(COQ_OUTPUT[key][1][0]):
         debug_args = get_coq_debug_native_compiler_args(coqc_prog)
-        kwargs["log"]("Retrying with %s..." % " ".join(debug_args), level=verbose_base - 1)
+        kwargs["log"](
+            "Retrying with %s..." % " ".join(debug_args), level=verbose_base - 1
+        )
         return get_coq_output(
             coqc_prog,
             list(debug_args) + list(coqc_prog_args),

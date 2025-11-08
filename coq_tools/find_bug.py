@@ -141,9 +141,7 @@ parser.add_argument(
     dest="only_inline",
     action=BooleanOptionalAction,
     default=False,
-    help=(
-        "Only inline [Require] statements, don't attempt to minimize the file."
-    ),
+    help=("Only inline [Require] statements, don't attempt to minimize the file."),
 )
 parser.add_argument(
     "--try-all-inlining-and-minimization-again-at-end",
@@ -3437,8 +3435,10 @@ def minimize_file(
         )
 
     tasks = recursive_tasks
-    if not env["only_inline"] and env["add_proof_using_before_admit"] and not (
-        env["admit_opaque"] and env["admit_transparent"]
+    if (
+        not env["only_inline"]
+        and env["add_proof_using_before_admit"]
+        and not (env["admit_opaque"] and env["admit_transparent"])
     ):
         tasks += (("add Proof using lines", try_add_proof_using),)
     if not env["only_inline"] and env["admit_opaque"]:
@@ -3542,7 +3542,12 @@ def minimize_file(
     if not env["only_inline"] and env["add_proof_using"]:
         tasks += (("add Proof using lines", try_add_proof_using),)
 
-    if not env["aggressive"] and not env["save_typeclasses"] and env["remove_hints"] and not env["only_inline"]:
+    if (
+        not env["aggressive"]
+        and not env["save_typeclasses"]
+        and env["remove_hints"]
+        and not env["only_inline"]
+    ):
         tasks += (("remove hints", try_remove_hints),)
 
     if not env["only_inline"] and env["export_modules"]:

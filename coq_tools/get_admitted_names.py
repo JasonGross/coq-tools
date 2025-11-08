@@ -42,7 +42,13 @@ parser.add_argument(
     help="The path to a folder containing the coqc and coqtop programs.",
 )
 parser.add_argument(
-    "--coqc", metavar="COQC", dest="coqc", type=str, default=None, action="append", help="The path to the coqc program."
+    "--coqc",
+    metavar="COQC",
+    dest="coqc",
+    type=str,
+    default=None,
+    action="append",
+    help="The path to the coqc program.",
 )
 parser.add_argument(
     "--coqc-is-coqtop",
@@ -82,12 +88,16 @@ def qualify_identifiers_helper(identifiers, keep_unfound=False, **kwargs):
 
 
 def qualify_identifiers(identifiers, keep_unfound=False, **kwargs):
-    for ident, new_ident in qualify_identifiers_helper(identifiers, keep_unfound=keep_unfound, **kwargs):
+    for ident, new_ident in qualify_identifiers_helper(
+        identifiers, keep_unfound=keep_unfound, **kwargs
+    ):
         yield new_ident
 
 
 def filter_local_identifiers(identifiers, keep_unfound=False, **kwargs):
-    for ident, new_ident in qualify_identifiers_helper(identifiers, keep_unfound=keep_unfound, **kwargs):
+    for ident, new_ident in qualify_identifiers_helper(
+        identifiers, keep_unfound=keep_unfound, **kwargs
+    ):
         yield ident
 
 
@@ -142,7 +152,9 @@ def main():
         "log": args.log,
         "coqc": prepend_coqbin(args.coqc or "coqc"),
         "coqtop": prepend_coqbin(args.coqtop or DEFAULT_COQTOP),
-        "coqc_args": tuple(i.strip() for i in process_maybe_list(args.coq_args, log=args.log)),
+        "coqc_args": tuple(
+            i.strip() for i in process_maybe_list(args.coq_args, log=args.log)
+        ),
         "coqc_is_coqtop": args.coqc_is_coqtop,
         "temp_file_name": "",
         "cli_mapping": get_parser_name_mapping(parser),
@@ -175,7 +187,9 @@ def main():
     for dirname in env["ocaml_dirnames"]:
         env["coqc_args"] = tuple(list(env["coqc_args"]) + ["-I", dirname])
     env["coqc_args"] = deduplicate_trailing_dir_bindings(
-        env["coqc_args"], coqc_help=coqc_help, coq_accepts_top=get_coq_accepts_top(env["coqc"])
+        env["coqc_args"],
+        coqc_help=coqc_help,
+        coq_accepts_top=get_coq_accepts_top(env["coqc"]),
     )
 
     try:
@@ -198,9 +212,19 @@ SearchPattern _ inside %s.""" % (
                 libname,
             )
             output, cmds, retcode, runtime = get_coq_output(
-                env["coqc"], env["coqc_args"], search_code, 0, is_coqtop=env["coqc_is_coqtop"], verbose_base=3, **env
+                env["coqc"],
+                env["coqc_args"],
+                search_code,
+                0,
+                is_coqtop=env["coqc_is_coqtop"],
+                verbose_base=3,
+                **env,
             )
-            identifiers = sorted(fix_identifiers(set(i.strip() for i in output.split("\n") if i.strip()), libname))
+            identifiers = sorted(
+                fix_identifiers(
+                    set(i.strip() for i in output.split("\n") if i.strip()), libname
+                )
+            )
             print_assumptions_code = require_statement + "\n".join(
                 "Locate %s.\nPrint Assumptions %s." % (i, i) for i in identifiers
             )
@@ -218,14 +242,18 @@ SearchPattern _ inside %s.""" % (
             i = 0
             statements = output.split("\nCoq <")
             while i < len(statements):
-                if i + 1 < len(statements) and " Closed under the global context " in statements[i + 1].replace(
+                if i + 1 < len(
+                    statements
+                ) and " Closed under the global context " in statements[i + 1].replace(
                     "\n", " "
                 ):
                     last, ctype = get_constant_name_from_locate(statements[i])
                     closed_idents.append((last, ctype))
                     env["log"]("Closed: %s (%s)" % (last, ctype), level=2)
                     i += 2
-                elif i + 1 < len(statements) and "Axioms:" in statements[i + 1].replace("\n", " "):
+                elif i + 1 < len(statements) and "Axioms:" in statements[i + 1].replace(
+                    "\n", " "
+                ):
                     last, ctype = get_constant_name_from_locate(statements[i])
                     open_idents.append((last, ctype, statements[i + 1]))
                     env["log"]("OPEN: %s (%s)" % (last, ctype))
