@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import subprocess
-import resource
 from difflib import SequenceMatcher
 from typing import Dict, Hashable, Iterable, List, Set, TypeVar, Tuple
 
@@ -526,6 +525,8 @@ def limit_as(bytes_: int):
     Returns:
         Function to be used as preexec_fn in subprocess.Popen
     """
+
+    import resource
 
     def _set_limits():
         # Set both soft and hard to the same value.
