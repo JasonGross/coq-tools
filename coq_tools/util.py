@@ -1,8 +1,10 @@
 import os
 import re
 import sys
+import subprocess
+import resource
 from difflib import SequenceMatcher
-from typing import Dict, Hashable, Iterable, List, Set, TypeVar
+from typing import Dict, Hashable, Iterable, List, Set, TypeVar, Tuple
 
 try:
     from typing import Protocol
@@ -30,6 +32,9 @@ __all__ = [
     "group_by",
     "transitive_closure",
     "get_peak_rss_bytes",
+    "parse_memory_bytes",
+    "run_with_cgroup_memlimit",
+    "limit_as",
 ]
 
 BooleanOptionalAction = argparse.BooleanOptionalAction
@@ -380,6 +385,153 @@ def get_peak_rss_bytes(rusage):
         return rusage.ru_maxrss * 1024
     else:
         return rusage.ru_maxrss
+
+
+def parse_memory_bytes(mem_str: str) -> int:
+    """
+    Parse a memory string (case-insensitive) to bytes.
+
+    Supports formats like: "5M", "5G", "5GB", "5GiB", "512", "unlimited", "0"
+
+    Args:
+        mem_str: Memory string to parse (case-insensitive)
+
+    Returns:
+        Number of bytes, or -1 for "unlimited" or "0"
+
+    Examples:
+        >>> parse_memory_bytes("5M")
+        5242880
+        >>> parse_memory_bytes("5G")
+        5368709120
+        >>> parse_memory_bytes("5GB")
+        5368709120
+        >>> parse_memory_bytes("5GiB")
+        5368709120
+        >>> parse_memory_bytes("512")
+        512
+        >>> parse_memory_bytes("unlimited")
+        -1
+        >>> parse_memory_bytes("0")
+        -1
+    """
+    if isinstance(mem_str, (int, float)):
+        val = float(mem_str)
+        return int(val) if val > 0 else -1
+
+    mem_str_normalized = str(mem_str).strip().lower()
+    mem_str = mem_str_normalized
+
+    if mem_str in ("unlimited", "0", ""):
+        return -1
+
+    # Match number with optional unit suffix
+    # Pattern: number followed by optional unit
+    # Units: k/m/g/t (with optional 'i' for binary, optional 'b' suffix)
+    # Examples: "5", "5k", "5kb", "5kib", "5m", "5mb", "5mib", "5g", "5gb", "5gib"
+    match = re.match(r"^(\d+(?:\.\d+)?)\s*([kmgt]i?b?)$", mem_str)
+    if not match:
+        # Try to parse as plain number
+        try:
+            val = int(mem_str)
+            return val if val > 0 else -1
+        except ValueError:
+            raise ValueError(f"Invalid memory format: {mem_str}")
+
+    number_str, unit = match.groups()
+    number = float(number_str)
+
+    # Parse unit - handle both "b" and "ib" suffixes
+    unit = unit.lower()
+    if unit == "" or unit == "b":
+        multiplier = 1
+    elif unit in ("k", "kb"):
+        multiplier = 1000
+    elif unit == "kib":
+        multiplier = 1024
+    elif unit in ("m", "mb"):
+        multiplier = 1000**2
+    elif unit == "mib":
+        multiplier = 1024**2
+    elif unit in ("g", "gb"):
+        multiplier = 1000**3
+    elif unit == "gib":
+        multiplier = 1024**3
+    elif unit in ("t", "tb"):
+        multiplier = 1000**4
+    elif unit == "tib":
+        multiplier = 1024**4
+    else:
+        raise ValueError(f"Unknown memory unit: {unit}")
+
+    return int(number * multiplier)
+
+
+def run_with_cgroup_memlimit(
+    cmd: List[str],
+    mem_bytes: int,
+    swap_bytes: int = 0,
+    *args,
+    Popen=subprocess.Popen,
+    **kwargs,
+) -> Tuple[subprocess.Popen, str]:
+    """
+    Run a command with a cgroup v2 memory limit.
+
+    Args:
+        cmd: Command to run
+        mem_bytes: Memory limit in bytes
+        swap_bytes: Swap limit in bytes (0 means no swap, -1 means unlimited)
+
+    Returns:
+        Tuple of (subprocess.Popen, cgroup_path)
+    """
+    cg_root = "/sys/fs/cgroup"  # cgroup v2 mount point
+    cg_name = f"pyjob-{os.getpid()}"
+    cg_path = os.path.join(cg_root, cg_name)
+
+    # Create the cgroup and set limits
+    try:
+        os.makedirs(cg_path, exist_ok=True)
+        with open(os.path.join(cg_path, "memory.max"), "w") as f:
+            f.write(str(mem_bytes))
+        with open(os.path.join(cg_path, "memory.swap.max"), "w") as f:
+            f.write(str(swap_bytes) if swap_bytes >= 0 else "max")
+        # Optional: kill the whole group on OOM
+        with open(os.path.join(cg_path, "memory.oom.group"), "w") as f:
+            f.write("1")
+    except (OSError, IOError) as e:
+        raise RuntimeError(f"Failed to set up cgroup at {cg_path}: {e}")
+
+    def _join_cgroup():
+        # Execute in child just before exec(): move self into the cgroup
+        try:
+            with open(os.path.join(cg_path, "cgroup.procs"), "w") as f:
+                f.write(str(os.getpid()))
+        except (OSError, IOError) as e:
+            raise RuntimeError(f"Failed to join cgroup: {e}")
+
+    # Launch child inside the cgroup
+    p = Popen(cmd, *args, preexec_fn=_join_cgroup, **kwargs)
+    return p, cg_path
+
+
+def limit_as(bytes_: int):
+    """
+    Create a preexec_fn for subprocess.Popen that limits virtual memory (RLIMIT_AS).
+
+    Args:
+        bytes_: Maximum virtual memory in bytes
+
+    Returns:
+        Function to be used as preexec_fn in subprocess.Popen
+    """
+
+    def _set_limits():
+        # Set both soft and hard to the same value.
+        resource.setrlimit(resource.RLIMIT_AS, (bytes_, bytes_))
+
+    return _set_limits
 
 
 if __name__ == "__main__":
