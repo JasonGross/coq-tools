@@ -574,6 +574,11 @@ def get_coq_output(
         return COQ_OUTPUT[key][1]
 
     start = time.time()
+    extra_kwargs = {
+        k: kwargs[k]
+        for k in ["max_mem_rss", "max_mem_as", "cgroup", "cgexec"]
+        if k in kwargs
+    }
     ((stdout, stderr), returncode, peak_rss_bytes) = (
         memory_robust_timeout_Popen_communicate(
             kwargs["log"],
@@ -587,6 +592,7 @@ def get_coq_output(
             input=input_val,
             cwd=cwd,
             env=env,
+            **extra_kwargs,
         )
     )
     finish = time.time()
@@ -624,5 +630,6 @@ def get_coq_output(
             verbose_base=verbose_base,
             retry_with_debug_when=(lambda output: False),
             ocamlpath=ocamlpath,
+            **kwargs,
         )
     return COQ_OUTPUT[key][1]
