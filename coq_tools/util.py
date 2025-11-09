@@ -1,4 +1,5 @@
 import os
+import ctypes
 import re
 import sys
 import subprocess
@@ -528,13 +529,41 @@ def limit_as(bytes_: int):
     """
 
     if platform.system() == "Darwin":
-        raise RuntimeError("RLIMIT_AS is not respected on macOS")
+        raise RuntimeError(
+            "RLIMIT_AS is not respected on macOS and task_set_phys_footprint_limit only works for signed binaries"
+        )
 
-    import resource
+    # RLIMIT_AS is not respected on macOS
+    if platform.system() != "Darwin":
+        import resource
 
-    def _set_limits():
-        # Set both soft and hard to the same value.
-        resource.setrlimit(resource.RLIMIT_AS, (bytes_, bytes_))
+        def _set_limits():
+            # Set both soft and hard to the same value.
+            resource.setrlimit(resource.RLIMIT_AS, (bytes_, bytes_))
+
+    else:
+        # 2) Hard cap: task_set_phys_footprint_limit(mach_task_self(), limit_mb)
+        libc = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+
+        def _set_limits():
+            libc.mach_task_self.restype = ctypes.c_uint32  # mach_port_t
+            task = libc.mach_task_self()
+
+            limit_mb = (int(bytes_) + (1 << 20) - 1) // (1 << 20)
+            old = ctypes.c_int()
+            libc.task_set_phys_footprint_limit.argtypes = (
+                ctypes.c_uint32,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_int),
+            )
+            libc.task_set_phys_footprint_limit.restype = ctypes.c_int
+            kr = libc.task_set_phys_footprint_limit(task, limit_mb, ctypes.byref(old))
+            libc.mach_error_string.restype = ctypes.c_char_p
+            # KERN_SUCCESS == 0; nonzero means the kernel rejected it (rare on macOS 10.9+)
+            if kr != 0:
+                raise RuntimeError(
+                    f"Failed to set RLIMIT_AS to {bytes_} bytes: {kr} ({libc.mach_error_string(kr).decode()}) (old: {old.value})"
+                )
 
     return _set_limits
 
