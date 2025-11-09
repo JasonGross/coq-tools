@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import subprocess
+import platform
 from difflib import SequenceMatcher
 from typing import Dict, Hashable, Iterable, List, Set, TypeVar, Tuple
 
@@ -525,6 +526,9 @@ def limit_as(bytes_: int):
     Returns:
         Function to be used as preexec_fn in subprocess.Popen
     """
+
+    if platform.system() == "Darwin":
+        raise RuntimeError("RLIMIT_AS is not respected on macOS")
 
     import resource
 
