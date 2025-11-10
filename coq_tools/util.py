@@ -374,6 +374,8 @@ def get_peak_rss_bytes(rusage):
         Peak RSS in bytes. On Linux, ru_maxrss is in kilobytes, so we multiply by 1024.
         On macOS/BSD, ru_maxrss is already in bytes.
     """
+    if rusage is None:
+        return None
     if sys.platform.startswith("linux"):
         return rusage.ru_maxrss * 1024
     else:

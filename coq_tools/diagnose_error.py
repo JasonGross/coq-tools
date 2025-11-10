@@ -6,6 +6,7 @@ from .util import re_escape, get_peak_rss_bytes
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
+from .subprocess_with_rusage import Popen
 
 __all__ = [
     "has_error",
@@ -262,65 +263,26 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     if input_val is not None:
         input_val = input_val.encode("utf-8")
     del kwargs["input"]
-    p = subprocess.Popen(*args, **kwargs)
+    p = Popen(*args, allow_non_posix=True, **kwargs)
 
     def target():
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
         ret["returncode"] = p.returncode
-
-    def wait4_target():
-        # Try to get rusage using os.wait4 in a separate thread
-        # Poll with WNOHANG to avoid blocking, then do a blocking wait if needed
-        try:
-            if hasattr(os, "wait4"):
-                # First try non-blocking
-                try:
-                    pid, status, rusage = os.wait4(p.pid, os.WNOHANG)
-                    if pid == p.pid:
-                        ret["rusage"] = rusage
-                        return
-                except (OSError, ChildProcessError):
-                    pass
-
-                # If non-blocking didn't work, do blocking wait
-                # This will race with communicate(), but one will succeed
-                try:
-                    pid, status, rusage = os.wait4(p.pid, 0)
-                    if pid == p.pid:
-                        ret["rusage"] = rusage
-                except (OSError, ChildProcessError):
-                    # Process was already reaped by communicate()
-                    pass
-        except Exception:
-            # Ignore any other errors
-            pass
+        ret["rusage"] = p.rusage
 
     thread = threading.Thread(target=target)
     thread.start()
 
-    # Start wait4 in a separate thread to run in parallel
-    wait4_thread = None
-    if hasattr(os, "wait4"):
-        wait4_thread = threading.Thread(target=wait4_target, daemon=True)
-        wait4_thread.start()
-
     thread.join(timeout)
     if not thread.is_alive():
-        # Wait for wait4 thread to finish if it's still running
-        if wait4_thread:
-            wait4_thread.join(timeout=1.0)
-        peak_rss_bytes = get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
-        return (ret["value"], ret["returncode"], peak_rss_bytes)
+        return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
 
     p.terminate()
     thread.join()
-    if wait4_thread:
-        wait4_thread.join(timeout=1.0)
-    peak_rss_bytes = get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        peak_rss_bytes,
+        get_peak_rss_bytes(ret["rusage"] or 0),
     )
 
 
