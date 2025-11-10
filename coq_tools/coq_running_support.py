@@ -29,7 +29,7 @@ __all__ = [
 def get_proof_term_works_with_time(coqc_prog, **kwargs):
     contents = r"""Lemma foo : forall _ : Type, Type.
 Proof (fun x => x)."""
-    output, cmds, retcode, runtime = get_coq_output(
+    output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqc_prog,
         ("-time", "-q", *get_boot_noinputstate_args(coqc_prog, **kwargs)),
         contents,
@@ -71,7 +71,7 @@ Goal False. admit. Qed."""
         ),
     ):
         contents = "%s\n%s\n%s" % (before, after, test)
-        output, cmds, retcode, runtime = get_coq_output(
+        output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
             coqc,
             tuple(
                 ["-q", "-nois", *coqlib_args_of_coq_args(coqc, coqc_args, **kwargs)]
@@ -102,7 +102,7 @@ def get_is_modname_valid(coqc_prog, modname, **kwargs):
     contents = "Module %s. End %s." % (modname, modname)
     if " " in modname:
         return False
-    output, cmds, retcode, runtime = get_coq_output(
+    output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqc_prog,
         ("-q", *get_boot_noinputstate_args(coqc_prog, **kwargs)),
         contents,
@@ -117,7 +117,7 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     grammars_contents = (
         "Print Grammar tactic. Print Grammar constr. Print Grammar vernac."
     )
-    grammars_output, cmds, retcode, runtime = get_coq_output(
+    grammars_output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqtop_prog,
         ("-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)),
         grammars_contents,
@@ -136,7 +136,7 @@ def get_reserved_modnames(coqtop_prog, **kwargs):
     contents = "\n".join(
         "Module %s. End %s." % (modname, modname) for modname in tokens
     )
-    output, cmds, retcode, runtime = get_coq_output(
+    output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqtop_prog,
         ("-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)),
         contents,
@@ -156,7 +156,7 @@ def filter_check_options_after_success(
     if not options:
         return options
     options_contents = contents + "\n" + "\n".join(options)
-    output, cmds, retcode, runtime = get_coq_output(
+    output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqc_prog,
         ("-q", *kwargs.get("coqc_args", ())),
         options_contents,
@@ -204,7 +204,7 @@ def get_raw_options_settings_and_values(
     options_contents = f"{after_contents}\nPrint Options.\n"
     skip_args = {"-vos", "-vok"}
     coqc_args = tuple([arg for arg in coqc_args if arg not in skip_args])
-    output, cmds, retcode, runtime = get_coq_output(
+    output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
         coqc_prog,
         coqc_args,
         options_contents,

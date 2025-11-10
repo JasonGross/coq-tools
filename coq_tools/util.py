@@ -29,6 +29,7 @@ __all__ = [
     "resource_path",
     "group_by",
     "transitive_closure",
+    "get_peak_rss_bytes",
 ]
 
 BooleanOptionalAction = argparse.BooleanOptionalAction
@@ -360,6 +361,25 @@ def transitive_closure(
         closure[start] = visited
 
     return closure
+
+
+def get_peak_rss_bytes(rusage):
+    """
+    Extract peak RSS (Resident Set Size) from rusage in bytes.
+
+    Args:
+        rusage: A resource usage object from os.wait4() or similar.
+
+    Returns:
+        Peak RSS in bytes. On Linux, ru_maxrss is in kilobytes, so we multiply by 1024.
+        On macOS/BSD, ru_maxrss is already in bytes.
+    """
+    if rusage is None:
+        return None
+    if sys.platform.startswith("linux"):
+        return rusage.ru_maxrss * 1024
+    else:
+        return rusage.ru_maxrss
 
 
 if __name__ == "__main__":

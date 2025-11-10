@@ -211,7 +211,7 @@ SearchPattern _ inside %s.""" % (
                 require_statement,
                 libname,
             )
-            output, cmds, retcode, runtime = get_coq_output(
+            output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
                 env["coqc"],
                 env["coqc_args"],
                 search_code,
@@ -229,7 +229,7 @@ SearchPattern _ inside %s.""" % (
                 "Locate %s.\nPrint Assumptions %s." % (i, i) for i in identifiers
             )
             env["log"]("Printing assumptions...", level=2)
-            output, cmds, retcode, runtime = get_coq_output(
+            output, cmds, retcode, runtime, _peak_rss_kb = get_coq_output(
                 env["coqtop"],
                 env["coqc_args"],
                 print_assumptions_code,

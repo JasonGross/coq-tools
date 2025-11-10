@@ -229,18 +229,20 @@ def state_to_contents(state):
 # the higher verbose_base, the less verbose we are, since we start at a higher level by default
 def make_check_state(original_contents, verbose_base=4 - DEFAULT_VERBOSITY, **kwargs):
     # original_contents is str
-    expected_output, orig_cmds, orig_retcode, runtime = diagnose_error.get_coq_output(
-        kwargs["coqc"],
-        kwargs["coqc_args"],
-        original_contents,
-        kwargs["timeout"],
-        verbose_base=2,
-        **kwargs,
+    expected_output, orig_cmds, orig_retcode, runtime, _peak_rss_kb = (
+        diagnose_error.get_coq_output(
+            kwargs["coqc"],
+            kwargs["coqc_args"],
+            original_contents,
+            kwargs["timeout"],
+            verbose_base=2,
+            **kwargs,
+        )
     )
 
     @memoize
     def check_contents(contents):
-        output, cmds, retcode, runtime = diagnose_error.get_coq_output(
+        output, cmds, retcode, runtime, _peak_rss_kb = diagnose_error.get_coq_output(
             kwargs["coqc"],
             kwargs["coqc_args"],
             contents,
