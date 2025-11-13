@@ -10,7 +10,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = [] # Add any runtime dependencies here
+dependencies = ["subprocess4>=0.1.1"]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-doctestplus"]
+all = ["coq-tools[test]"]
 
 [project.urls]
 "Homepage" = "https://github.com/JasonGross/coq-tools"

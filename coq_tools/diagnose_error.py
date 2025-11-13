@@ -1,5 +1,6 @@
 from __future__ import with_statement, print_function
 import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
+from subprocess4 import Popen
 from .memoize import memoize
 from .file_util import clean_v_file
 from .util import re_escape, get_peak_rss_bytes
