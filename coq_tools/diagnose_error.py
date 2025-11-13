@@ -7,7 +7,6 @@ from .util import re_escape, get_peak_rss_bytes
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
-from .subprocess_with_rusage import Popen
 
 __all__ = [
     "has_error",
