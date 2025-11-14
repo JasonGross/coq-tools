@@ -41,7 +41,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install pyinstaller
-        python -m pip install --only-deps .
+        python -m pip install --no-build-isolation -e .
     - run: make standalone
     - name: Upload standalone
       uses: actions/upload-artifact@v5
