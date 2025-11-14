@@ -39,7 +39,9 @@ jobs:
     - name: Update pip
       run: python -m pip install --upgrade pip
     - name: Install dependencies
-      run: python -m pip install pyinstaller
+      run: |
+        python -m pip install pyinstaller
+        python -m pip install --only-deps .
     - run: make standalone
     - name: Upload standalone
       uses: actions/upload-artifact@v5

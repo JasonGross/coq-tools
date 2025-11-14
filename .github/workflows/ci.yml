@@ -73,6 +73,7 @@ jobs:
             startGroup 'install package building deps'
             python -m pip install --upgrade pip
             python -m pip install pyinstaller
+            python -m pip install --only-deps .
             endGroup
             startGroup 'Build package'
             make standalone
@@ -122,6 +123,8 @@ jobs:
         ocaml-compiler: ${{ matrix.ocaml-compiler }}
     - name: Install dependencies
       run: python -m pip install --upgrade pip
+    - name: Install only dependencies
+      run: python -m pip install --only-deps .
     - run: opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
     - run: opam repo add coq-released https://coq.inria.fr/opam/released
     - run: opam update
