@@ -51,8 +51,19 @@ jobs:
           steps.check_changes.outputs.changed == 'true' &&
           ( github.event_name == 'push' || ! github.event.pull_request.head.repo.fork )
         run: |
+          git config http.sslVerify false
           git config user.name "Automated Publisher"
           git config user.email "actions@users.noreply.github.com"
+          git remote update
+          git show-ref # useful for debugging
+          git branch --verbose
+          
+          # Ensure we're on the correct branch
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git checkout -b temp
+          git branch -D "${BRANCH_NAME}" || true
+          git checkout -b "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+          git add requirements.txt
           timestamp=$(date -u)
           git commit -m "Automated requirements.txt update: ${timestamp} ${GITHUB_SHA}"
-          git push
+          git push origin "${BRANCH_NAME}"
