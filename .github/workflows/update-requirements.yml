@@ -1,0 +1,69 @@
+name: Update requirements.txt
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  update-requirements:
+    name: Update requirements.txt
+    runs-on: ubuntu-latest
+    environment:
+      name: update-requirements
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Generate requirements.txt from pyproject.toml
+        run: |
+          python3 -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > requirements.txt
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git add requirements.txt
+          if git diff --cached --quiet; then
+            echo "No changes to requirements.txt"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "requirements.txt has changed"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes:"
+            git diff --cached
+          fi
+
+      - name: Commit and push changes
+        if: >-
+          steps.check_changes.outputs.changed == 'true' &&
+          ( github.event_name == 'push' || ! github.event.pull_request.head.repo.fork )
+        run: |
+          git config http.sslVerify false
+          git config user.name "Automated Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git remote update
+          git show-ref # useful for debugging
+          git branch --verbose
+          
+          # Ensure we're on the correct branch
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git checkout -b temp
+          git branch -D "${BRANCH_NAME}" || true
+          git checkout -b "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+          git add requirements.txt
+          timestamp=$(date -u)
+          git commit -m "Automated requirements.txt update: ${timestamp} ${GITHUB_SHA}"
+          git push origin "${BRANCH_NAME}"
