@@ -11,6 +11,8 @@ jobs:
   update-requirements:
     name: Update requirements.txt
     runs-on: ubuntu-latest
+    environment:
+      name: update-requirements
     permissions:
       contents: write
       pull-requests: write
