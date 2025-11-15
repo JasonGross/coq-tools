@@ -30,7 +30,7 @@ jobs:
         twine
         --user
     - name: Install only dependencies
-      run: python3 -m pip install --no-build-isolation -e .
+      run: python3 -m pip install -r requirements.txt
     - name: Bump package version with local extension
       run: etc/ci/bump-package-version.sh ".dev$(date +%s)"
       if: ${{ ! ( startsWith(github.ref, 'refs/tags/') && github.event_name == 'release' ) }}
@@ -62,7 +62,7 @@ jobs:
         pip install
         pyinstaller
     - name: Install only dependencies
-      run: python -m pip install --no-build-isolation -e .
+      run: python -m pip install -r requirements.txt
     - name: Build a standalone executable
       run: make standalone
     - name: Store the standalone packages

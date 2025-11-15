@@ -58,7 +58,7 @@ jobs:
           . .venv/bin/activate
           endGroup
           startGroup 'install package Python deps'
-          python -m pip install --no-build-isolation -e .
+          python -m pip install -r requirements.txt
           endGroup
           echo '::remove-matcher owner=coq-problem-matcher::'
           if [ "${{ matrix.test-location }}" == "installed" ]; then
@@ -126,7 +126,7 @@ jobs:
     - name: Install dependencies
       run: python -m pip install --upgrade pip
     - name: Install only dependencies
-      run: python -m pip install --no-build-isolation -e .
+      run: python -m pip install -r requirements.txt
     - run: opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
     - run: opam repo add coq-released https://coq.inria.fr/opam/released
     - run: opam update
