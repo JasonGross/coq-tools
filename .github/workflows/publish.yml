@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
@@ -51,7 +51,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
@@ -78,7 +78,7 @@ jobs:
     - build-standalone
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Download standalone ⛏️ Ubuntu
       uses: actions/download-artifact@v6
       with:
@@ -244,7 +244,7 @@ jobs:
       with:
         app-id: ${{ vars.VERSION_BUMPER_APPID }}
         private-key: ${{ secrets.VERSION_BUMPER_SECRET }}
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         token: ${{ steps.app-token.outputs.token }}
