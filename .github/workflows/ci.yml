@@ -27,7 +27,7 @@ jobs:
       cancel-in-progress: true
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: coq-community/docker-coq-action@v1
       with:
         coq_version: ${{ matrix.coq-version }}
@@ -114,7 +114,7 @@ jobs:
         brew unlink pkgconf
         brew link pkg-config
       if: ${{ runner.os == 'macOS' }}
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
