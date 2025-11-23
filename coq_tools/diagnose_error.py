@@ -19,15 +19,16 @@ __all__ = [
     "reset_timeout",
     "reset_coq_output_cache",
     "is_timeout",
+    "is_memory_limit",
 ]
 
 ACTUAL_ERROR_REG_STRING = "(?!Warning)(?!The command has indeed failed with message:)"  # maybe we should just require Error or Timeout?
-DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
+DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9-]+), characters [0-9-]+:\n'
 DEFAULT_PRE_ERROR_REG_STRING = (
     DEFAULT_PRE_PRE_ERROR_REG_STRING + ACTUAL_ERROR_REG_STRING
 )
 DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES = (
-    'File "[^"]+", line ([0-9]+), characters ([0-9]+)-([0-9]+):\n'
+    'File "[^"]+", line ([0-9-]+), characters ([0-9]+)-([0-9]+):\n'
     + ACTUAL_ERROR_REG_STRING
 )
 DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + "((?:.|\n)+)"
@@ -38,7 +39,7 @@ DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + "(%s)"
 
 
 def clean_output(output):
-    return util.normalize_newlines(output)
+    return adjust_error_message_for_selected_errors(util.normalize_newlines(output))
 
 
 @memoize
@@ -101,12 +102,36 @@ def has_error(
 
 
 TIMEOUT_POSTFIX = "\nTimeout! (external)"
+MEMORY_LIMIT_POSTFIX = "\nFatal error: not enough memory"
 
 
 @memoize
 def is_timeout(output):
     """Returns True if the output was killed with a timeout, False otherwise"""
     return output.endswith(TIMEOUT_POSTFIX)
+
+
+@memoize
+def is_memory_limit(output):
+    """Returns True if the output was killed because of a memory limit, False otherwise"""
+    return output.endswith(MEMORY_LIMIT_POSTFIX)
+
+
+def adjust_error_message_for_selected_errors(
+    output,
+    *,
+    file_name: str = "default.v",
+    line_number: int = -1,
+    characters: str = "0-0",
+):
+    """Sometimes errors don't come with the "File ..." lines, so we add them for selected errors"""
+    prefix = f'\nAUTOMATICALLY INSERTED ERROR LINE\nFile "{file_name}", line {line_number}, characters {characters}:\nError: '
+    if is_memory_limit(output):
+        # Find the last occurrence of MEMORY_LIMIT_POSTFIX and insert prefix before it
+        last_index = output.rfind(MEMORY_LIMIT_POSTFIX)
+        if last_index != -1:
+            return output[:last_index] + prefix + output[last_index:]
+    return output
 
 
 @memoize

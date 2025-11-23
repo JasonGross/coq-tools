@@ -20,7 +20,7 @@ Ltac big n :=
         big n
     end.
 Check I.
+Goal True. idtac "File ""./example_075.v"", line 999, characters 0-0:". idtac "Error:". Abort.
 Goal True.
-idtac "File ""./example_075.v"", line 999, characters 0-0:". idtac "Error:".
 big 40%nat.
 Abort.
