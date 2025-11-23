@@ -271,6 +271,7 @@ def make_reg_string(output, strict_whitespace=False):
 
 
 TIMEOUT = {}
+MEMORY_USAGE = {}
 
 
 def get_timeout(coqc=None):
@@ -287,6 +288,21 @@ def reset_timeout():
     TIMEOUT = {}
 
 
+def get_memory_usage(key):
+    return MEMORY_USAGE.get(key)
+
+
+def set_memory_usage(key, value):
+    if value is None:
+        return
+    MEMORY_USAGE[key] = value
+
+
+def reset_memory_usage():
+    global MEMORY_USAGE
+    MEMORY_USAGE = {}
+
+
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
     timeout = kwargs.pop("timeout", None)
@@ -298,8 +314,33 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     # Extract memory limit parameters
     max_mem_rss = kwargs.pop("max_mem_rss", None)
     max_mem_as = kwargs.pop("max_mem_as", None)
+    max_mem_rss_multiplier = kwargs.pop("max_mem_rss_multiplier", None)
+    max_mem_as_multiplier = kwargs.pop("max_mem_as_multiplier", None)
+    memory_usage_key = kwargs.pop("memory_usage_key", None)
     cgroup = kwargs.pop("cgroup", None)
     mem_limit_method = kwargs.pop("mem_limit_method", "prlimit")
+
+    def resolve_dynamic_limit(limit_value, multiplier_value, limit_kind):
+        if multiplier_value is None:
+            return limit_value
+        if multiplier_value <= 0:
+            return limit_value
+        if memory_usage_key is None:
+            return None
+        usage = get_memory_usage((memory_usage_key, limit_kind))
+        if usage is None:
+            return None
+        resolved = int(math.ceil(usage * multiplier_value))
+        return resolved if resolved > 0 else None
+
+    max_mem_rss = resolve_dynamic_limit(max_mem_rss, max_mem_rss_multiplier, "rss")
+    max_mem_as = resolve_dynamic_limit(max_mem_as, max_mem_as_multiplier, "as")
+
+    def record_memory_usage(usage_bytes):
+        if memory_usage_key is None or usage_bytes is None:
+            return
+        set_memory_usage((memory_usage_key, "rss"), usage_bytes)
+        set_memory_usage((memory_usage_key, "as"), usage_bytes)
 
     # Get command from args
     cmd = list(args[0]) if args else []
@@ -333,15 +374,19 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     thread.join(timeout)
     if not thread.is_alive():
         cleanup_cgroup(cg_path)
-        return (ret["value"], ret["returncode"], get_peak_rss())
+        peak_rss_bytes = get_peak_rss()
+        record_memory_usage(peak_rss_bytes)
+        return (ret["value"], ret["returncode"], peak_rss_bytes)
 
     p.terminate()
     thread.join()
     cleanup_cgroup(cg_path)
+    peak_rss_bytes = get_peak_rss()
+    record_memory_usage(peak_rss_bytes)
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        get_peak_rss(),
+        peak_rss_bytes,
     )
 
 
@@ -577,11 +622,17 @@ def get_coq_output(
         return COQ_OUTPUT[key][1]
 
     start = time.time()
-    extra_kwargs = {
-        k: kwargs[k]
-        for k in ["max_mem_rss", "max_mem_as", "cgroup", "mem_limit_method"]
-        if k in kwargs
-    }
+    extra_keys = [
+        "max_mem_rss",
+        "max_mem_as",
+        "cgroup",
+        "mem_limit_method",
+        "max_mem_rss_multiplier",
+        "max_mem_as_multiplier",
+        "memory_usage_key",
+    ]
+    extra_kwargs = {k: kwargs[k] for k in extra_keys if k in kwargs}
+    extra_kwargs.setdefault("memory_usage_key", coqc_prog)
     ((stdout, stderr), returncode, peak_rss_bytes) = (
         memory_robust_timeout_Popen_communicate(
             kwargs["log"],

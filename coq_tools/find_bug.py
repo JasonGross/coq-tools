@@ -78,12 +78,12 @@ from .split_file import split_coq_file_contents, split_leading_comments_and_whit
 from .strip_comments import strip_comments
 from .strip_newlines import strip_newlines
 from .util import (
+    MEMORY_LIMIT_METHODS,
     PY3,
     BooleanOptionalAction,
     list_diff,
+    parse_memory_limit_with_multiplier,
     yes_no_prompt,
-    parse_memory_bytes,
-    MEMORY_LIMIT_METHODS,
 )
 
 if PY3:
@@ -4132,6 +4132,17 @@ def main():
     args = adjust_no_error_defaults(args)
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
+
+    try:
+        max_mem_rss_value, max_mem_rss_multiplier = parse_memory_limit_with_multiplier(
+            args.max_mem_rss, "--max-mem-rss"
+        )
+        max_mem_as_value, max_mem_as_multiplier = parse_memory_limit_with_multiplier(
+            args.max_mem_as, "--max-mem-as"
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
     env = {
         "only_inline": args.only_inline,
         "fast_merge_imports": args.fast_merge_imports,
@@ -4276,14 +4287,10 @@ def main():
         "add_proof_using_before_admit": args.add_proof_using_before_admit,
         "prefer_final_proof_using": args.prefer_final_proof_using,
         "remove_non_definitions": args.remove_non_definitions,
-        "max_mem_rss": (
-            parse_memory_bytes(args.max_mem_rss)
-            if args.max_mem_rss is not None
-            else None
-        ),
-        "max_mem_as": (
-            parse_memory_bytes(args.max_mem_as) if args.max_mem_as is not None else None
-        ),
+        "max_mem_rss": max_mem_rss_value,
+        "max_mem_as": max_mem_as_value,
+        "max_mem_rss_multiplier": max_mem_rss_multiplier,
+        "max_mem_as_multiplier": max_mem_as_multiplier,
         "cgroup": args.cgroup,
         "mem_limit_method": args.mem_limit_method,
     }
@@ -4332,7 +4339,11 @@ def main():
                 level=LOG_ALWAYS,
             )
             env["mem_limit_method"] = "prlimit"
-        if env["mem_limit_method"] == "cgexec" and env["cgroup"] is None and env["max_mem_rss"] is None:
+        if (
+            env["mem_limit_method"] == "cgexec"
+            and env["cgroup"] is None
+            and env["max_mem_rss"] is None
+        ):
             env["log"](
                 "\nError: --mem-limit-method=cgexec requires --cgroup or --max-mem-rss.",
                 force_stdout=True,
