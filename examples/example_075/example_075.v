@@ -2,7 +2,7 @@ Require Import ZArith.
 Require Import List.
 Module List.
     Section Repeat.
-        Variable A : Type.
+        Context {A : Type}.
         Fixpoint repeat (x : A) (n: nat ) :=
             match n with
             | O => nil
@@ -13,8 +13,6 @@ Module List.
 End List.
 Notation hide := _.
 Check I.
-Fail I.
-Goal True. idtac "File ""./example_075.v"", line 999, characters 0-0:". idtac "Error:". Abort.
 Ltac big n :=
     match n with
     | O => idtac
@@ -23,5 +21,6 @@ Ltac big n :=
     end.
 Check I.
 Goal True.
-    big 40.
+idtac "File ""./example_075.v"", line 999, characters 0-0:". idtac "Error:".
+big 40%nat.
 Abort.
