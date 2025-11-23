@@ -468,6 +468,35 @@ def parse_memory_bytes(mem_str: str) -> int:
     return int(number * multiplier)
 
 
+def parse_memory_limit_with_multiplier(value, arg_name):
+    """returns (absolute_bytes_or_minus_one_or_none, multiplier_or_none)"""
+    if value is None:
+        return None, None
+    value_str = str(value).strip()
+    if not value_str:
+        return None, None
+    lower_val = value_str.lower()
+    if lower_val.endswith("x"):
+        multiplier_str = lower_val[:-1].strip()
+        if not multiplier_str:
+            raise ValueError(
+                f"{arg_name} multiplier must include a numeric value before 'x'"
+            )
+        try:
+            multiplier = float(multiplier_str)
+        except ValueError as exc:
+            raise ValueError(
+                f"{arg_name} multiplier '{value_str}' is not a valid number"
+            ) from exc
+        if multiplier <= 0:
+            raise ValueError(f"{arg_name} multiplier '{value_str}' must be positive")
+        return None, multiplier
+    try:
+        return parse_memory_bytes(value_str), None
+    except ValueError as exc:
+        raise ValueError(f"{arg_name} has invalid value '{value_str}': {exc}") from exc
+
+
 def run_with_cgroup_memlimit(
     cmd: List[str],
     mem_bytes: int,

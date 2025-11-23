@@ -82,7 +82,7 @@ from .util import (
     BooleanOptionalAction,
     list_diff,
     yes_no_prompt,
-    parse_memory_bytes,
+    parse_memory_limit_with_multiplier,
 )
 
 if PY3:
@@ -4113,6 +4113,17 @@ def main():
     args = adjust_no_error_defaults(args)
     bug_file_name = args.bug_file.name
     output_file_name = args.output_file
+
+    try:
+        max_mem_rss_value, max_mem_rss_multiplier = parse_memory_limit_with_multiplier(
+            args.max_mem_rss, "--max-mem-rss"
+        )
+        max_mem_as_value, max_mem_as_multiplier = parse_memory_limit_with_multiplier(
+            args.max_mem_as, "--max-mem-as"
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
     env = {
         "only_inline": args.only_inline,
         "fast_merge_imports": args.fast_merge_imports,
@@ -4257,14 +4268,10 @@ def main():
         "add_proof_using_before_admit": args.add_proof_using_before_admit,
         "prefer_final_proof_using": args.prefer_final_proof_using,
         "remove_non_definitions": args.remove_non_definitions,
-        "max_mem_rss": (
-            parse_memory_bytes(args.max_mem_rss)
-            if args.max_mem_rss is not None
-            else None
-        ),
-        "max_mem_as": (
-            parse_memory_bytes(args.max_mem_as) if args.max_mem_as is not None else None
-        ),
+        "max_mem_rss": max_mem_rss_value,
+        "max_mem_as": max_mem_as_value,
+        "max_mem_rss_multiplier": max_mem_rss_multiplier,
+        "max_mem_as_multiplier": max_mem_as_multiplier,
         "cgroup": args.cgroup,
         "cgexec": args.cgexec,
     }
