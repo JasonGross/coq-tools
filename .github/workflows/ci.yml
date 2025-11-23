@@ -75,7 +75,8 @@ jobs:
           elif [ "${{ matrix.test-location }}" == "standalone" ]; then
             startGroup 'install package building deps'
             python -m pip install --upgrade pip
-            python -m pip install pyinstaller
+            # pyinstaller and setuptools have some version conflicts, cf https://gemini.google.com/share/7d74f17e6391
+            python -m pip install pyinstaller 'setuptools<71'
             endGroup
             startGroup 'Build package'
             make standalone
@@ -143,7 +144,7 @@ jobs:
       run: python -m pip install build wheel twine
       if: ${{ matrix.test-location == 'installed' }}
     - name: install package building deps (standalone)
-      run: python -m pip install pyinstaller
+      run: python -m pip install pyinstaller 'setuptools<71'
       if: ${{ matrix.test-location == 'standalone' }}
     - name: Build package (dist)
       run: make dist
