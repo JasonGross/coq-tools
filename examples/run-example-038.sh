@@ -44,7 +44,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 10-14:
+File "[^"]*\.v", line [0-9-]\+, characters 10-14:
 Error: The reference True was not found in the current environment\.
 EOF
 # pre-build the files to normalize the output for the run we're testing
