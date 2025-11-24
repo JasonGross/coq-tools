@@ -38,7 +38,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 0-24:
+File "[^"]*\.v", line [0-9-]\+, characters 0-24:
 Error: Tactic failure: custom failure.
 EOF
 

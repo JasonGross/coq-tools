@@ -45,7 +45,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 6-7:
+File "[^"]*\.v", line [0-9-]\+, characters 6-7:
 Error:
 The term "A" has type "Type" while it is expected to have type
 EOF

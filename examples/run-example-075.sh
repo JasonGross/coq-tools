@@ -39,7 +39,7 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 0-0:
+File "[^"]*\.v", line [0-9-]\+, characters 0-0:
 Error:
 Fatal error: not enough memory
 EOF
