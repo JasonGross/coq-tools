@@ -512,8 +512,8 @@ def wrap_with_ulimit(cmd: List[str], as_bytes: int = None) -> List[str]:
     if as_bytes is None or as_bytes <= 0:
         return cmd
 
-    # ulimit -v takes kilobytes
-    kb = as_bytes // 1024
+    # ulimit -v takes kilobytes, use ceiling division to avoid exceeding limit
+    kb = (as_bytes + 1023) // 1024
     escaped_cmd = " ".join(shlex.quote(arg) for arg in cmd)
     return ["sh", "-c", f"ulimit -v {kb}; exec {escaped_cmd}"]
 

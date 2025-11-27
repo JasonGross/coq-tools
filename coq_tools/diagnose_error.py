@@ -288,7 +288,7 @@ def reset_timeout():
 
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
-    timeout = kwargs.pop("timeout", 0)
+    timeout = kwargs.pop("timeout", None)
     input_val = kwargs.get("input", None)
     if input_val is not None:
         input_val = input_val.encode("utf-8")
@@ -323,13 +323,16 @@ def timeout_Popen_communicate(log, *args, **kwargs):
         ret["returncode"] = p.returncode
         ret["rusage"] = getattr(p, "rusage", None)
 
+    def get_peak_rss():
+        return get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
+
     thread = threading.Thread(target=target)
     thread.start()
 
     thread.join(timeout)
     if not thread.is_alive():
         cleanup_cgroup(cg_path)
-        return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
+        return (ret["value"], ret["returncode"], get_peak_rss())
 
     p.terminate()
     thread.join()
@@ -337,7 +340,7 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0,
+        get_peak_rss(),
     )
 
 

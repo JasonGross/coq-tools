@@ -4310,10 +4310,11 @@ def main():
         if env["mem_limit_method"] == "ulimit" and env["max_mem_rss"] is not None:
             env["log"](
                 "\nWarning: --mem-limit-method=ulimit does not support --max-mem-rss. "
-                "RSS limit will be ignored. Use --mem-limit-method=cgexec or systemd-run for RSS limits.",
+                "Switching to --mem-limit-method=prlimit.",
                 force_stdout=True,
                 level=LOG_ALWAYS,
             )
+            env["mem_limit_method"] = "prlimit"
         if env["mem_limit_method"] == "cgexec" and env["cgroup"] is None and env["max_mem_rss"] is None:
             env["log"](
                 "\nError: --mem-limit-method=cgexec requires --cgroup or --max-mem-rss.",
