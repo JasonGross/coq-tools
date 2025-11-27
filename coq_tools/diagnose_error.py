@@ -129,14 +129,14 @@ def adjust_error_message_for_selected_errors(
     characters: str = "0-0",
 ):
     """Sometimes errors don't come with the "File ..." lines, so we add them for selected errors"""
-    prefix = f'\nAUTOMATICALLY INSERTED ERROR LINE\nFile "{file_name}", line {line_number}, characters {characters}:\nError: '
+    prefix = f'\nAUTOMATICALLY INSERTED ERROR LINE\nFile "{file_name}", line {line_number}, characters {characters}:\nError:\n'
     # Find the last occurrence of MEMORY_LIMIT_POSTFIX and insert prefix before it
     for postfix in MEMORY_LIMIT_POSTFIXES:
         last_index = output.rfind(postfix)
         if last_index != -1:
-            return output[:last_index] + prefix + output[last_index:]
+            return output[:last_index] + prefix + output[last_index:].lstrip("\n")
         if output.startswith(postfix.strip("\n")):
-            return prefix + output
+            return prefix + output.lstrip("\n")
     return output
 
 
