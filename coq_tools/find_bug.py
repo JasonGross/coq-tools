@@ -83,6 +83,7 @@ from .util import (
     list_diff,
     yes_no_prompt,
     parse_memory_bytes,
+    MEMORY_LIMIT_METHODS,
 )
 
 if PY3:
@@ -880,18 +881,19 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
-    "--cgexec",
-    dest="cgexec",
-    action=BooleanOptionalAction,
-    default=False,
+    "--mem-limit-method",
+    dest="mem_limit_method",
+    metavar="METHOD",
+    type=str,
+    default="prlimit",
+    choices=MEMORY_LIMIT_METHODS,
     help=(
-        "Use cgexec to run commands in the specified cgroup. "
-        "Requires --cgroup to be set. "
-        "For enforceable RSS limits without relying on rlimit:\n"
-        "Set up a cgroup (requires root or sudo; example for memory limit):\n"
-        "  Install cgroup-tools (e.g., sudo apt install cgroup-tools on Ubuntu).\n"
-        "  Create a cgroup: sudo cgcreate -g memory:/limited_group\n"
-        "  Set limit: echo 100M > /sys/fs/cgroup/memory/limited_group/memory.limit_in_bytes"
+        "Method to use for enforcing memory limits. Options:\n"
+        "  prlimit     - Use prlimit command (default, requires util-linux)\n"
+        "  ulimit      - Use shell ulimit (only supports --max-mem-as)\n"
+        "  cgexec      - Use cgexec with cgroups (supports RSS limits)\n"
+        "  systemd-run - Use systemd-run --scope (requires systemd)\n"
+        "  none        - Disable memory limiting\n"
     ),
 )
 
@@ -4266,7 +4268,7 @@ def main():
             parse_memory_bytes(args.max_mem_as) if args.max_mem_as is not None else None
         ),
         "cgroup": args.cgroup,
-        "cgexec": args.cgexec,
+        "mem_limit_method": args.mem_limit_method,
     }
 
     try:
@@ -4305,9 +4307,17 @@ def main():
                     level=LOG_ALWAYS,
                 )
                 sys.exit(1)
-        if env["cgexec"] and env["cgroup"] is None:
+        if env["mem_limit_method"] == "ulimit" and env["max_mem_rss"] is not None:
             env["log"](
-                "\nError: --cgexec requires --cgroup to be set.",
+                "\nWarning: --mem-limit-method=ulimit does not support --max-mem-rss. "
+                "Switching to --mem-limit-method=prlimit.",
+                force_stdout=True,
+                level=LOG_ALWAYS,
+            )
+            env["mem_limit_method"] = "prlimit"
+        if env["mem_limit_method"] == "cgexec" and env["cgroup"] is None and env["max_mem_rss"] is None:
+            env["log"](
+                "\nError: --mem-limit-method=cgexec requires --cgroup or --max-mem-rss.",
                 force_stdout=True,
                 level=LOG_ALWAYS,
             )
