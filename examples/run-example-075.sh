@@ -98,4 +98,4 @@ do
     cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +7
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL_ONE_LINE" "$EXPECTED_ONE_LINE"
-fi
+done
