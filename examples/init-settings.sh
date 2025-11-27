@@ -3,14 +3,30 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . "$DIR/init-simple-settings.sh"
 
-FIND_BUG_PY="$(cd "$DIR/.." && pwd)/find-bug.py"
-export FIND_BUG_PY
-MINIMIZE_REQUIRES_PY="$(cd "$DIR/.." && pwd)/minimize-requires.py"
-export MINIMIZE_REQUIRES_PY
-ABSOLUTIZE_IMPORTS_PY="$(cd "$DIR/.." && pwd)/absolutize-imports.py"
-export ABSOLUTIZE_IMPORTS_PY
-INLINE_IMPORTS_PY="$(cd "$DIR/.." && pwd)/inline-imports.py"
-export INLINE_IMPORTS_PY
+strip_for_grep() {
+    s="$(printf "%s" "$1" | "$GREP" -v '^$' | tr -d '\r')"
+    # Trim leading whitespace
+    s="${s#"${s%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    s="${s%"${s##*[![:space:]]}"}"
+    s="$(printf "%s" "$s" | tr '\n' '\1')"
+    printf "%s" "$s"
+}
+
+export -f strip_for_grep
+
+grep_contains() {
+    count="$(printf '%s' "$1" | "$GREP" -c "$2")"
+    if [ -z "$count" ]; then
+        return 1
+    elif [ "$count" -lt 1 ]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+export -f grep_contains
 
 if [ -z "${FIND_BUG}" ]; then
     find_bug() {
@@ -82,4 +98,3 @@ else
 fi
 
 export -f relpath
-
