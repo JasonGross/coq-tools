@@ -7,7 +7,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=("--max-mem-as" "500M" "$@")
+EXTRA_ARGS=("--max-mem-as" "1G" "$@")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
