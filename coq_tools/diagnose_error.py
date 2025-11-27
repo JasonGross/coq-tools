@@ -130,6 +130,8 @@ def adjust_error_message_for_selected_errors(
     last_index = output.rfind(MEMORY_LIMIT_POSTFIX)
     if last_index != -1:
         return output[:last_index] + prefix + output[last_index:]
+    if output.startswith(MEMORY_LIMIT_POSTFIX.strip("\n")):
+        return prefix + output
     return output
 
 
