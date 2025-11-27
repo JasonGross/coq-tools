@@ -102,7 +102,10 @@ def has_error(
 
 
 TIMEOUT_POSTFIX = "\nTimeout! (external)"
-MEMORY_LIMIT_POSTFIX = "\nFatal error: not enough memory"
+MEMORY_LIMIT_POSTFIXES = (
+    "\nFatal error: not enough memory",
+    "\nFatal error: out of memory.",
+)
 
 
 @memoize
@@ -114,7 +117,8 @@ def is_timeout(output):
 @memoize
 def is_memory_limit(output):
     """Returns True if the output was killed because of a memory limit, False otherwise"""
-    return output.strip().endswith(MEMORY_LIMIT_POSTFIX)
+    output = output.strip()
+    return any(output.endswith(postfix) for postfix in MEMORY_LIMIT_POSTFIXES)
 
 
 def adjust_error_message_for_selected_errors(
@@ -127,11 +131,12 @@ def adjust_error_message_for_selected_errors(
     """Sometimes errors don't come with the "File ..." lines, so we add them for selected errors"""
     prefix = f'\nAUTOMATICALLY INSERTED ERROR LINE\nFile "{file_name}", line {line_number}, characters {characters}:\nError: '
     # Find the last occurrence of MEMORY_LIMIT_POSTFIX and insert prefix before it
-    last_index = output.rfind(MEMORY_LIMIT_POSTFIX)
-    if last_index != -1:
-        return output[:last_index] + prefix + output[last_index:]
-    if output.startswith(MEMORY_LIMIT_POSTFIX.strip("\n")):
-        return prefix + output
+    for postfix in MEMORY_LIMIT_POSTFIXES:
+        last_index = output.rfind(postfix)
+        if last_index != -1:
+            return output[:last_index] + prefix + output[last_index:]
+        if output.startswith(postfix.strip("\n")):
+            return prefix + output
     return output
 
 
