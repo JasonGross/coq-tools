@@ -1,9 +1,9 @@
 import os
-import ctypes
 import re
+import shlex
+import shutil
 import sys
 import subprocess
-import platform
 from difflib import SequenceMatcher
 from typing import Dict, Hashable, Iterable, List, Set, TypeVar, Tuple
 
@@ -34,8 +34,14 @@ __all__ = [
     "transitive_closure",
     "get_peak_rss_bytes",
     "parse_memory_bytes",
-    "run_with_cgroup_memlimit",
-    "limit_as",
+    "wrap_with_prlimit",
+    "wrap_with_ulimit",
+    "wrap_with_cgexec",
+    "wrap_with_cgexec_and_create",
+    "wrap_with_systemd_run",
+    "cleanup_cgroup",
+    "apply_memory_limit",
+    "MEMORY_LIMIT_METHODS",
 ]
 
 BooleanOptionalAction = argparse.BooleanOptionalAction
@@ -468,104 +474,245 @@ def parse_memory_bytes(mem_str: str) -> int:
     return int(number * multiplier)
 
 
-def run_with_cgroup_memlimit(
+def wrap_with_prlimit(cmd: List[str], as_bytes: int = None, rss_bytes: int = None) -> List[str]:
+    """
+    Wrap command with prlimit to set resource limits.
+
+    Args:
+        cmd: Command to run
+        as_bytes: RLIMIT_AS (virtual memory) limit in bytes
+        rss_bytes: RLIMIT_RSS limit in bytes (advisory on Linux)
+
+    Returns:
+        Wrapped command list
+    """
+    if (as_bytes is None or as_bytes <= 0) and (rss_bytes is None or rss_bytes <= 0):
+        return cmd
+
+    wrapper = ["prlimit"]
+    if as_bytes is not None and as_bytes > 0:
+        wrapper.append(f"--as={as_bytes}")
+    if rss_bytes is not None and rss_bytes > 0:
+        wrapper.append(f"--rss={rss_bytes}")
+    wrapper.append("--")
+    return wrapper + cmd
+
+
+def wrap_with_ulimit(cmd: List[str], as_bytes: int = None) -> List[str]:
+    """
+    Wrap command with shell ulimit to set RLIMIT_AS.
+
+    Args:
+        cmd: Command to run
+        as_bytes: RLIMIT_AS (virtual memory) limit in bytes
+
+    Returns:
+        Wrapped command list using sh -c
+    """
+    if as_bytes is None or as_bytes <= 0:
+        return cmd
+
+    # ulimit -v takes kilobytes
+    kb = as_bytes // 1024
+    escaped_cmd = " ".join(shlex.quote(arg) for arg in cmd)
+    return ["sh", "-c", f"ulimit -v {kb}; exec {escaped_cmd}"]
+
+
+def wrap_with_cgexec(cmd: List[str], cgroup: str, controllers: str = "memory") -> List[str]:
+    """
+    Wrap command with cgexec to run in an existing cgroup.
+
+    Args:
+        cmd: Command to run
+        cgroup: Name of existing cgroup (e.g., "limited_group")
+        controllers: Cgroup controllers to use (default: "memory")
+
+    Returns:
+        Wrapped command list
+
+    Note:
+        The cgroup must already exist and have limits configured.
+        Example setup:
+            sudo cgcreate -g memory:/limited_group
+            echo 100M | sudo tee /sys/fs/cgroup/memory/limited_group/memory.limit_in_bytes
+    """
+    if not cgroup:
+        return cmd
+    return ["cgexec", "-g", f"{controllers}:{cgroup}"] + cmd
+
+
+def wrap_with_cgexec_and_create(
     cmd: List[str],
     mem_bytes: int,
     swap_bytes: int = 0,
-    *args,
-    Popen=subprocess.Popen,
-    **kwargs,
-) -> Tuple[subprocess.Popen, str]:
+    cgroup_name: str = None,
+) -> Tuple[List[str], str]:
     """
-    Run a command with a cgroup v2 memory limit.
+    Create a cgroup v2 with memory limits and wrap command with cgexec.
 
     Args:
         cmd: Command to run
         mem_bytes: Memory limit in bytes
-        swap_bytes: Swap limit in bytes (0 means no swap, -1 means unlimited)
+        swap_bytes: Swap limit in bytes (0 = no swap, -1 = unlimited)
+        cgroup_name: Optional cgroup name (auto-generated if None)
 
     Returns:
-        Tuple of (subprocess.Popen, cgroup_path)
+        Tuple of (wrapped command list, cgroup path for cleanup)
+
+    Raises:
+        RuntimeError: If cgroup creation fails
     """
-    cg_root = "/sys/fs/cgroup"  # cgroup v2 mount point
-    cg_name = f"pyjob-{os.getpid()}"
+    if mem_bytes is None or mem_bytes <= 0:
+        return cmd, None
+
+    cg_root = "/sys/fs/cgroup"
+    cg_name = cgroup_name or f"pyjob-{os.getpid()}"
     cg_path = os.path.join(cg_root, cg_name)
 
-    # Create the cgroup and set limits
     try:
         os.makedirs(cg_path, exist_ok=True)
         with open(os.path.join(cg_path, "memory.max"), "w") as f:
             f.write(str(mem_bytes))
         with open(os.path.join(cg_path, "memory.swap.max"), "w") as f:
             f.write(str(swap_bytes) if swap_bytes >= 0 else "max")
-        # Optional: kill the whole group on OOM
         with open(os.path.join(cg_path, "memory.oom.group"), "w") as f:
             f.write("1")
     except (OSError, IOError) as e:
         raise RuntimeError(f"Failed to set up cgroup at {cg_path}: {e}")
 
-    def _join_cgroup():
-        # Execute in child just before exec(): move self into the cgroup
-        try:
-            with open(os.path.join(cg_path, "cgroup.procs"), "w") as f:
-                f.write(str(os.getpid()))
-        except (OSError, IOError) as e:
-            raise RuntimeError(f"Failed to join cgroup: {e}")
-
-    # Launch child inside the cgroup
-    p = Popen(cmd, *args, preexec_fn=_join_cgroup, **kwargs)
-    return p, cg_path
+    wrapped_cmd = ["cgexec", "-g", f"memory:{cg_name}"] + cmd
+    return wrapped_cmd, cg_path
 
 
-def limit_as(bytes_: int):
+def wrap_with_systemd_run(
+    cmd: List[str],
+    mem_bytes: int = None,
+    as_bytes: int = None,
+    swap_bytes: int = None,
+    scope_name: str = None,
+) -> List[str]:
     """
-    Create a preexec_fn for subprocess.Popen that limits virtual memory (RLIMIT_AS).
+    Wrap command with systemd-run to set memory limits via cgroup.
 
     Args:
-        bytes_: Maximum virtual memory in bytes
+        cmd: Command to run
+        mem_bytes: MemoryMax limit in bytes (hard RSS limit)
+        as_bytes: LimitAS (virtual memory) limit in bytes
+        swap_bytes: MemorySwapMax limit in bytes
+        scope_name: Optional name for the transient scope unit
 
     Returns:
-        Function to be used as preexec_fn in subprocess.Popen
+        Wrapped command list
+
+    Note:
+        Requires systemd and user session (--user) or root privileges.
     """
+    has_limits = any(
+        v is not None and v > 0
+        for v in [mem_bytes, as_bytes, swap_bytes]
+    )
+    if not has_limits:
+        return cmd
 
-    if platform.system() == "Darwin":
-        raise RuntimeError(
-            "RLIMIT_AS is not respected on macOS and task_set_phys_footprint_limit only works for signed binaries"
-        )
+    wrapper = ["systemd-run", "--user", "--scope", "--quiet"]
 
-    # RLIMIT_AS is not respected on macOS
-    if platform.system() != "Darwin":
-        import resource
+    if scope_name:
+        wrapper.append(f"--unit={scope_name}")
 
-        def _set_limits():
-            # Set both soft and hard to the same value.
-            resource.setrlimit(resource.RLIMIT_AS, (bytes_, bytes_))
+    if mem_bytes is not None and mem_bytes > 0:
+        wrapper.append(f"--property=MemoryMax={mem_bytes}")
+
+    if as_bytes is not None and as_bytes > 0:
+        wrapper.append(f"--property=LimitAS={as_bytes}")
+
+    if swap_bytes is not None and swap_bytes > 0:
+        wrapper.append(f"--property=MemorySwapMax={swap_bytes}")
+
+    wrapper.append("--")
+    return wrapper + cmd
+
+
+def cleanup_cgroup(cg_path: str) -> None:
+    """
+    Clean up a cgroup directory.
+
+    Args:
+        cg_path: Path to cgroup directory to remove
+    """
+    if cg_path is None:
+        return
+    try:
+        shutil.rmtree(cg_path, ignore_errors=True)
+    except Exception:
+        pass
+
+
+# Memory limit method enum for CLI
+MEMORY_LIMIT_METHODS = ["prlimit", "ulimit", "cgexec", "systemd-run", "none"]
+
+
+def apply_memory_limit(
+    cmd: List[str],
+    method: str,
+    as_bytes: int = None,
+    rss_bytes: int = None,
+    swap_bytes: int = None,
+    cgroup: str = None,
+) -> Tuple[List[str], str]:
+    """
+    Apply memory limits to a command using the specified method.
+
+    Args:
+        cmd: Command to run
+        method: One of "prlimit", "ulimit", "cgexec", "systemd-run", "none"
+        as_bytes: Virtual memory (RLIMIT_AS) limit in bytes
+        rss_bytes: RSS memory limit in bytes
+        swap_bytes: Swap limit in bytes
+        cgroup: Existing cgroup name (for cgexec method)
+
+    Returns:
+        Tuple of (wrapped command, cgroup_path or None)
+        cgroup_path is only set when method creates a new cgroup that needs cleanup
+
+    Raises:
+        ValueError: If method is unknown or invalid configuration
+    """
+    method = method.lower() if method else "none"
+
+    if method == "none":
+        return cmd, None
+
+    elif method == "prlimit":
+        return wrap_with_prlimit(cmd, as_bytes=as_bytes, rss_bytes=rss_bytes), None
+
+    elif method == "ulimit":
+        if rss_bytes is not None and rss_bytes > 0:
+            raise ValueError("ulimit method only supports --max-mem-as, not --max-mem-rss")
+        return wrap_with_ulimit(cmd, as_bytes=as_bytes), None
+
+    elif method == "cgexec":
+        if cgroup:
+            # Use existing cgroup
+            return wrap_with_cgexec(cmd, cgroup), None
+        elif rss_bytes is not None and rss_bytes > 0:
+            # Create new cgroup with limits
+            return wrap_with_cgexec_and_create(cmd, rss_bytes, swap_bytes or 0)
+        else:
+            raise ValueError("cgexec method requires --cgroup or --max-mem-rss")
+
+    elif method == "systemd-run":
+        return wrap_with_systemd_run(
+            cmd,
+            mem_bytes=rss_bytes,
+            as_bytes=as_bytes,
+            swap_bytes=swap_bytes
+        ), None
 
     else:
-        # 2) Hard cap: task_set_phys_footprint_limit(mach_task_self(), limit_mb)
-        libc = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
-
-        def _set_limits():
-            libc.mach_task_self.restype = ctypes.c_uint32  # mach_port_t
-            task = libc.mach_task_self()
-
-            limit_mb = (int(bytes_) + (1 << 20) - 1) // (1 << 20)
-            old = ctypes.c_int()
-            libc.task_set_phys_footprint_limit.argtypes = (
-                ctypes.c_uint32,
-                ctypes.c_int,
-                ctypes.POINTER(ctypes.c_int),
-            )
-            libc.task_set_phys_footprint_limit.restype = ctypes.c_int
-            kr = libc.task_set_phys_footprint_limit(task, limit_mb, ctypes.byref(old))
-            libc.mach_error_string.restype = ctypes.c_char_p
-            # KERN_SUCCESS == 0; nonzero means the kernel rejected it (rare on macOS 10.9+)
-            if kr != 0:
-                raise RuntimeError(
-                    f"Failed to set RLIMIT_AS to {bytes_} bytes: {kr} ({libc.mach_error_string(kr).decode()}) (old: {old.value})"
-                )
-
-    return _set_limits
+        raise ValueError(
+            f"Unknown memory limit method: {method}. "
+            f"Valid options: {', '.join(MEMORY_LIMIT_METHODS)}"
+        )
 
 
 if __name__ == "__main__":

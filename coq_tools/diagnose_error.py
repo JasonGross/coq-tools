@@ -3,7 +3,7 @@ import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from subprocess4 import Popen
 from .memoize import memoize
 from .file_util import clean_v_file
-from .util import re_escape, get_peak_rss_bytes, run_with_cgroup_memlimit, limit_as
+from .util import re_escape, get_peak_rss_bytes, apply_memory_limit, cleanup_cgroup
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
@@ -288,9 +288,8 @@ def reset_timeout():
 
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
-    timeout = kwargs.get("timeout")
-    del kwargs["timeout"]
-    input_val = kwargs.get("input")
+    timeout = kwargs.pop("timeout", 0)
+    input_val = kwargs.get("input", None)
     if input_val is not None:
         input_val = input_val.encode("utf-8")
     del kwargs["input"]
@@ -299,77 +298,46 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     max_mem_rss = kwargs.pop("max_mem_rss", None)
     max_mem_as = kwargs.pop("max_mem_as", None)
     cgroup = kwargs.pop("cgroup", None)
-    cgexec = kwargs.pop("cgexec", False)
+    mem_limit_method = kwargs.pop("mem_limit_method", "prlimit")
 
-    # Handle cgroup and memory limits
+    # Get command from args
     cmd = list(args[0]) if args else []
-    preexec_fn = kwargs.get("preexec_fn")
     cg_path = None
 
-    # If cgexec is True, wrap command with cgexec
-    if cgexec:
-        if cgroup is None:
-            raise ValueError("cgexec requires cgroup to be set")
-        cmd = ["cgexec", "-g", f"memory:{cgroup}"] + cmd
-        args = (cmd,) + args[1:]
-        p = Popen(*args, allow_non_posix=True, **kwargs)
-
-    # If cgroup is set but cgexec is False, use run_with_cgroup_memlimit
-    elif cgroup is not None and max_mem_rss is not None and max_mem_rss > 0:
-        # Use cgroup v2 memory limit
-        p, cg_path = run_with_cgroup_memlimit(
-            cmd, max_mem_rss, swap_bytes=0, Popen=Popen, allow_non_posix=True
+    # Apply memory limits using the selected method
+    if mem_limit_method != "none" and (max_mem_as or max_mem_rss):
+        cmd, cg_path = apply_memory_limit(
+            cmd,
+            method=mem_limit_method,
+            as_bytes=max_mem_as,
+            rss_bytes=max_mem_rss,
+            cgroup=cgroup,
         )
+        args = (cmd,) + args[1:]
 
-    else:
-        # Set up preexec_fn for RLIMIT_AS if max_mem_as is set
-        if max_mem_as is not None and max_mem_as > 0 and max_mem_as != -1:
-            as_limit_fn = limit_as(max_mem_as)
-            if preexec_fn is not None:
-                # Chain preexec functions
-                def chained_preexec():
-                    preexec_fn()
-                    as_limit_fn()
-
-                preexec_fn = chained_preexec
-            else:
-                preexec_fn = as_limit_fn
-            kwargs["preexec_fn"] = preexec_fn
-
-        # Only create Popen if we didn't already create it via run_with_cgroup_memlimit
-        if cg_path is None:
-            p = Popen(*args, allow_non_posix=True, **kwargs)
+    # No preexec_fn needed anymore!
+    p = Popen(*args, allow_non_posix=True, **kwargs)
 
     def target():
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
         ret["returncode"] = p.returncode
-        ret["rusage"] = p.rusage
+        ret["rusage"] = getattr(p, "rusage", None)
 
     thread = threading.Thread(target=target)
     thread.start()
 
     thread.join(timeout)
     if not thread.is_alive():
-        # Clean up cgroup if we created one
-        if cg_path is not None:
-            try:
-                shutil.rmtree(cg_path, ignore_errors=True)
-            except Exception:
-                pass
+        cleanup_cgroup(cg_path)
         return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
 
     p.terminate()
     thread.join()
-    # Clean up cgroup if we created one
-    if cg_path is not None:
-        try:
-            shutil.rmtree(cg_path, ignore_errors=True)
-        except Exception:
-            pass
+    cleanup_cgroup(cg_path)
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        get_peak_rss_bytes(ret["rusage"] or 0),
+        get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0,
     )
 
 
@@ -607,7 +575,7 @@ def get_coq_output(
     start = time.time()
     extra_kwargs = {
         k: kwargs[k]
-        for k in ["max_mem_rss", "max_mem_as", "cgroup", "cgexec"]
+        for k in ["max_mem_rss", "max_mem_as", "cgroup", "mem_limit_method"]
         if k in kwargs
     }
     ((stdout, stderr), returncode, peak_rss_bytes) = (
