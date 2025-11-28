@@ -45,7 +45,6 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-This file produces the following output when Coq'ed:
      = fun A : Prop => A -> False
      : Prop -> Prop
 File "[^"]*\.v", line [0-9]\+, characters 0-28:
