@@ -79,7 +79,7 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 # entirely if you don't care about the minimized file.
 ACTUAL="$(cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +7)"
 ACTUAL_ONE_LINE="$(strip_for_grep "$ACTUAL")"
-for expected_file in "${EXAMPLE_OUTPUT}.expected"*
+for expected_file in "${EXAMPLE_OUTPUT}"*.expected*
 do
     EXPECTED="$(cat "$expected_file" | "$GREP" -v '^$' | tail +7)"
     EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
@@ -88,7 +88,7 @@ do
         exit 0
     fi
 done
-for expected_file in "${EXAMPLE_OUTPUT}.expected"*
+for expected_file in "${EXAMPLE_OUTPUT}"*.expected*
 do
     EXPECTED="$(cat "$expected_file" | "$GREP" -v '^$' | tail +7)"
     EXPECTED_ONE_LINE="$(strip_escape_for_grep "$EXPECTED")"
