@@ -96,6 +96,8 @@ do
     echo "$EXPECTED"
     echo "Got:"
     cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$' | tail +7
+    echo "Full file:"
+    cat "$EXAMPLE_OUTPUT"
     PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
     ${PYTHON} "$PREFIX_GREP" "$ACTUAL_ONE_LINE" "$EXPECTED_ONE_LINE"
 done
