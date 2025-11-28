@@ -105,6 +105,7 @@ TIMEOUT_POSTFIX = "\nTimeout! (external)"
 MEMORY_LIMIT_POSTFIXES = (
     "\nFatal error: not enough memory",
     "\nFatal error: out of memory.",
+    "\nFatal error: out of memory",
 )
 
 
