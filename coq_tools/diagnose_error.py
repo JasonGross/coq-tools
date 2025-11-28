@@ -3,7 +3,7 @@ import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from subprocess4 import Popen
 from .memoize import memoize
 from .file_util import clean_v_file
-from .util import re_escape, get_peak_rss_bytes
+from .util import re_escape, get_peak_rss_bytes, run_with_cgroup_memlimit, limit_as
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
@@ -239,6 +239,7 @@ def make_reg_string(output, strict_whitespace=False):
 
 
 TIMEOUT = {}
+MEMORY_USAGE = {}
 
 
 def get_timeout(coqc=None):
@@ -255,6 +256,21 @@ def reset_timeout():
     TIMEOUT = {}
 
 
+def get_memory_usage(key):
+    return MEMORY_USAGE.get(key)
+
+
+def set_memory_usage(key, value):
+    if value is None:
+        return
+    MEMORY_USAGE[key] = value
+
+
+def reset_memory_usage():
+    global MEMORY_USAGE
+    MEMORY_USAGE = {}
+
+
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
     timeout = kwargs.get("timeout")
@@ -263,7 +279,76 @@ def timeout_Popen_communicate(log, *args, **kwargs):
     if input_val is not None:
         input_val = input_val.encode("utf-8")
     del kwargs["input"]
-    p = Popen(*args, allow_non_posix=True, **kwargs)
+
+    # Extract memory limit parameters
+    max_mem_rss = kwargs.pop("max_mem_rss", None)
+    max_mem_as = kwargs.pop("max_mem_as", None)
+    max_mem_rss_multiplier = kwargs.pop("max_mem_rss_multiplier", None)
+    max_mem_as_multiplier = kwargs.pop("max_mem_as_multiplier", None)
+    memory_usage_key = kwargs.pop("memory_usage_key", None)
+    cgroup = kwargs.pop("cgroup", None)
+    cgexec = kwargs.pop("cgexec", False)
+
+    def resolve_dynamic_limit(limit_value, multiplier_value, limit_kind):
+        if multiplier_value is None:
+            return limit_value
+        if multiplier_value <= 0:
+            return limit_value
+        if memory_usage_key is None:
+            return None
+        usage = get_memory_usage((memory_usage_key, limit_kind))
+        if usage is None:
+            return None
+        resolved = int(math.ceil(usage * multiplier_value))
+        return resolved if resolved > 0 else None
+
+    max_mem_rss = resolve_dynamic_limit(max_mem_rss, max_mem_rss_multiplier, "rss")
+    max_mem_as = resolve_dynamic_limit(max_mem_as, max_mem_as_multiplier, "as")
+
+    def record_memory_usage(usage_bytes):
+        if memory_usage_key is None or usage_bytes is None:
+            return
+        set_memory_usage((memory_usage_key, "rss"), usage_bytes)
+        set_memory_usage((memory_usage_key, "as"), usage_bytes)
+
+    # Handle cgroup and memory limits
+    cmd = list(args[0]) if args else []
+    preexec_fn = kwargs.get("preexec_fn")
+    cg_path = None
+
+    # If cgexec is True, wrap command with cgexec
+    if cgexec:
+        if cgroup is None:
+            raise ValueError("cgexec requires cgroup to be set")
+        cmd = ["cgexec", "-g", f"memory:{cgroup}"] + cmd
+        args = (cmd,) + args[1:]
+        p = Popen(*args, allow_non_posix=True, **kwargs)
+
+    # If cgroup is set but cgexec is False, use run_with_cgroup_memlimit
+    elif cgroup is not None and max_mem_rss is not None and max_mem_rss > 0:
+        # Use cgroup v2 memory limit
+        p, cg_path = run_with_cgroup_memlimit(
+            cmd, max_mem_rss, swap_bytes=0, Popen=Popen, allow_non_posix=True
+        )
+
+    else:
+        # Set up preexec_fn for RLIMIT_AS if max_mem_as is set
+        if max_mem_as is not None and max_mem_as > 0 and max_mem_as != -1:
+            as_limit_fn = limit_as(max_mem_as)
+            if preexec_fn is not None:
+                # Chain preexec functions
+                def chained_preexec():
+                    preexec_fn()
+                    as_limit_fn()
+
+                preexec_fn = chained_preexec
+            else:
+                preexec_fn = as_limit_fn
+            kwargs["preexec_fn"] = preexec_fn
+
+        # Only create Popen if we didn't already create it via run_with_cgroup_memlimit
+        if cg_path is None:
+            p = Popen(*args, allow_non_posix=True, **kwargs)
 
     def target():
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
@@ -275,14 +360,30 @@ def timeout_Popen_communicate(log, *args, **kwargs):
 
     thread.join(timeout)
     if not thread.is_alive():
-        return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
+        # Clean up cgroup if we created one
+        if cg_path is not None:
+            try:
+                shutil.rmtree(cg_path, ignore_errors=True)
+            except Exception:
+                pass
+        peak_rss_bytes = get_peak_rss_bytes(ret["rusage"] or 0)
+        record_memory_usage(peak_rss_bytes)
+        return (ret["value"], ret["returncode"], peak_rss_bytes)
 
     p.terminate()
     thread.join()
+    # Clean up cgroup if we created one
+    if cg_path is not None:
+        try:
+            shutil.rmtree(cg_path, ignore_errors=True)
+        except Exception:
+            pass
+    peak_rss_bytes = get_peak_rss_bytes(ret["rusage"] or 0)
+    record_memory_usage(peak_rss_bytes)
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        get_peak_rss_bytes(ret["rusage"] or 0),
+        peak_rss_bytes,
     )
 
 
@@ -518,6 +619,17 @@ def get_coq_output(
         return COQ_OUTPUT[key][1]
 
     start = time.time()
+    extra_keys = [
+        "max_mem_rss",
+        "max_mem_as",
+        "cgroup",
+        "cgexec",
+        "max_mem_rss_multiplier",
+        "max_mem_as_multiplier",
+        "memory_usage_key",
+    ]
+    extra_kwargs = {k: kwargs[k] for k in extra_keys if k in kwargs}
+    extra_kwargs.setdefault("memory_usage_key", coqc_prog)
     ((stdout, stderr), returncode, peak_rss_bytes) = (
         memory_robust_timeout_Popen_communicate(
             kwargs["log"],
@@ -531,6 +643,7 @@ def get_coq_output(
             input=input_val,
             cwd=cwd,
             env=env,
+            **extra_kwargs,
         )
     )
     finish = time.time()
@@ -568,5 +681,6 @@ def get_coq_output(
             verbose_base=verbose_base,
             retry_with_debug_when=(lambda output: False),
             ocamlpath=ocamlpath,
+            **kwargs,
         )
     return COQ_OUTPUT[key][1]
