@@ -7,4 +7,4 @@
 
 Require Coq.Lists.List.
 Import Coq.Lists.List.
-Eval cbv in seq 0 (10 \* 1000).
+Eval cbv in seq 0 (10 * 1000).

@@ -91,7 +91,7 @@ done
 for expected_file in "${EXAMPLE_OUTPUT}.expected"*
 do
     EXPECTED="$(cat "$expected_file" | "$GREP" -v '^$' | tail +7)"
-    EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
+    EXPECTED_ONE_LINE="$(strip_escape_for_grep "$EXPECTED")"
     echo "Expected a string matching:"
     echo "$EXPECTED"
     echo "Got:"
