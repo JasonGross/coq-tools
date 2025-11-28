@@ -37,7 +37,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 6-10:
+File "[^"]*\.v", line [0-9-]\+, characters 6-10:
 Error: Illegal application (Non-functional construction):\s
 The expression "Set" of type "Type"
 cannot be applied to the term
@@ -49,7 +49,7 @@ The expression "Set" of type "Type"
 cannot be applied to the term
  "Set" : "Type"
 .\?'\.
-The corresponding regular expression is 'File "\[^"\]+", line (\[0-9\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+Illegal\\\\s+application\\\\s+\\\\(Non\\\\-functional\\\\s+construction\\\\):\\\\s+The\\\\s+expression\\\\s+"Set"\\\\s+of\\\\s+type\\\\s+"Type"\\\\scannot\\\\s+be\\\\s+applied\\\\s+to\\\\s+the\\\\s+term\\\\s+"Set"\\\\s+:\\\\s+"Type")'\.
+The corresponding regular expression is 'File "\[^"\]+", line (\[0-9-\]+), characters \[0-9-\]+:\\\\n(Error:\\\\s+Illegal\\\\s+application\\\\s+\\\\(Non\\\\-functional\\\\s+construction\\\\):\\\\s+The\\\\s+expression\\\\s+"Set"\\\\s+of\\\\s+type\\\\s+"Type"\\\\scannot\\\\s+be\\\\s+applied\\\\s+to\\\\s+the\\\\s+term\\\\s+"Set"\\\\s+:\\\\s+"Type")'\.
 
 \?Is this correct? \[(y)es/(n)o\] Traceback (most recent call last):
 EOF

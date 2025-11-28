@@ -15,6 +15,19 @@ strip_for_grep() {
 
 export -f strip_for_grep
 
+
+strip_escape_for_grep() {
+    s="$(printf "%s" "$1" | "$GREP" -v '^$' | tr -d '\r')"
+    # Trim leading whitespace
+    s="${s#"${s%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    s="${s%"${s##*[![:space:]]}"}"
+    s="$(printf "%s" "$s" | tr '\n' '\1' | sed s'/\*/\\\*/g')"
+    printf "%s" "$s"
+}
+
+export -f strip_escape_for_grep
+
 grep_contains() {
     count="$(printf '%s' "$1" | "$GREP" -c "$2")"
     if [ -z "$count" ]; then

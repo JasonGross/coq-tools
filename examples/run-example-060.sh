@@ -42,7 +42,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters [0-9]*-[0-9]*:
+File "[^"]*\.v", line [0-9-]\+, characters [0-9]*-[0-9]*:
 Error:[
  ]\+The term "Set" has type[
  ]\+"Type" while it is expected to have type[

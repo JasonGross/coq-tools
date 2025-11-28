@@ -40,7 +40,7 @@ set -x
 #
 # Note that the -top argument only appears in Coq >= 8.4
 { EXPECTED_ERROR=$(cat); } <<EOF
-File "[^"]*\.v", line [0-9]\+, characters 0-31:
+File "[^"]*\.v", line [0-9-]\+, characters 0-31:
 Error: The command has not failed\s\?!
 
 .\?Does this output display the correct error? \[(y)es/(n)o\]\s

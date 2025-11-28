@@ -47,7 +47,7 @@ set -x
 { EXPECTED_ERROR=$(cat); } <<EOF
 n
      : Set
-File "[^"]*\.v", line [0-9]\+, characters 0-17:
+File "[^"]*\.v", line [0-9-]\+, characters 0-17:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing
