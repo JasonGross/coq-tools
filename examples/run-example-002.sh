@@ -7,4 +7,5 @@ EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-mini
 PS4='$ '
 set -x
 # --fast-merge-imports
+find . -name "*.vo" -delete
 find_bug example.v example_${N}_output.v "${EXTRA_ARGS[@]}" -l - example_${N}_log.log || exit $?

@@ -6,4 +6,5 @@ cd "$DIR/example_${N}" || exit $?
 EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 PS4='$ '
 set -x
+find . -name "*.vo" -delete
 find_bug B.v bug_B.v --no-minimize-before-inlining -R . "" "${EXTRA_ARGS[@]}" || exit $?
