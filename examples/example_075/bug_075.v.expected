@@ -2,7 +2,8 @@
 (* File reduced by coq-bug-minimizer from original input *)
 (* coqc version 8.19.2 compiled with OCaml 4.14.1
    coqtop version 8.19.2
-   Expected coqc runtime on this file: 0.075 sec *)
+   Expected coqc runtime on this file: 0.075 sec
+    *)
 
 Require Coq.Lists.List.
 Import Coq.Lists.List.
