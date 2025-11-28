@@ -4,14 +4,6 @@
    coqtop version 8.19.2
    Expected coqc runtime on this file: 0.075 sec *)
 
-Require Import Stdlib.ZArith.ZArith.
-Notation hide := _.
-Ltac big n :=
-    match n with
-    | O => idtac
-    | S ?n => let x := eval vm_compute in (List.repeat Z.div_eucl 16) in
-        big n
-    end.
-Goal True.
-Proof.
-    big 40.
+Require Coq.Lists.List.
+Import Coq.Lists.List.
+Eval cbv in seq 0 (10 * 1000).
