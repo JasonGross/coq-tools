@@ -4337,7 +4337,6 @@ def main():
                         extra_bindings.append((coq_user_contrib_path, "Stdlib"))
                         for p in coqpath_paths:
                             extra_bindings.append((os.path.join(p, "Stdlib"), "Stdlib"))
-                            extra_bindings.append((os.path.join(p, "Stdlib"), "Coq"))
                     extra_bindings = [
                         binding
                         for binding in extra_bindings
