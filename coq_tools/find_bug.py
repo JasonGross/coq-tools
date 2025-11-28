@@ -4323,40 +4323,29 @@ def main():
                     coqpath_paths = (
                         coqpath_path.split(os.pathsep) if coqpath_path else []
                     )
+                    extra_bindings = []
                     if args.inline_coqlib:
                         if coqc_version != "" and coqc_version[0] == "8":
-                            env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"])
-                                + [(coq_theories_path, "Coq")]
-                            )
+                            extra_bindings.append((coq_theories_path, "Coq"))
                         else:
-                            env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"])
-                                + [(coq_theories_path, "Corelib")]
-                            )
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"])
-                            + [(coq_user_contrib_path, "Stdlib")]
-                        )
+                            extra_bindings.append((coq_theories_path, "Corelib"))
+                        extra_bindings.append((coq_user_contrib_path, "Stdlib"))
                         for p in coqpath_paths:
-                            env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"])
-                                + [(os.path.join(p, "Stdlib"), "Coq")]
-                            )
+                            extra_bindings.append((os.path.join(p, "Stdlib"), "Coq"))
                     if args.inline_stdlib:
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"])
-                            + [(coq_theories_path, "Stdlib")]
-                        )
-                        env[passing_prefix + "libnames"] = tuple(
-                            list(env[passing_prefix + "libnames"])
-                            + [(coq_user_contrib_path, "Stdlib")]
-                        )
+                        extra_bindings.append((coq_theories_path, "Stdlib"))
+                        extra_bindings.append((coq_user_contrib_path, "Stdlib"))
                         for p in coqpath_paths:
-                            env[passing_prefix + "libnames"] = tuple(
-                                list(env[passing_prefix + "libnames"])
-                                + [(os.path.join(p, "Stdlib"), "Stdlib")]
-                            )
+                            extra_bindings.append((os.path.join(p, "Stdlib"), "Stdlib"))
+                            extra_bindings.append((os.path.join(p, "Stdlib"), "Coq"))
+                    extra_bindings = [
+                        binding
+                        for binding in extra_bindings
+                        if os.path.isdir(binding[0])
+                    ]
+                    env[passing_prefix + "libnames"] = tuple(
+                        list(env[passing_prefix + "libnames"]) + extra_bindings
+                    )
                     if args.inline_coqlib or args.inline_stdlib:
                         env[passing_prefix + "coqpath_paths"].append(coq_theories_path)
                         env[passing_prefix + "coqpath_paths"].append(
