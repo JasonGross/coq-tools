@@ -273,18 +273,18 @@ def normalize_requires(
     kwargs = fill_kwargs(kwargs)
     lib = lib_of_filename(filename, **kwargs)
     if kwargs.get("sort_requires_by_component") and recursive_requires_explicit:
-        all_imports = get_recursive_require_names(lib, **kwargs)
+        all_imports = get_recursive_require_names(lib, reverse=False, **kwargs)
     else:
         all_imports = run_maybe_recursively_get_imports(
             lib, recursively=recursive_requires_explicit, **kwargs
-        )
+        )[:-1]
 
     v_name = filename_of_lib(lib, ext=".v", **kwargs)
     contents = get_file(v_name, **kwargs)
     header, contents = split_leading_comments_and_whitespace(contents)
     contents = strip_requires(contents)
     contents = (
-        "".join("Require %s.\n" % i for i in all_imports[:-1])
+        "".join("Require %s.\n" % i for i in all_imports)
         + "\n"
         + contents.strip()
         + "\n"
