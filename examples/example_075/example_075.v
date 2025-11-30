@@ -1,4 +1,5 @@
 From Ltac2 Require Import Ltac2.
+Ltac2 Eval Array.make.
 Fixpoint seq (start len : nat) : list nat :=
   match len with
   | 0 => nil

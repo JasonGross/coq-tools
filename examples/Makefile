@@ -28,8 +28,10 @@ ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS = 056
 ONLY_IF_CUSTOM_ENTRY_TESTS = 070
 ONLY_IF_LTAC2_TESTS =
 ONLY_IF_LTAC2_LIST_MAP_TESTS = 072
+ONLY_IF_LTAC2_ARRAY_MAKE_TESTS =
 ONLY_IF_RESOURCE_MODULE_TESTS =
-ONLY_IF_RLIMIT_AS_TESTS = 075
+ONLY_IF_RLIMIT_AS_TESTS =
+ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_TESTS = 075
 CONDITIONAL_TESTS += \
 	$(ONLY_IF_Q_TESTS) \
 	$(ONLY_IF_TYPE_IN_TYPE_WORKS_TESTS) \
@@ -51,8 +53,10 @@ CONDITIONAL_TESTS += \
 	$(ONLY_IF_CUSTOM_ENTRY_TESTS) \
 	$(ONLY_IF_LTAC2_TESTS) \
 	$(ONLY_IF_LTAC2_LIST_MAP_TESTS) \
+	$(ONLY_IF_LTAC2_ARRAY_MAKE_TESTS) \
 	$(ONLY_IF_RESOURCE_MODULE_TESTS) \
 	$(ONLY_IF_RLIMIT_AS_TESTS) \
+	$(ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_TESTS) \
 	#
 
 MAIN_RUNS = $(patsubst %,run-example-%.sh,$(DEFAULT_TESTS) $(CONDITIONAL_TESTS) $(BROKEN_TESTS))
@@ -84,8 +88,10 @@ ONLY_IF_SYS_GLOB_FILES_GOOD_AND_CAN_INLINE_COQ_INIT_LOGIC_TESTS_LOGS = $(patsubs
 ONLY_IF_CUSTOM_ENTRY_TESTS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_CUSTOM_ENTRY_TESTS))
 ONLY_IF_LTAC2_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_LTAC2_TESTS))
 ONLY_IF_LTAC2_LIST_MAP_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_LTAC2_LIST_MAP_TESTS))
+ONLY_IF_LTAC2_ARRAY_MAKE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_LTAC2_ARRAY_MAKE_TESTS))
 ONLY_IF_RESOURCE_MODULE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_RESOURCE_MODULE_TESTS))
 ONLY_IF_RLIMIT_AS_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_RLIMIT_AS_TESTS))
+ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_LOGS = $(patsubst %,example_%_result.log,$(ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_TESTS))
 ENABLED_LOGS = $(DEFAULT_LOGS)
 DISABLED_LOGS = $(filter-out $(ENABLED_LOGS),$(ALL_LOGS)) # important for this to be =, not :=, so it gets set late
 
@@ -133,6 +139,7 @@ COQC_SUPPORTS_FROM:=$(shell echo "From Coq.Init Require Import Notations." | $(C
 COQC_SUPPORTS_CUSTOM_ENTRY:=$(shell echo "Declare Custom Entry foo." | $(COQBIN)coqtop -q 2>&1 | grep -q 'Error\|Syntax error'; echo $$?)
 COQC_SUPPORTS_LTAC2:=$(shell echo "Require Import Ltac2.Ltac2." | $(COQBIN)coqtop -q 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_LTAC2_LIST_MAP:=$(shell echo "Require Import Ltac2.Ltac2. Ltac2 Eval List.map." | $(COQBIN)coqtop -q 2>&1 | grep -q 'Error'; echo $$?)
+COQC_SUPPORTS_LTAC2_ARRAY_MAKE:=$(shell echo "Require Import Ltac2.Ltac2. Ltac2 Eval Array.make." | $(COQBIN)coqtop -q 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_PROOF_USING:=$(shell printf "Section foo.\nVariable x : nat.\nDefinition bar : nat.\nProof using x.\nAdmitted.\nEnd foo.\n" | $(COQBIN)coqtop -q 2>&1 | grep -q 'Error'; echo $$?)
 COQC_SUPPORTS_RESOURCE_MODULE:=$(shell . "$(MAKEFILE_DIR)/init-simple-settings.sh"; $${PYTHON} -c "$$(printf 'try:\n    import resource\n    print(1)\nexcept ImportError:\n    print(0)')" 2>&1)
 COQC_SUPPORTS_RLIMIT_AS:=$(shell . "$(MAKEFILE_DIR)/init-simple-settings.sh"; $${PYTHON} -c "$$(printf 'try:\n    import resource\n    bytes_=500*1024*1024\n    resource.setrlimit(resource.RLIMIT_AS, (bytes_, bytes_))\n    print(1)\nexcept (RuntimeError, ImportError, OSError, ValueError):\n    print(0)')" 2>&1)
@@ -321,6 +328,16 @@ print-support::
 	@printf "coqc supports Ltac2 List.map:\t\t\tNo\n"
 endif
 
+ifneq (0,$(strip $(COQC_SUPPORTS_LTAC2_ARRAY_MAKE)))
+test-suite: $(ONLY_IF_LTAC2_ARRAY_MAKE_LOGS)
+ENABLED_LOGS += $(ONLY_IF_LTAC2_ARRAY_MAKE_LOGS)
+print-support::
+	@printf "coqc supports Ltac2 Array.make:\t\t\tYes\n"
+else
+print-support::
+	@printf "coqc supports Ltac2 Array.make:\t\t\tNo\n"
+endif
+
 ifneq (0,$(strip $(COQC_SUPPORTS_RESOURCE_MODULE)))
 test-suite: $(ONLY_IF_RESOURCE_MODULE_LOGS)
 ENABLED_LOGS += $(ONLY_IF_RESOURCE_MODULE_LOGS)
@@ -339,6 +356,13 @@ print-support::
 else
 print-support::
 	@printf "Python supports RLIMIT_AS (500MB):\t\tNo\n"
+endif
+
+ifneq (0,$(strip $(COQC_SUPPORTS_LTAC2_ARRAY_MAKE)))
+ifneq (0,$(strip $(COQC_SUPPORTS_RLIMIT_AS)))
+test-suite: $(ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_LOGS)
+ENABLED_LOGS += $(ONLY_IF_RLIMIT_AS_AND_LTAC2_ARRAY_MAKE_LOGS)
+endif
 endif
 
 ifeq (,$(strip $(COQLIB_PRELUDE_V_FILE)))
