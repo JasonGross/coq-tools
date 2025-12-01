@@ -3147,8 +3147,17 @@ def remove_admit_tactic(contents, tac_code: str = "", **kwargs):
     )
 
 
-def add_admit_tactic(contents, **kwargs):
+def add_admit_tactic(contents: str, **kwargs):
     before, after = get_ltac_support_snippet(**kwargs)
+    for mod_suffix in ("Notations", "Ltac"):
+        if any(
+            f"{lib}.Init.{mod_suffix}" in kwargs["inlined_requires"]
+            for lib in ("Coq", "Stdlib", "Corelib")
+        ):
+            if f"Init.{mod_suffix}" in before:
+                before = ""
+            if f"Init.{mod_suffix}" in after:
+                after = ""
     tac_code = r"""%sModule Export AdmitTactic.
 Module Import LocalFalse.
 Inductive False : Prop := .
@@ -3643,12 +3652,18 @@ def add_coqlib_prelude_import(contents, **env):
     return "Require Coq.Init.Prelude.\nImport Coq.Init.Prelude.\n" + contents
 
 
-def make_cur_output_gen(output_file_name, **kwargs):
-    if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
-        add_admit_tactic_wrapper = add_admit_tactic
-    else:
-        add_admit_tactic_wrapper = lambda x, **kwargs: x
+def make_add_admit_tactic_wrapper(**kwargs):
+    def default_add_admit_tactic(contents: str, **kwargs) -> str:
+        return contents
 
+    if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
+        return add_admit_tactic
+    else:
+        return default_add_admit_tactic
+
+
+def make_cur_output_gen(output_file_name, **kwargs):
+    add_admit_tactic_wrapper = make_add_admit_tactic_wrapper(**kwargs)
     return (
         lambda mod_remap: add_admit_tactic_wrapper(
             get_file(output_file_name, mod_remap=mod_remap, **kwargs), **kwargs
@@ -3658,12 +3673,13 @@ def make_cur_output_gen(output_file_name, **kwargs):
 
 
 def inline_one_require(
-    output_file_name, libname_blacklist, cur_output, check_should_break, **kwargs
+    output_file_name,
+    libname_blacklist,
+    cur_output,
+    check_should_break,
+    **kwargs,
 ):
-    if kwargs["admit_transparent"] or kwargs["admit_opaque"]:
-        add_admit_tactic_wrapper = add_admit_tactic
-    else:
-        add_admit_tactic_wrapper = lambda x, **kwargs: x
+    add_admit_tactic_wrapper = make_add_admit_tactic_wrapper(**kwargs)
     cur_output_gen = make_cur_output_gen(output_file_name, **kwargs)
     requires = recursively_get_requires_from_file(
         output_file_name, update_globs=True, **kwargs
@@ -3780,6 +3796,7 @@ def inline_one_require(
                 return body, runtime
 
     for req_module in reversed(requires):
+        kwargs["inlined_requires"].add(req_module)
         if req_module in libname_blacklist:
             continue
         else:
@@ -4456,10 +4473,9 @@ def main():
                 [arg for group in recognized_args for arg in group] + unrecognized_args
             )
 
-        if env["admit_transparent"] or env["admit_opaque"]:
-            add_admit_tactic_wrapper = add_admit_tactic
-        else:
-            add_admit_tactic_wrapper = lambda x, **kwargs: x
+        env["inlined_requires"] = set()
+
+        add_admit_tactic_wrapper = make_add_admit_tactic_wrapper(**env)
 
         # if env["minimize_before_inlining"] and not env["inline_one_at_a_time"]:
         env["log"](

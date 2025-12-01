@@ -87,15 +87,20 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 (\* -\*- mode: coq; coq-prog-args: ([^)]*) -\*- \*)
 (\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
 (\* coqc version [^\*]*\*)
-\?\(Declare ML Module "coq-core\.plugins\.ltac"\.\|Declare ML Module "ltac_plugin"\.\)\?
-\?
-Reserved Notation "x -> y" (at level 99, right associativity, y at level 200)\.
-\?
-Declare Scope type_scope\.
-Open Scope type_scope\.
-\(Declare ML Module "ltac_plugin"\.
+\?\(Declare ML Module "coq-core\.plugins\.ltac"\.
+\|Declare ML Module "ltac_plugin"\.
+\|Declare ML Module "ltac_plugin:coq-core\.plugins\.ltac"\.
 \)\?
-Notation "A -> B" := (forall (_ : A), B) : type_scope\.
+\?Reserved Notation "x -> y" (at level 99, right associativity, y at level 200)\.
+\?
+\(Declare Scope type_scope\.\)\?
+\?\(Delimit Scope type_scope with type\.\)\?
+\?Open Scope type_scope\.
+\(Declare ML Module "coq-core\.plugins\.ltac"\.
+\|Declare ML Module "ltac_plugin"\.
+\|Declare ML Module "ltac_plugin:coq-core\.plugins\.ltac"\.
+\)\?
+\?Notation "A -> B" := (forall (_ : A), B) : type_scope\.
 \?
 Inductive False : Prop :=\.
 \?
