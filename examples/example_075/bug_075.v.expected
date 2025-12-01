@@ -5,6 +5,8 @@
    Expected coqc runtime on this file: 0.075 sec
     *)
 
-Require Coq.Lists.List.
-Import Coq.Lists.List.
-Eval cbv in seq 0 (10 * 1000).
+Require Ltac2.Array.
+
+Ltac2 big n := Array.length (Array.make n 'I).
+
+Time Ltac2 Eval big 1000000000.
