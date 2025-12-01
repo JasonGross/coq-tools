@@ -40,8 +40,9 @@ set -x
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
 File "[^"]*\.v", line [0-9-]\+, characters [0-9-]\+:
-Error:
-\(Fatal error: not enough memory\|Fatal error: out of memory.\?\)
+Error:\( Out of memory.\?\|
+Fatal error: not enough memory\|
+Fatal error: out of memory.\?\)
 EOF
 
 # pre-build the files to normalize the output for the run we're testing
