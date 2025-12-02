@@ -3,7 +3,7 @@ import os, tempfile, subprocess, re, time, math, threading, shutil, traceback
 from subprocess4 import Popen
 from .memoize import memoize
 from .file_util import clean_v_file
-from .util import re_escape, get_peak_rss_bytes
+from .util import re_escape, get_peak_rss_bytes, apply_memory_limit, cleanup_cgroup
 from .custom_arguments import LOG_ALWAYS
 from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
 from . import util
@@ -19,15 +19,16 @@ __all__ = [
     "reset_timeout",
     "reset_coq_output_cache",
     "is_timeout",
+    "is_memory_limit",
 ]
 
 ACTUAL_ERROR_REG_STRING = "(?!Warning)(?!The command has indeed failed with message:)"  # maybe we should just require Error or Timeout?
-DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9]+), characters [0-9-]+:\n'
+DEFAULT_PRE_PRE_ERROR_REG_STRING = 'File "[^"]+", line ([0-9-]+), characters [0-9-]+:\n'
 DEFAULT_PRE_ERROR_REG_STRING = (
     DEFAULT_PRE_PRE_ERROR_REG_STRING + ACTUAL_ERROR_REG_STRING
 )
 DEFAULT_PRE_ERROR_REG_STRING_WITH_BYTES = (
-    'File "[^"]+", line ([0-9]+), characters ([0-9]+)-([0-9]+):\n'
+    'File "[^"]+", line ([0-9-]+), characters ([0-9]+)-([0-9]+):\n'
     + ACTUAL_ERROR_REG_STRING
 )
 DEFAULT_ERROR_REG_STRING = DEFAULT_PRE_ERROR_REG_STRING + "((?:.|\n)+)"
@@ -38,7 +39,7 @@ DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + "(%s)"
 
 
 def clean_output(output):
-    return util.normalize_newlines(output)
+    return adjust_error_message_for_selected_errors(util.normalize_newlines(output))
 
 
 @memoize
@@ -101,12 +102,43 @@ def has_error(
 
 
 TIMEOUT_POSTFIX = "\nTimeout! (external)"
+MEMORY_LIMIT_POSTFIXES = (
+    "\nFatal error: not enough memory",
+    "\nFatal error: out of memory.",
+    "\nFatal error: out of memory",
+)
 
 
 @memoize
 def is_timeout(output):
     """Returns True if the output was killed with a timeout, False otherwise"""
     return output.endswith(TIMEOUT_POSTFIX)
+
+
+@memoize
+def is_memory_limit(output):
+    """Returns True if the output was killed because of a memory limit, False otherwise"""
+    output = output.strip()
+    return any(output.endswith(postfix) for postfix in MEMORY_LIMIT_POSTFIXES)
+
+
+def adjust_error_message_for_selected_errors(
+    output,
+    *,
+    file_name: str = "default.v",
+    line_number: int = -1,
+    characters: str = "0-0",
+):
+    """Sometimes errors don't come with the "File ..." lines, so we add them for selected errors"""
+    prefix = f'\nAUTOMATICALLY INSERTED ERROR LINE\nFile "{file_name}", line {line_number}, characters {characters}:\nError:\n'
+    # Find the last occurrence of MEMORY_LIMIT_POSTFIX and insert prefix before it
+    for postfix in MEMORY_LIMIT_POSTFIXES:
+        last_index = output.rfind(postfix)
+        if last_index != -1:
+            return output[:last_index] + prefix + output[last_index:].lstrip("\n")
+        if output.startswith(postfix.strip("\n")):
+            return prefix + output.lstrip("\n")
+    return output
 
 
 @memoize
@@ -257,32 +289,59 @@ def reset_timeout():
 
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
-    timeout = kwargs.get("timeout")
-    del kwargs["timeout"]
-    input_val = kwargs.get("input")
+    timeout = kwargs.pop("timeout", None)
+    input_val = kwargs.get("input", None)
     if input_val is not None:
         input_val = input_val.encode("utf-8")
     del kwargs["input"]
+
+    # Extract memory limit parameters
+    max_mem_rss = kwargs.pop("max_mem_rss", None)
+    max_mem_as = kwargs.pop("max_mem_as", None)
+    cgroup = kwargs.pop("cgroup", None)
+    mem_limit_method = kwargs.pop("mem_limit_method", "prlimit")
+
+    # Get command from args
+    cmd = list(args[0]) if args else []
+    cg_path = None
+
+    # Apply memory limits using the selected method
+    if mem_limit_method != "none" and (max_mem_as or max_mem_rss):
+        cmd, cg_path = apply_memory_limit(
+            cmd,
+            method=mem_limit_method,
+            as_bytes=max_mem_as,
+            rss_bytes=max_mem_rss,
+            cgroup=cgroup,
+        )
+        args = (cmd,) + args[1:]
+
+    # No preexec_fn needed anymore!
     p = Popen(*args, allow_non_posix=True, **kwargs)
 
     def target():
         ret["value"] = tuple(map(util.s, p.communicate(input=input_val)))
         ret["returncode"] = p.returncode
-        ret["rusage"] = p.rusage
+        ret["rusage"] = getattr(p, "rusage", None)
+
+    def get_peak_rss():
+        return get_peak_rss_bytes(ret["rusage"]) if ret["rusage"] else 0
 
     thread = threading.Thread(target=target)
     thread.start()
 
     thread.join(timeout)
     if not thread.is_alive():
-        return (ret["value"], ret["returncode"], get_peak_rss_bytes(ret["rusage"] or 0))
+        cleanup_cgroup(cg_path)
+        return (ret["value"], ret["returncode"], get_peak_rss())
 
     p.terminate()
     thread.join()
+    cleanup_cgroup(cg_path)
     return (
         tuple(map((lambda s: (s if s else "") + TIMEOUT_POSTFIX), ret["value"])),
         ret["returncode"],
-        get_peak_rss_bytes(ret["rusage"] or 0),
+        get_peak_rss(),
     )
 
 
@@ -518,6 +577,11 @@ def get_coq_output(
         return COQ_OUTPUT[key][1]
 
     start = time.time()
+    extra_kwargs = {
+        k: kwargs[k]
+        for k in ["max_mem_rss", "max_mem_as", "cgroup", "mem_limit_method"]
+        if k in kwargs
+    }
     ((stdout, stderr), returncode, peak_rss_bytes) = (
         memory_robust_timeout_Popen_communicate(
             kwargs["log"],
@@ -531,6 +595,7 @@ def get_coq_output(
             input=input_val,
             cwd=cwd,
             env=env,
+            **extra_kwargs,
         )
     )
     finish = time.time()
@@ -568,5 +633,6 @@ def get_coq_output(
             verbose_base=verbose_base,
             retry_with_debug_when=(lambda output: False),
             ocamlpath=ocamlpath,
+            **kwargs,
         )
     return COQ_OUTPUT[key][1]

@@ -1,8 +1,11 @@
 import os
 import re
+import shlex
+import shutil
 import sys
+import subprocess
 from difflib import SequenceMatcher
-from typing import Dict, Hashable, Iterable, List, Set, TypeVar
+from typing import Dict, Hashable, Iterable, List, Set, TypeVar, Tuple
 
 try:
     from typing import Protocol
@@ -30,6 +33,15 @@ __all__ = [
     "group_by",
     "transitive_closure",
     "get_peak_rss_bytes",
+    "parse_memory_bytes",
+    "wrap_with_prlimit",
+    "wrap_with_ulimit",
+    "wrap_with_cgexec",
+    "wrap_with_cgexec_and_create",
+    "wrap_with_systemd_run",
+    "cleanup_cgroup",
+    "apply_memory_limit",
+    "MEMORY_LIMIT_METHODS",
 ]
 
 BooleanOptionalAction = argparse.BooleanOptionalAction
@@ -380,6 +392,327 @@ def get_peak_rss_bytes(rusage):
         return rusage.ru_maxrss * 1024
     else:
         return rusage.ru_maxrss
+
+
+def parse_memory_bytes(mem_str: str) -> int:
+    """
+    Parse a memory string (case-insensitive) to bytes.
+
+    Supports formats like: "5M", "5G", "5GB", "5GiB", "512", "unlimited", "0"
+
+    Args:
+        mem_str: Memory string to parse (case-insensitive)
+
+    Returns:
+        Number of bytes, or -1 for "unlimited" or "0"
+
+    Examples:
+        >>> parse_memory_bytes("5M")
+        5242880
+        >>> parse_memory_bytes("5G")
+        5368709120
+        >>> parse_memory_bytes("5GB")
+        5368709120
+        >>> parse_memory_bytes("5GiB")
+        5368709120
+        >>> parse_memory_bytes("512")
+        512
+        >>> parse_memory_bytes("unlimited")
+        -1
+        >>> parse_memory_bytes("0")
+        -1
+    """
+    if isinstance(mem_str, (int, float)):
+        val = float(mem_str)
+        return int(val) if val > 0 else -1
+
+    mem_str_normalized = str(mem_str).strip().lower()
+    mem_str = mem_str_normalized
+
+    if mem_str in ("unlimited", "0", ""):
+        return -1
+
+    # Match number with optional unit suffix
+    # Pattern: number followed by optional unit
+    # Units: k/m/g/t (with optional 'i' for binary, optional 'b' suffix)
+    # Examples: "5", "5k", "5kb", "5kib", "5m", "5mb", "5mib", "5g", "5gb", "5gib"
+    match = re.match(r"^(\d+(?:\.\d+)?)\s*([kmgt]i?b?)$", mem_str)
+    if not match:
+        # Try to parse as plain number
+        try:
+            val = int(mem_str)
+            return val if val > 0 else -1
+        except ValueError:
+            raise ValueError(f"Invalid memory format: {mem_str}")
+
+    number_str, unit = match.groups()
+    number = float(number_str)
+
+    # Parse unit - handle both "b" and "ib" suffixes
+    unit = unit.lower()
+    if unit == "" or unit == "b":
+        multiplier = 1
+    elif unit in ("k", "kb"):
+        multiplier = 1000
+    elif unit == "kib":
+        multiplier = 1024
+    elif unit in ("m", "mb"):
+        multiplier = 1000**2
+    elif unit == "mib":
+        multiplier = 1024**2
+    elif unit in ("g", "gb"):
+        multiplier = 1000**3
+    elif unit == "gib":
+        multiplier = 1024**3
+    elif unit in ("t", "tb"):
+        multiplier = 1000**4
+    elif unit == "tib":
+        multiplier = 1024**4
+    else:
+        raise ValueError(f"Unknown memory unit: {unit}")
+
+    return int(number * multiplier)
+
+
+def wrap_with_prlimit(cmd: List[str], as_bytes: int = None, rss_bytes: int = None) -> List[str]:
+    """
+    Wrap command with prlimit to set resource limits.
+
+    Args:
+        cmd: Command to run
+        as_bytes: RLIMIT_AS (virtual memory) limit in bytes
+        rss_bytes: RLIMIT_RSS limit in bytes (advisory on Linux)
+
+    Returns:
+        Wrapped command list
+    """
+    if (as_bytes is None or as_bytes <= 0) and (rss_bytes is None or rss_bytes <= 0):
+        return cmd
+
+    wrapper = ["prlimit"]
+    if as_bytes is not None and as_bytes > 0:
+        wrapper.append(f"--as={as_bytes}")
+    if rss_bytes is not None and rss_bytes > 0:
+        wrapper.append(f"--rss={rss_bytes}")
+    wrapper.append("--")
+    return wrapper + cmd
+
+
+def wrap_with_ulimit(cmd: List[str], as_bytes: int = None) -> List[str]:
+    """
+    Wrap command with shell ulimit to set RLIMIT_AS.
+
+    Args:
+        cmd: Command to run
+        as_bytes: RLIMIT_AS (virtual memory) limit in bytes
+
+    Returns:
+        Wrapped command list using sh -c
+    """
+    if as_bytes is None or as_bytes <= 0:
+        return cmd
+
+    # ulimit -v takes kilobytes, use ceiling division to avoid exceeding limit
+    kb = (as_bytes + 1023) // 1024
+    escaped_cmd = " ".join(shlex.quote(arg) for arg in cmd)
+    return ["sh", "-c", f"ulimit -v {kb}; exec {escaped_cmd}"]
+
+
+def wrap_with_cgexec(cmd: List[str], cgroup: str, controllers: str = "memory") -> List[str]:
+    """
+    Wrap command with cgexec to run in an existing cgroup.
+
+    Args:
+        cmd: Command to run
+        cgroup: Name of existing cgroup (e.g., "limited_group")
+        controllers: Cgroup controllers to use (default: "memory")
+
+    Returns:
+        Wrapped command list
+
+    Note:
+        The cgroup must already exist and have limits configured.
+        Example setup:
+            sudo cgcreate -g memory:/limited_group
+            echo 100M | sudo tee /sys/fs/cgroup/memory/limited_group/memory.limit_in_bytes
+    """
+    if not cgroup:
+        return cmd
+    return ["cgexec", "-g", f"{controllers}:{cgroup}"] + cmd
+
+
+def wrap_with_cgexec_and_create(
+    cmd: List[str],
+    mem_bytes: int,
+    swap_bytes: int = 0,
+    cgroup_name: str = None,
+) -> Tuple[List[str], str]:
+    """
+    Create a cgroup v2 with memory limits and wrap command with cgexec.
+
+    Args:
+        cmd: Command to run
+        mem_bytes: Memory limit in bytes
+        swap_bytes: Swap limit in bytes (0 = no swap, -1 = unlimited)
+        cgroup_name: Optional cgroup name (auto-generated if None)
+
+    Returns:
+        Tuple of (wrapped command list, cgroup path for cleanup)
+
+    Raises:
+        RuntimeError: If cgroup creation fails
+    """
+    if mem_bytes is None or mem_bytes <= 0:
+        return cmd, None
+
+    cg_root = "/sys/fs/cgroup"
+    cg_name = cgroup_name or f"pyjob-{os.getpid()}"
+    cg_path = os.path.join(cg_root, cg_name)
+
+    try:
+        os.makedirs(cg_path, exist_ok=True)
+        with open(os.path.join(cg_path, "memory.max"), "w") as f:
+            f.write(str(mem_bytes))
+        with open(os.path.join(cg_path, "memory.swap.max"), "w") as f:
+            f.write(str(swap_bytes) if swap_bytes >= 0 else "max")
+        with open(os.path.join(cg_path, "memory.oom.group"), "w") as f:
+            f.write("1")
+    except (OSError, IOError) as e:
+        raise RuntimeError(f"Failed to set up cgroup at {cg_path}: {e}")
+
+    wrapped_cmd = ["cgexec", "-g", f"memory:{cg_name}"] + cmd
+    return wrapped_cmd, cg_path
+
+
+def wrap_with_systemd_run(
+    cmd: List[str],
+    mem_bytes: int = None,
+    as_bytes: int = None,
+    swap_bytes: int = None,
+    scope_name: str = None,
+) -> List[str]:
+    """
+    Wrap command with systemd-run to set memory limits via cgroup.
+
+    Args:
+        cmd: Command to run
+        mem_bytes: MemoryMax limit in bytes (hard RSS limit)
+        as_bytes: LimitAS (virtual memory) limit in bytes
+        swap_bytes: MemorySwapMax limit in bytes
+        scope_name: Optional name for the transient scope unit
+
+    Returns:
+        Wrapped command list
+
+    Note:
+        Requires systemd and user session (--user) or root privileges.
+    """
+    has_limits = any(
+        v is not None and v > 0
+        for v in [mem_bytes, as_bytes, swap_bytes]
+    )
+    if not has_limits:
+        return cmd
+
+    wrapper = ["systemd-run", "--user", "--scope", "--quiet"]
+
+    if scope_name:
+        wrapper.append(f"--unit={scope_name}")
+
+    if mem_bytes is not None and mem_bytes > 0:
+        wrapper.append(f"--property=MemoryMax={mem_bytes}")
+
+    if as_bytes is not None and as_bytes > 0:
+        wrapper.append(f"--property=LimitAS={as_bytes}")
+
+    if swap_bytes is not None and swap_bytes > 0:
+        wrapper.append(f"--property=MemorySwapMax={swap_bytes}")
+
+    wrapper.append("--")
+    return wrapper + cmd
+
+
+def cleanup_cgroup(cg_path: str) -> None:
+    """
+    Clean up a cgroup directory.
+
+    Args:
+        cg_path: Path to cgroup directory to remove
+    """
+    if cg_path is None:
+        return
+    try:
+        shutil.rmtree(cg_path, ignore_errors=True)
+    except Exception:
+        pass
+
+
+# Memory limit method enum for CLI
+MEMORY_LIMIT_METHODS = ["prlimit", "ulimit", "cgexec", "systemd-run", "none"]
+
+
+def apply_memory_limit(
+    cmd: List[str],
+    method: str,
+    as_bytes: int = None,
+    rss_bytes: int = None,
+    swap_bytes: int = None,
+    cgroup: str = None,
+) -> Tuple[List[str], str]:
+    """
+    Apply memory limits to a command using the specified method.
+
+    Args:
+        cmd: Command to run
+        method: One of "prlimit", "ulimit", "cgexec", "systemd-run", "none"
+        as_bytes: Virtual memory (RLIMIT_AS) limit in bytes
+        rss_bytes: RSS memory limit in bytes
+        swap_bytes: Swap limit in bytes
+        cgroup: Existing cgroup name (for cgexec method)
+
+    Returns:
+        Tuple of (wrapped command, cgroup_path or None)
+        cgroup_path is only set when method creates a new cgroup that needs cleanup
+
+    Raises:
+        ValueError: If method is unknown or invalid configuration
+    """
+    method = method.lower() if method else "none"
+
+    if method == "none":
+        return cmd, None
+
+    elif method == "prlimit":
+        return wrap_with_prlimit(cmd, as_bytes=as_bytes, rss_bytes=rss_bytes), None
+
+    elif method == "ulimit":
+        if rss_bytes is not None and rss_bytes > 0:
+            raise ValueError("ulimit method only supports --max-mem-as, not --max-mem-rss")
+        return wrap_with_ulimit(cmd, as_bytes=as_bytes), None
+
+    elif method == "cgexec":
+        if cgroup:
+            # Use existing cgroup
+            return wrap_with_cgexec(cmd, cgroup), None
+        elif rss_bytes is not None and rss_bytes > 0:
+            # Create new cgroup with limits
+            return wrap_with_cgexec_and_create(cmd, rss_bytes, swap_bytes or 0)
+        else:
+            raise ValueError("cgexec method requires --cgroup or --max-mem-rss")
+
+    elif method == "systemd-run":
+        return wrap_with_systemd_run(
+            cmd,
+            mem_bytes=rss_bytes,
+            as_bytes=as_bytes,
+            swap_bytes=swap_bytes
+        ), None
+
+    else:
+        raise ValueError(
+            f"Unknown memory limit method: {method}. "
+            f"Valid options: {', '.join(MEMORY_LIMIT_METHODS)}"
+        )
 
 
 if __name__ == "__main__":

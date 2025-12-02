@@ -47,7 +47,7 @@ set -x
 { EXPECTED_ERROR=$(cat); } <<EOF
      = fun A : Prop => A -> False
      : Prop -> Prop
-File "[^"]*\.v", line [0-9]\+, characters 0-28:
+File "[^"]*\.v", line [0-9-]\+, characters 0-28:
 Error: The command has not failed\s\?!
 EOF
 # pre-build the files to normalize the output for the run we're testing
