@@ -72,9 +72,9 @@ find_bug -y "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
  ]*
 \)\?Inductive False : Prop := \.
 Axiom proof_admitted : False\.
-Import [^
+\(Import [^
  ]*
-Tactic Notation "admit" := abstract case proof_admitted\.
+\)\?Tactic Notation "admit" := abstract case proof_admitted\.
 Section __\.
   Context {A : Type}\.
 Theorem and_assoc2 : forall P Q R : Prop,
