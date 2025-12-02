@@ -474,7 +474,9 @@ def parse_memory_bytes(mem_str: str) -> int:
     return int(number * multiplier)
 
 
-def wrap_with_prlimit(cmd: List[str], as_bytes: int = None, rss_bytes: int = None) -> List[str]:
+def wrap_with_prlimit(
+    cmd: List[str], as_bytes: int = None, rss_bytes: int = None
+) -> List[str]:
     """
     Wrap command with prlimit to set resource limits.
 
@@ -518,7 +520,9 @@ def wrap_with_ulimit(cmd: List[str], as_bytes: int = None) -> List[str]:
     return ["sh", "-c", f"ulimit -v {kb}; exec {escaped_cmd}"]
 
 
-def wrap_with_cgexec(cmd: List[str], cgroup: str, controllers: str = "memory") -> List[str]:
+def wrap_with_cgexec(
+    cmd: List[str], cgroup: str, controllers: str = "memory"
+) -> List[str]:
     """
     Wrap command with cgexec to run in an existing cgroup.
 
@@ -539,6 +543,35 @@ def wrap_with_cgexec(cmd: List[str], cgroup: str, controllers: str = "memory") -
     if not cgroup:
         return cmd
     return ["cgexec", "-g", f"{controllers}:{cgroup}"] + cmd
+
+
+def parse_memory_limit_with_multiplier(value, arg_name):
+    """returns (absolute_bytes_or_minus_one_or_none, multiplier_or_none)"""
+    if value is None:
+        return None, None
+    value_str = str(value).strip()
+    if not value_str:
+        return None, None
+    lower_val = value_str.lower()
+    if lower_val.endswith("x"):
+        multiplier_str = lower_val[:-1].strip()
+        if not multiplier_str:
+            raise ValueError(
+                f"{arg_name} multiplier must include a numeric value before 'x'"
+            )
+        try:
+            multiplier = float(multiplier_str)
+        except ValueError as exc:
+            raise ValueError(
+                f"{arg_name} multiplier '{value_str}' is not a valid number"
+            ) from exc
+        if multiplier <= 0:
+            raise ValueError(f"{arg_name} multiplier '{value_str}' must be positive")
+        return None, multiplier
+    try:
+        return parse_memory_bytes(value_str), None
+    except ValueError as exc:
+        raise ValueError(f"{arg_name} has invalid value '{value_str}': {exc}") from exc
 
 
 def wrap_with_cgexec_and_create(
@@ -607,10 +640,7 @@ def wrap_with_systemd_run(
     Note:
         Requires systemd and user session (--user) or root privileges.
     """
-    has_limits = any(
-        v is not None and v > 0
-        for v in [mem_bytes, as_bytes, swap_bytes]
-    )
+    has_limits = any(v is not None and v > 0 for v in [mem_bytes, as_bytes, swap_bytes])
     if not has_limits:
         return cmd
 
@@ -687,7 +717,9 @@ def apply_memory_limit(
 
     elif method == "ulimit":
         if rss_bytes is not None and rss_bytes > 0:
-            raise ValueError("ulimit method only supports --max-mem-as, not --max-mem-rss")
+            raise ValueError(
+                "ulimit method only supports --max-mem-as, not --max-mem-rss"
+            )
         return wrap_with_ulimit(cmd, as_bytes=as_bytes), None
 
     elif method == "cgexec":
@@ -702,10 +734,7 @@ def apply_memory_limit(
 
     elif method == "systemd-run":
         return wrap_with_systemd_run(
-            cmd,
-            mem_bytes=rss_bytes,
-            as_bytes=as_bytes,
-            swap_bytes=swap_bytes
+            cmd, mem_bytes=rss_bytes, as_bytes=as_bytes, swap_bytes=swap_bytes
         ), None
 
     else:
