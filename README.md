@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/JasonGross/coq-tools/workflows/CI/badge.svg?branch=master)](https://github.com/JasonGross/coq-tools/actions?query=branch%3Amaster)
+[![Build Status](https://github.com/JasonGross/coq-tools/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/JasonGross/coq-tools/actions/workflows/ci.yml?query=branch%3Amaster)
 [![PyPI version](https://badge.fury.io/py/coq-tools.svg)](https://badge.fury.io/py/coq-tools)
 
 coq-tools
