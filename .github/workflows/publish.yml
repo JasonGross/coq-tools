@@ -46,8 +46,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    name: Build standalone ⛏️ ${{ matrix.os }} ${{ (matrix.os == 'windows-latest' && '🪟') || (matrix.os == 'macos-latest' && '🍎') || (matrix.os == 'ubuntu-latest' && '🐧') }}
+        os: [ubuntu-latest, macos-latest, windows-latest, macos-15-intel]
+    name: Build standalone ⛏️ ${{ matrix.os }} ${{ (matrix.os == 'windows-latest' && '🪟') || (startsWith(matrix.os, 'macos-') && '🍎') || (matrix.os == 'ubuntu-latest' && '🐧') }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -96,9 +96,14 @@ jobs:
       with:
         name: python-standalone-macos-latest
         path: dist-macos/
+    - name: Download standalone ⛏️ MacOS (Intel)
+      uses: actions/download-artifact@v6
+      with:
+        name: python-standalone-macos-15-intel
+        path: dist-macos-intel/
     - run: |
         mkdir -p dist
-        for os in ubuntu windows macos; do
+        for os in ubuntu windows macos macos-intel; do
             pushd "dist-$os"
             find .
             rm -rf */_internal
