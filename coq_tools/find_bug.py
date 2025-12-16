@@ -547,6 +547,32 @@ parser.add_argument(
     help="The path to the coqdep program.",
 )
 parser.add_argument(
+    "--chk",
+    dest="chk",
+    default=False,
+    action="store_const",
+    const=True,
+    help="After running coqc, also run coqchk on the resulting .vo file and look for errors there.",
+)
+parser.add_argument(
+    "--coqchk",
+    metavar="COQCHK",
+    dest="coqchk",
+    type=str,
+    default=None,
+    action="append",
+    help="The path to the coqchk program (only used with --chk).",
+)
+parser.add_argument(
+    "--passing-coqchk",
+    metavar="COQCHK",
+    dest="passing_coqchk",
+    type=str,
+    default=None,
+    action="append",
+    help="The path to the coqchk program for the passing coqc (only used with --chk).",
+)
+parser.add_argument(
     "--passing-coqc",
     metavar="COQC",
     dest="passing_coqc",
@@ -4188,6 +4214,13 @@ def main():
         ),
         "coq_makefile": prepend_coqbin(args.coq_makefile or "coq_makefile"),
         "coqdep": prepend_coqbin(args.coqdep),
+        "chk": args.chk,
+        "coqchk": prepend_coqbin(args.coqchk or "coqchk"),
+        "passing_coqchk": (
+            prepend_coqbin(args.passing_coqchk)
+            if args.passing_coqchk
+            else prepend_coqbin(args.coqchk or "coqchk")
+        ),
         "passing_coqc_args": tuple(
             i.strip()
             for i in (
@@ -4380,6 +4413,17 @@ def main():
                 else:
                     env["passing_coqc"] = env["coqtop"]
             env["passing_make_coqc"] = make_make_coqc(env["passing_coqc"], **env)
+
+        if env["chk"]:
+            # Wrap coqc with coqchk-as-coqc.sh to also run coqchk after coqc
+            coqchk_wrapper = str(util.resource_path("coqchk-as-coqc.sh"))
+            env["coqc"] = (coqchk_wrapper, *env["coqc"], *env["coqchk"])
+            if env["passing_coqc"] is not None:
+                env["passing_coqc"] = (
+                    coqchk_wrapper,
+                    *env["passing_coqc"],
+                    *env["passing_coqchk"],
+                )
 
         coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
         coqc_version = get_coqc_version(env["coqc"], **env)
