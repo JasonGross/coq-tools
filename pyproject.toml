@@ -31,7 +31,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["coq_tools"]
-package-data = { "coq_tools" = ["coqtop-as-coqc.sh", "coqtop.bat"] }
+package-data = { "coq_tools" = ["coqtop-as-coqc.sh", "coqchk-as-coqc.sh", "coqtop.bat"] }
 
 [tool.black]
 line-length = 120
