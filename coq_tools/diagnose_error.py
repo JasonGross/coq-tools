@@ -330,10 +330,9 @@ def reset_memory_usage():
 def timeout_Popen_communicate(log, *args, **kwargs):
     ret = {"value": ("", ""), "returncode": None, "rusage": None}
     timeout = kwargs.pop("timeout", None)
-    input_val = kwargs.get("input", None)
+    input_val = kwargs.pop("input", None)
     if input_val is not None:
         input_val = input_val.encode("utf-8")
-    del kwargs["input"]
 
     # Extract memory limit parameters
     max_mem_rss = kwargs.pop("max_mem_rss", None)
