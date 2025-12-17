@@ -37,7 +37,7 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: make dist PYTHON=python3
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: python-package-distributions
         path: dist/
@@ -68,7 +68,7 @@ jobs:
     - name: Build a standalone executable
       run: make standalone
     - name: Store the standalone packages
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: python-standalone-${{ matrix.os }}
         path: dist/
@@ -82,22 +82,22 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - name: Download standalone ⛏️ Ubuntu
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-standalone-ubuntu-latest
         path: dist-ubuntu/
     - name: Download standalone ⛏️ Windows
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-standalone-windows-latest
         path: dist-windows/
     - name: Download standalone ⛏️ MacOS
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-standalone-macos-latest
         path: dist-macos/
     - name: Download standalone ⛏️ MacOS (Intel)
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-standalone-macos-15-intel
         path: dist-macos-intel/
@@ -128,7 +128,7 @@ jobs:
         ls -la dist/
         tar -czvf standalone.tar.gz dist/
     - name: Store the standalone ⛏️ packages
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: python-standalone
         path: standalone.tar.gz
@@ -148,7 +148,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
@@ -172,7 +172,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
@@ -214,12 +214,12 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
     - name: Download standalone
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: python-standalone
         path: .

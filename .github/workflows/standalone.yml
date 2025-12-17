@@ -41,7 +41,7 @@ jobs:
         python -m pip install -r requirements.txt
     - run: make standalone
     - name: Upload standalone
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: standalone-${{ matrix.python-version }}-${{ matrix.os }}
         path: |
