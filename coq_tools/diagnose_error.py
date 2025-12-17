@@ -5,7 +5,11 @@ from .memoize import memoize
 from .file_util import clean_v_file
 from .util import re_escape, get_peak_rss_bytes, apply_memory_limit, cleanup_cgroup
 from .custom_arguments import LOG_ALWAYS
-from .coq_version import group_coq_args, get_coqc_help, get_coq_accepts_Q
+from .coq_version import (
+    group_coq_args,
+    get_coqc_help,
+    get_coq_accepts_Q,
+)
 from . import util
 
 __all__ = [
@@ -40,6 +44,26 @@ DEFAULT_ERROR_REG_STRING_GENERIC = DEFAULT_PRE_PRE_ERROR_REG_STRING + "(%s)"
 
 def clean_output(output):
     return adjust_error_message_for_selected_errors(util.normalize_newlines(output))
+
+
+def process_coqchk_output(output, v_file_name, line_count):
+    """
+    Process coqchk output and insert error preamble before "Fatal Error:" lines.
+
+    When coqchk outputs a line starting with "Fatal Error:", we emit a fake Coq
+    error location pointing to the end of the .v file before that line.
+    """
+    lines = output.split("\n")
+    result_lines = []
+    for line in lines:
+        if line.startswith("Fatal Error:"):
+            # Insert fake Coq error location before the Fatal Error line
+            result_lines.append(
+                f'File "{v_file_name}", line {line_count}, characters 0-0:'
+            )
+            result_lines.append("Error:")
+        result_lines.append(line)
+    return "\n".join(result_lines)
 
 
 @memoize
@@ -548,8 +572,11 @@ def reset_coq_output_cache(
     pass_on_stdin=False,
     verbose_base=1,
     ocamlpath=None,
+    coqchk_prog=None,
+    coqchk_prog_args=(),
     **kwargs,
 ):
+    key_extra = (coqchk_prog, tuple(coqchk_prog_args)) if coqchk_prog else ()
     key, file_name, cmds, input_val, cleaner, env = prepare_cmds_for_coq_output(
         coqc_prog,
         coqc_prog_args,
@@ -562,6 +589,7 @@ def reset_coq_output_cache(
         ocamlpath=ocamlpath,
         **kwargs,
     )
+    key = key + key_extra
     cleaner()
 
     if key in COQ_OUTPUT.keys():
@@ -581,10 +609,18 @@ def get_coq_output(
         lambda output: "is not a compiled interface for this version of OCaml" in output
     ),
     ocamlpath=None,
+    coqchk_prog=None,
+    coqchk_prog_args=(),
     **kwargs,
 ):
     """Returns the coqc output of running through the given
-    contents.  Pass timeout_val = None for no timeout."""
+    contents.  Pass timeout_val = None for no timeout.
+
+    If coqchk_prog is provided, after coqc succeeds, coqchk will be run on the
+    resulting .vo file. The output is combined, but if coqc fails, we end early.
+    When coqchk outputs "Fatal Error:", a fake Coq error location pointing to
+    the end of the .v file is inserted before that line.
+    """
     if (
         timeout_val is not None
         and timeout_val < 0
@@ -601,9 +637,12 @@ def get_coq_output(
             verbose_base=verbose_base,
             retry_with_debug_when=retry_with_debug_when,
             ocamlpath=ocamlpath,
+            coqchk_prog=coqchk_prog,
+            coqchk_prog_args=coqchk_prog_args,
             **kwargs,
         )
 
+    key_extra = (coqchk_prog, tuple(coqchk_prog_args)) if coqchk_prog else ()
     key, file_name, cmds, input_val, cleaner, env = prepare_cmds_for_coq_output(
         coqc_prog,
         coqc_prog_args,
@@ -616,6 +655,9 @@ def get_coq_output(
         ocamlpath=ocamlpath,
         **kwargs,
     )
+
+    # Extend key to include coqchk info
+    key = key + key_extra
 
     if key in COQ_OUTPUT.keys():
         cleaner()
@@ -659,10 +701,78 @@ def get_coq_output(
     )
     if get_timeout(coqc_prog) is None and timeout_val is not None:
         set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
+
+    combined_stdout = util.s(stdout)
+    combined_returncode = returncode
+    combined_runtime = runtime
+    combined_peak_rss_kb = peak_rss_kb
+
+    # If coqchk is enabled and coqc succeeded, run coqchk
+    if coqchk_prog is not None and returncode == 0:
+        # Build coqchk command: coqchk -o -silent <args> <vo_file>
+        vo_file = os.path.splitext(file_name)[0] + ".vo"
+        assert isinstance(coqchk_prog, tuple), coqchk_prog
+        coqchk_cmds = [*coqchk_prog, *coqchk_prog_args, vo_file]
+        chk_start = time.time()
+        ((chk_stdout, chk_stderr), chk_returncode, chk_peak_rss_bytes) = (
+            memory_robust_timeout_Popen_communicate(
+                kwargs["log"],
+                coqchk_cmds,
+                stderr=subprocess.STDOUT,
+                stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                timeout=(
+                    timeout_val if timeout_val is not None and timeout_val > 0 else None
+                ),
+                cwd=cwd,
+                env=env,
+                **extra_kwargs,
+            )
+        )
+        chk_finish = time.time()
+        chk_runtime = chk_finish - chk_start
+        chk_peak_rss_kb = chk_peak_rss_bytes / 1024
+
+        kwargs["log"](
+            "\ncoqchk retcode: %d\nstdout:\n%s\n\nstderr:\n%s\nruntime:\n%f\npeak_rss:\n%f kb\n\n"
+            % (
+                chk_returncode,
+                util.s(chk_stdout),
+                util.s(chk_stderr),
+                chk_runtime,
+                chk_peak_rss_kb,
+            ),
+            level=verbose_base + 1,
+        )
+
+        # Count lines in the .v file for error location
+        line_count = contents.count("\n") + 1
+
+        # Process coqchk output to insert error preamble before "Fatal Error:" lines
+        processed_chk_output = process_coqchk_output(
+            util.s(chk_stdout), file_name, line_count
+        )
+
+        # Combine outputs
+        combined_stdout = combined_stdout + "\n" + processed_chk_output
+        combined_returncode = (
+            chk_returncode if chk_returncode != 0 else combined_returncode
+        )
+        combined_runtime = runtime + chk_runtime
+        combined_peak_rss_kb = max(peak_rss_kb, chk_peak_rss_kb)
+
+    # Now clean up after coqchk has run (or if coqchk wasn't needed)
     cleaner()
+
     COQ_OUTPUT[key] = (
         file_name,
-        (clean_output(util.s(stdout)), tuple(cmds), returncode, runtime, peak_rss_kb),
+        (
+            clean_output(combined_stdout),
+            tuple(cmds),
+            combined_returncode,
+            combined_runtime,
+            combined_peak_rss_kb,
+        ),
     )
     kwargs["log"](
         "Storing result: COQ_OUTPUT[%s]:\n%s" % (repr(key), repr(COQ_OUTPUT[key])),
@@ -684,6 +794,8 @@ def get_coq_output(
             verbose_base=verbose_base,
             retry_with_debug_when=(lambda output: False),
             ocamlpath=ocamlpath,
+            coqchk_prog=coqchk_prog,
+            coqchk_prog_args=coqchk_prog_args,
             **kwargs,
         )
     return COQ_OUTPUT[key][1]
