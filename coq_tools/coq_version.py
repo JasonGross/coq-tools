@@ -11,7 +11,9 @@ __all__ = [
     "get_boot_noinputstate_args",
     "get_coqc_version",
     "get_coqtop_version",
+    "get_coqchk_version",
     "get_coqc_help",
+    "get_coqchk_help",
     "get_coqc_coqlib",
     "get_coq_accepts_top",
     "get_coq_accepts_time",
@@ -79,6 +81,12 @@ def get_coqc_help(coqc_prog, **kwargs):
         [*coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)],
         **kwargs,
     )
+    return util.s(stdout).strip()
+
+
+def get_coqchk_help(coqchk_prog, **kwargs):
+    assert isinstance(coqchk_prog, tuple), coqchk_prog
+    (stdout, _stderr), _rc = subprocess_Popen_memoized([*coqchk_prog, "-h"], **kwargs)
     return util.s(stdout).strip()
 
 
@@ -258,6 +266,14 @@ def get_coqtop_version(coqtop_prog, **kwargs):
     (stdout, stderr), _rc = subprocess_Popen_memoized(
         [*coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)],
         **kwargs,
+    )
+    return format_coq_version(util.s(stdout), util.s(stderr))
+
+
+def get_coqchk_version(coqchk_prog, **kwargs):
+    assert isinstance(coqchk_prog, tuple), coqchk_prog
+    (stdout, stderr), _rc = subprocess_Popen_memoized(
+        [*coqchk_prog, "-h"], stderr=subprocess.PIPE, **kwargs
     )
     return format_coq_version(util.s(stdout), util.s(stderr))
 
