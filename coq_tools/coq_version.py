@@ -41,15 +41,24 @@ def subprocess_Popen_memoized_helper(cmd, **kwargs):
 
 
 def subprocess_Popen_memoized(
-    cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, stdin=subprocess.PIPE, log=DEFAULT_LOG, **kwargs
+    cmd,
+    stderr=subprocess.STDOUT,
+    stdout=subprocess.PIPE,
+    stdin=subprocess.PIPE,
+    log=DEFAULT_LOG,
+    **kwargs,
 ):
     log('Running command: "%s"' % '" "'.join(cmd), level=2)
-    return subprocess_Popen_memoized_helper(cmd, stderr=stderr, stdin=stdin, stdout=stdout)
+    return subprocess_Popen_memoized_helper(
+        cmd, stderr=stderr, stdin=stdin, stdout=stdout
+    )
 
 
 def get_coq_accepts_boot(coqc_prog, **kwargs):
     assert isinstance(coqc_prog, tuple), coqc_prog
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([*coqc_prog, "-q", "-boot", "-h"], **kwargs)
+    (stdout, _stderr), _rc = subprocess_Popen_memoized(
+        [*coqc_prog, "-q", "-boot", "-h"], **kwargs
+    )
     stdout = util.s(stdout)
     return (
         ("Unknown option -boot" not in stdout)
@@ -59,13 +68,16 @@ def get_coq_accepts_boot(coqc_prog, **kwargs):
 
 
 def get_boot_noinputstate_args(coqc_prog, **kwargs):
-    return ["-boot", "-nois"] if get_coq_accepts_boot(coqc_prog, **kwargs) else ["-nois"]
+    return (
+        ["-boot", "-nois"] if get_coq_accepts_boot(coqc_prog, **kwargs) else ["-nois"]
+    )
 
 
 def get_coqc_help(coqc_prog, **kwargs):
     assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [*coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)], **kwargs
+        [*coqc_prog, "-q", "--help", *get_boot_noinputstate_args(coqc_prog, **kwargs)],
+        **kwargs,
     )
     return util.s(stdout).strip()
 
@@ -81,7 +93,9 @@ HELP_MAKEFILE_REG = re.compile(r"^\[(-[^\n\]]*)\]", re.MULTILINE)
 def adjust_help_string(coqc_help):
     # we need to insert some spaces to make parsing easier
     for one_arg_option in ("-diffs", "-native-compiler"):
-        coqc_help = re.sub(r"(\n\s*%s\s+[^\s]*)" % one_arg_option, r"\1 ", coqc_help, re.MULTILINE)
+        coqc_help = re.sub(
+            r"(\n\s*%s\s+[^\s]*)" % one_arg_option, r"\1 ", coqc_help, re.MULTILINE
+        )
     return coqc_help
 
 
@@ -121,7 +135,9 @@ def coq_makefile_supports_arg(coq_makefile_help):
     return any(tag == "-arg" for tag in tags.keys())
 
 
-def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefile=False):
+def group_coq_args_split_recognized(
+    args, coqc_help, topname=None, is_coq_makefile=False
+):
     args = list(args)
     bindings = []
     unrecognized_bindings = []
@@ -129,7 +145,10 @@ def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefi
     multiple_tags = get_multiple_help_tags(coqc_help, is_coq_makefile=is_coq_makefile)
     while len(args) > 0:
         if args[0] in multiple_tags.keys() and len(args) >= multiple_tags[args[0]]:
-            cur_binding, args = tuple(args[: multiple_tags[args[0]]]), args[multiple_tags[args[0]] :]
+            cur_binding, args = (
+                tuple(args[: multiple_tags[args[0]]]),
+                args[multiple_tags[args[0]] :],
+            )
             if cur_binding not in bindings:
                 bindings.append(cur_binding)
         else:
@@ -138,7 +157,11 @@ def group_coq_args_split_recognized(args, coqc_help, topname=None, is_coq_makefi
                 unrecognized_bindings.append(cur[0])
             elif cur not in bindings:
                 bindings.append(cur)
-    if topname is not None and "-top" not in [i[0] for i in bindings] and "-top" in multiple_tags.keys():
+    if (
+        topname is not None
+        and "-top" not in [i[0] for i in bindings]
+        and "-top" in multiple_tags.keys()
+    ):
         bindings.append(("-top", topname))
     return (bindings, unrecognized_bindings)
 
@@ -152,14 +175,25 @@ def group_coq_args(args, coqc_help, topname=None, is_coq_makefile=False):
 
 def coqlib_args_of_coq_args(coqc_prog, coq_args=tuple(), **kwargs):
     grouped_args = group_coq_args(coq_args, get_coqc_help(coqc_prog, **kwargs))
-    coq_args = [arg for args in grouped_args if args[0] in ("--coqlib", "-coqlib") for arg in args]
+    coq_args = [
+        arg
+        for args in grouped_args
+        if args[0] in ("--coqlib", "-coqlib")
+        for arg in args
+    ]
     return coq_args
 
 
 def get_coqc_config(coqc_prog, coq_args=tuple(), **kwargs):
     assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [*coqc_prog, "-q", "-config", *coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs)], **kwargs
+        [
+            *coqc_prog,
+            "-q",
+            "-config",
+            *coqlib_args_of_coq_args(coqc_prog, coq_args, **kwargs),
+        ],
+        **kwargs,
     )
     return util.normalize_newlines(util.s(stdout)).strip()
 
@@ -187,9 +221,17 @@ def format_coq_version_helper(text: str):
         .replace("Coq <", "")
         .replace("Skipping rcfile loading.", "")
     )
-    text = re.sub(r"Warning: Deprecated environment variable ([^, ]*), use ([^ ]*) instead.", "", text)
-    text = re.sub(r"Deprecated environment variable ([^, ]*), use ([^ ]*) instead.", "", text)
-    text = re.sub(r".deprecated-coq-env-var,deprecated-since-[^,]*,deprecated,default.", "", text)
+    text = re.sub(
+        r"Warning: Deprecated environment variable ([^, ]*), use ([^ ]*) instead.",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"Deprecated environment variable ([^, ]*), use ([^ ]*) instead.", "", text
+    )
+    text = re.sub(
+        r".deprecated-coq-env-var,deprecated-since-[^,]*,deprecated,default.", "", text
+    )
     return text.strip()
 
 
@@ -204,7 +246,9 @@ def format_coq_version(stdout: str, stderr: str = ""):
 def get_coqc_version(coqc_prog, **kwargs):
     assert isinstance(coqc_prog, tuple), coqc_prog
     (stdout, stderr), _rc = subprocess_Popen_memoized(
-        [*coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)], stderr=subprocess.PIPE, **kwargs
+        [*coqc_prog, "-q", "-v", *get_boot_noinputstate_args(coqc_prog, **kwargs)],
+        stderr=subprocess.PIPE,
+        **kwargs,
     )
     return format_coq_version(util.s(stdout), util.s(stderr))
 
@@ -212,7 +256,8 @@ def get_coqc_version(coqc_prog, **kwargs):
 def get_coqtop_version(coqtop_prog, **kwargs):
     assert isinstance(coqtop_prog, tuple), coqtop_prog
     (stdout, stderr), _rc = subprocess_Popen_memoized(
-        [*coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)], **kwargs
+        [*coqtop_prog, "-q", *get_boot_noinputstate_args(coqtop_prog, **kwargs)],
+        **kwargs,
     )
     return format_coq_version(util.s(stdout), util.s(stderr))
 
@@ -282,7 +327,14 @@ def get_coqc_native_compiler_ondemand_errors_helper(coqc):
     temp_file_name = temp_file.name
     assert isinstance(coqc, tuple), coqc
     (stdout, _stderr), _rc = subprocess_Popen_memoized(
-        [*coqc, "-q", "-native-compiler", "ondemand", temp_file_name, *get_boot_noinputstate_args(coqc)]
+        [
+            *coqc,
+            "-q",
+            "-native-compiler",
+            "ondemand",
+            temp_file_name,
+            *get_boot_noinputstate_args(coqc),
+        ]
     )
     temp_file.close()
     clean_v_file(temp_file_name)
@@ -303,7 +355,11 @@ def get_coqc_native_compiler_ondemand_errors(coqc_prog, **kwargs):
 
 def get_coq_native_compiler_ondemand_fragment(coqc_prog, **kwargs):
     help_lines = get_coqc_help(coqc_prog, **kwargs).split("\n")
-    if any("ondemand" in line for line in help_lines if line.strip().startswith("-native-compiler")):
+    if any(
+        "ondemand" in line
+        for line in help_lines
+        if line.strip().startswith("-native-compiler")
+    ):
         if get_coq_accepts_w(coqc_prog, **kwargs):
             return (
                 "-w",
