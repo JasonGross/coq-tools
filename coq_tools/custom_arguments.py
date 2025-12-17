@@ -413,7 +413,7 @@ def argstring_to_iterable(arg):
 
 
 def append_coq_arg(env, arg, passing=""):
-    for key in ("coqc_args", "coqtop_args"):
+    for key in ("coqc_args", "coqtop_args", "coqchk_args"):
         env[passing + key] = tuple(
             list(env.get(passing + key, [])) + list(argstring_to_iterable(arg))
         )

@@ -573,6 +573,30 @@ parser.add_argument(
     help="The path to the coqchk program for the passing coqc (only used with --chk).",
 )
 parser.add_argument(
+    "--coqchk-args",
+    metavar="ARG",
+    dest="coqchk_args",
+    type=str,
+    action="append",
+    help='Arguments to pass to coqchk (both passing and nonpassing); e.g., " -silent" (leading and trailing spaces are stripped, only used with --chk)',
+)
+parser.add_argument(
+    "--nonpassing-coqchk-args",
+    metavar="ARG",
+    dest="nonpassing_coqchk_args",
+    type=str,
+    action="append",
+    help='Arguments to pass to nonpassing coqchk; e.g., " -silent" (leading and trailing spaces are stripped, only used with --chk)',
+)
+parser.add_argument(
+    "--passing-coqchk-args",
+    metavar="ARG",
+    dest="passing_coqchk_args",
+    type=str,
+    action="append",
+    help='Arguments to pass to passing coqchk; e.g., " -silent" (leading and trailing spaces are stripped, only used with --chk)',
+)
+parser.add_argument(
     "--passing-coqc",
     metavar="COQC",
     dest="passing_coqc",
@@ -1072,6 +1096,8 @@ def get_error_reg_string(output_file_name, **kwargs):
             verbose_base=1,
             cwd=kwargs["base_dir"],
             ocamlpath=kwargs["nonpassing_ocamlpath"],
+            coqchk_prog=kwargs["coqchk"],
+            coqchk_prog_args=kwargs["coqchk_args"],
             **kwargs,
         )
         result = ""
@@ -1313,6 +1339,8 @@ def classify_contents_change(
         is_coqtop=kwargs["coqc_is_coqtop"],
         verbose_base=2,
         ocamlpath=kwargs["nonpassing_ocamlpath"],
+        coqchk_prog=kwargs["coqchk"],
+        coqchk_prog_args=kwargs["coqchk_args"],
         **kwargs,
     )
     if not should_succeed and diagnose_error.has_error(
@@ -1346,6 +1374,8 @@ def classify_contents_change(
                 is_coqtop=kwargs["passing_coqc_is_coqtop"],
                 verbose_base=2,
                 ocamlpath=kwargs["passing_ocamlpath"],
+                coqchk_prog=kwargs["passing_coqchk"],
+                coqchk_prog_args=kwargs["passing_coqchk_args"],
                 **kwargs,
             )
             if not (
@@ -3413,6 +3443,8 @@ def minimize_file(
             verbose_base=2,
             cwd=env["base_dir"],
             ocamlpath=env["nonpassing_ocamlpath"],
+            coqchk_prog=env["coqchk"],
+            coqchk_prog_args=env["coqchk_args"],
             **env,
         )
         line_num = diagnose_error.get_error_line_number(output, env["error_reg_string"])
@@ -3809,6 +3841,8 @@ def inline_one_require(
                     is_coqtop=kwargs["coqc_is_coqtop"],
                     verbose_base=2,
                     ocamlpath=kwargs["nonpassing_ocamlpath"],
+                    coqchk_prog=kwargs["coqchk"],
+                    coqchk_prog_args=kwargs["coqchk_args"],
                     **kwargs,
                 )
             )
@@ -4215,11 +4249,31 @@ def main():
         "coq_makefile": prepend_coqbin(args.coq_makefile or "coq_makefile"),
         "coqdep": prepend_coqbin(args.coqdep),
         "chk": args.chk,
-        "coqchk": prepend_coqbin(args.coqchk or "coqchk"),
+        "coqchk": (prepend_coqbin(args.coqchk or "coqchk") if args.chk else None),
         "passing_coqchk": (
-            prepend_coqbin(args.passing_coqchk)
-            if args.passing_coqchk
-            else prepend_coqbin(args.coqchk or "coqchk")
+            (
+                prepend_coqbin(args.passing_coqchk)
+                if args.passing_coqchk
+                else prepend_coqbin(args.coqchk or "coqchk")
+            )
+            if args.chk
+            else None
+        ),
+        "coqchk_args": tuple(
+            i.strip()
+            for i in (
+                list(process_maybe_list(args.nonpassing_coqchk_args, log=args.log))
+                + list(process_maybe_list(args.coqchk_args, log=args.log))
+                + list(process_maybe_list(args.coq_args, log=args.log))
+            )
+        ),
+        "passing_coqchk_args": tuple(
+            i.strip()
+            for i in (
+                list(process_maybe_list(args.passing_coqchk_args, log=args.log))
+                + list(process_maybe_list(args.coqchk_args, log=args.log))
+                + list(process_maybe_list(args.coq_args, log=args.log))
+            )
         ),
         "passing_coqc_args": tuple(
             i.strip()
@@ -4414,17 +4468,6 @@ def main():
                     env["passing_coqc"] = env["coqtop"]
             env["passing_make_coqc"] = make_make_coqc(env["passing_coqc"], **env)
 
-        if env["chk"]:
-            # Wrap coqc with coqchk-as-coqc.sh to also run coqchk after coqc
-            coqchk_wrapper = str(util.resource_path("coqchk-as-coqc.sh"))
-            env["coqc"] = (coqchk_wrapper, *env["coqc"], *env["coqchk"])
-            if env["passing_coqc"] is not None:
-                env["passing_coqc"] = (
-                    coqchk_wrapper,
-                    *env["passing_coqc"],
-                    *env["passing_coqchk"],
-                )
-
         coqc_help = get_coqc_help(get_preferred_passing("coqc", **env), **env)
         coqc_version = get_coqc_version(env["coqc"], **env)
 
@@ -4559,6 +4602,17 @@ def main():
                 env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"],
                 "passing_",
             ),
+        ) + (
+            (
+                ("coqchk_args", env["coqchk"], ""),
+                (
+                    "passing_coqchk_args",
+                    env["passing_coqchk"] if env["passing_coqchk"] else env["coqchk"],
+                    "passing_",
+                ),
+            )
+            if env["chk"]
+            else ()
         ):
             env[args_name] = tuple(list(env[args_name]) + list(extra_args))
             for dirname, libname in env.get(passing_prefix + "libnames", []):
@@ -4587,14 +4641,28 @@ def main():
                 if arg[0] == "-I":
                     env.get(passing_prefix + "ocaml_dirnames", []).append(arg[1])
 
-        for args_name, coqtop_prog, coqc_prog, passing_prefix in (
-            ("coqtop_args", env["coqtop"], env["coqc"], ""),
+        for coqprog, args_name, coqtop_prog, coqc_prog, passing_prefix in (
+            ("coqtop", "coqtop_args", env["coqtop"], env["coqc"], ""),
             (
+                "coqtop",
                 "passing_coqtop_args",
                 env["passing_coqtop"] if env["passing_coqtop"] else env["coqtop"],
                 env["passing_coqc"] if env["passing_coqc"] else env["coqc"],
                 "passing_",
             ),
+        ) + (
+            (
+                ("coqchk", "coqchk_args", env["coqchk"], env["coqc"], ""),
+                (
+                    "passing_coqchk",
+                    "passing_coqchk_args",
+                    env["passing_coqchk"] if env["passing_coqchk"] else env["coqchk"],
+                    env["passing_coqc"] if env["passing_coqc"] else env["coqc"],
+                    "passing_",
+                ),
+            )
+            if env["chk"]
+            else ()
         ):
             coqc_prog_help = get_coqc_help(coqc_prog, **env)
             coqtop_prog_help = get_coqc_help(coqtop_prog, **env)
@@ -4607,8 +4675,7 @@ def main():
             )
             if len(coqc_but_not_coqtop_args) > 0:
                 env["log"](
-                    "Warning: skipping arguments to coqtop that are only valid for coqc: %s"
-                    % repr(coqc_but_not_coqtop_args),
+                    f"Warning: skipping arguments to {coqprog} that are only valid for coqc: {coqc_but_not_coqtop_args!r}",
                     level=2,
                 )
             env[args_name] = tuple(
