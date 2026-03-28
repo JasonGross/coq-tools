@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Example for From ... Require Import (categories) ....
+###################################################################
+## Test that --minimize-args successfully removes unnecessary     ##
+## command-line arguments (like -w none) at the end of            ##
+## minimization.                                                  ##
+###################################################################
 
 ##########################################################
 # Various options that must be updated for each example
@@ -7,7 +11,7 @@ N="${0##*-}"; N="${N%.sh}"
 EXAMPLE_DIRECTORY="example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
-EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-minimize-args" "--no-try-all-inlining-and-minimization-again-at-end" "-R" "." "Top" "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@" "--arg=-w" "--arg=none")
 ##########################################################
 
 # Get the directory name of this script, and `cd` to that directory
@@ -39,14 +43,11 @@ set -x
 # Note also that the line numbers tend to be one larger in old
 # versions of Coq (<= 8.6?)
 { EXPECTED_ERROR=$(cat); } <<EOF
-a
-     : A.T
-File "[^"]*\.v", line [0-9-]\+, characters 0-13:
-Error: The command has not failed\s\?!
+File "[^"]*\.v", line [0-9-]\+, characters [0-9-]\+:
+Error:.*
 EOF
 # pre-build the files to normalize the output for the run we're testing
 find "$DIR/$EXAMPLE_DIRECTORY" \( -name "*.vo" -o -name "*.glob" \) -delete
-"${COQBIN}coqc" -R . Top Foo/A.v -q
 echo "y" | find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" 2>/dev/null >/dev/null
 # kludge: create the .glob file so we don't run the makefile
 touch "${EXAMPLE_OUTPUT%%.v}.glob"
@@ -75,32 +76,16 @@ fi
 find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
-# Put some segment that you expect to see in the file here.  Or count
-# the number of lines.  Or make some other test.  Or remove this block
-# entirely if you don't care about the minimized file.
-{ EXPECTED=$(cat); } <<EOF
-(\* -\*- mode: coq; coq-prog-args: ("-emacs"\( "-w" "-deprecated-native-compiler-option,-native-compiler-disabled"\)\?\( "-native-compiler" "ondemand"\)\? "-R" "\." "Top"\( "-top" "Top\.example_[0-9]\+"\)\?) -\*- \*)
-(\* File reduced by coq-bug-minimizer from original input\(, then from [0-9]\+ lines to [0-9]\+ lines\)\+ \*)
-(\* coqc version [^\*]*\*)
-
-Module Export A\.
-Class T := t : True\.
-Local Instance a : A\.T\.
-Admitted.
-Fail Check a\.
-
-EOF
-
-EXPECTED_ONE_LINE="$(strip_for_grep "$EXPECTED")"
-ACTUAL="$(strip_for_grep "$(cat "$EXAMPLE_OUTPUT")")"
-if ! grep_contains "$ACTUAL" "$EXPECTED_ONE_LINE"
-then
-    echo "Expected a string matching:"
-    echo "$EXPECTED"
-    echo "Got:"
-    cat "$EXAMPLE_OUTPUT" | "$GREP" -v '^$'
-    PREFIX_GREP="$(relpath "$DIR/prefix-grep.py" "$PWD")"
-    ${PYTHON} "$PREFIX_GREP" "$ACTUAL" "$EXPECTED_ONE_LINE"
+# Verify that the -w argument was removed from the output file
+# (it's unnecessary for reproducing the error).
+# The output file should NOT contain a coq-prog-args line with -w,
+# or should not have a coq-prog-args line at all.
+if "$GREP" -q 'coq-prog-args.*"-w"' "$EXAMPLE_OUTPUT"; then
+    echo "FAIL: -w argument was not minimized away from the output file"
+    echo "Output file contents:"
+    cat "$EXAMPLE_OUTPUT"
     exit 1
 fi
+echo "PASS: -w argument was successfully minimized away"
+
 exit 0

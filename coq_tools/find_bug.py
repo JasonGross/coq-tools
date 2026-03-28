@@ -162,6 +162,18 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--minimize-args",
+    dest="minimize_args",
+    action=BooleanOptionalAction,
+    default=True,
+    help=(
+        "At the very end of minimization, try to remove unnecessary "
+        + "command-line arguments (e.g., -Q, -R, -w, -top) that are no "
+        + "longer needed after inlining. Also try to eliminate the need "
+        + "for -top by wrapping file contents in a Module."
+    ),
+)
+parser.add_argument(
     "--no-wrap-modules",
     dest="wrap_modules",
     action="store_const",
@@ -3332,6 +3344,138 @@ def default_on_fatal(message, log=DEFAULT_LOG, **env):
     sys.exit(1)
 
 
+def try_minimize_coqc_args(output_file_name, **env):
+    """Try to minimize the command-line arguments passed to coqc.
+
+    This should be called at the very end of minimization to remove
+    unnecessary arguments like -Q (when imports have been inlined),
+    -w (warning flags), -top (by wrapping in Module), etc.
+    """
+    env["log"](
+        "\nI will now attempt to minimize the command-line arguments..."
+    )
+    coqc_help = get_coqc_help(env["coqc"], **env)
+    contents = read_from_file(output_file_name)
+
+    def test_file_works(test_contents, coqc_args):
+        """Test if the file still produces the expected error/success with the given args."""
+        output, cmds, retcode, runtime, peak_rss_kb = diagnose_error.get_coq_output(
+            env["coqc"],
+            coqc_args,
+            test_contents,
+            env["timeout"],
+            cwd=env["base_dir"],
+            is_coqtop=env["coqc_is_coqtop"],
+            verbose_base=2,
+            ocamlpath=env["nonpassing_ocamlpath"],
+            coqchk_prog=env["coqchk"],
+            coqchk_prog_args=env["coqchk_args"],
+            **env,
+        )
+        if not env["should_succeed"]:
+            if not diagnose_error.has_error(output, env["error_reg_string"]):
+                return False
+        else:
+            if diagnose_error.has_error(output):
+                return False
+
+        # Check passing coqc if needed
+        if env.get("passing_coqc"):
+            passing_output, _cmds, _retcode, _runtime, _peak_rss_kb = (
+                diagnose_error.get_coq_output(
+                    env["passing_coqc"],
+                    env["passing_coqc_args"],
+                    test_contents,
+                    env["passing_timeout"],
+                    cwd=env["passing_base_dir"],
+                    is_coqtop=env["passing_coqc_is_coqtop"],
+                    verbose_base=2,
+                    ocamlpath=env["passing_ocamlpath"],
+                    coqchk_prog=env.get("passing_coqchk"),
+                    coqchk_prog_args=env.get("passing_coqchk_args", ()),
+                    **env,
+                )
+            )
+            if diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(
+                passing_output
+            ):
+                return False
+
+        return True
+
+    # Group args into logical units (e.g., ("-Q", "dir", "lib") as one group)
+    grouped_args = group_coq_args(env["coqc_args"], coqc_help)
+
+    # Try removing each group one at a time
+    changed = True
+    while changed:
+        changed = False
+        i = 0
+        while i < len(grouped_args):
+            group = grouped_args[i]
+            # Create args without this group
+            remaining_groups = grouped_args[:i] + grouped_args[i + 1 :]
+            reduced_args = tuple(arg for g in remaining_groups for arg in g)
+
+            env["log"](
+                "Trying to remove argument%s %s..."
+                % ("s" if len(group) > 1 else "", " ".join(group)),
+                level=2,
+            )
+
+            if test_file_works(contents, reduced_args):
+                env["log"](
+                    "Successfully removed argument%s %s"
+                    % ("s" if len(group) > 1 else "", " ".join(group))
+                )
+                grouped_args = remaining_groups
+                changed = True
+                # don't increment i, try the next group at the same index
+            else:
+                i += 1
+
+    # Try to eliminate -top by wrapping contents in a Module
+    top_groups = [(i, g) for i, g in enumerate(grouped_args) if g[0] == "-top"]
+    if top_groups:
+        top_idx, top_group = top_groups[0]
+        top_name = top_group[1]
+        remaining_groups = [g for j, g in enumerate(grouped_args) if j != top_idx]
+        reduced_args = tuple(arg for g in remaining_groups for arg in g)
+
+        # Try wrapping the actual Coq code in Module TopName. ... End TopName.
+        stripped_contents = strip_coq_prog_args(contents)
+        # Find the end of any leading comments/headers to insert Module after them
+        wrapped_contents = (
+            "Module %s.\n%s\nEnd %s.\n" % (top_name, stripped_contents, top_name)
+        )
+
+        env["log"](
+            "Trying to replace -top %s with Module %s wrapper..."
+            % (top_name, top_name),
+            level=2,
+        )
+
+        if test_file_works(wrapped_contents, reduced_args):
+            env["log"](
+                "Successfully replaced -top %s with Module %s wrapper"
+                % (top_name, top_name)
+            )
+            grouped_args = remaining_groups
+            contents = wrapped_contents
+
+    # Update env with the minimized args
+    new_args = tuple(arg for g in grouped_args for arg in g)
+    if new_args != env["coqc_args"]:
+        env["coqc_args"] = new_args
+        # Rewrite the file with the new header
+        env["header_dict"] = get_header_dict(contents, **env)
+        new_file_contents = prepend_header(contents, **env)
+        write_to_file(output_file_name, new_file_contents)
+        env["log"]("Updated output file with minimized arguments")
+    else:
+        env["log"]("No arguments could be removed")
+
+
 def minimize_file(
     output_file_name,
     die=default_on_fatal,
@@ -4380,6 +4524,7 @@ def main():
         "max_mem_as_multiplier": max_mem_as_multiplier,
         "cgroup": args.cgroup,
         "mem_limit_method": args.mem_limit_method,
+        "minimize_args": args.minimize_args,
     }
 
     try:
@@ -4828,6 +4973,11 @@ def main():
             run_minimization_routine(**env)
 
             env["log"]("\nCompleted second minimization pass.")
+
+        # At the very end of minimization, try to remove unnecessary
+        # command-line arguments
+        if env["minimize_args"]:
+            try_minimize_coqc_args(output_file_name, **env)
 
     except EOFError:
         env["log"](traceback.format_exc(), level=LOG_ALWAYS)
