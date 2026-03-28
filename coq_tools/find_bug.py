@@ -3442,11 +3442,40 @@ def try_minimize_coqc_args(output_file_name, **env):
         remaining_groups = [g for j, g in enumerate(grouped_args) if j != top_idx]
         reduced_args = tuple(arg for g in remaining_groups for arg in g)
 
-        # Try wrapping the actual Coq code in Module TopName. ... End TopName.
-        stripped_contents = strip_coq_prog_args(contents)
-        # Find the end of any leading comments/headers to insert Module after them
+        # Strip the emacs-style header and the dynamic/static headers from
+        # contents so they can be re-added by prepend_header after wrapping.
+        # prepend_header strips the emacs header and leading comment headers
+        # only if they're at the beginning of the file.  To avoid duplicate
+        # headers after wrapping, we strip them here, wrap the code, and
+        # prepend_header will add them back.
+        raw_contents = strip_coq_prog_args(contents)
+        # Strip dynamic header if present at the start
+        dynamic_header = env.get("dynamic_header", "")
+        if (
+            dynamic_header[:2] == "(*"
+            and dynamic_header[-2:] == "*)"
+            and "*)" not in dynamic_header[2:-2]
+        ):
+            pre_header = dynamic_header[: dynamic_header.index("%")]
+            if raw_contents[: len(pre_header)] == pre_header:
+                raw_contents = raw_contents[raw_contents.index("*)") + 2 :]
+                if raw_contents and raw_contents[0] == "\n":
+                    raw_contents = raw_contents[1:]
+        # Strip static header if present at the start
+        header = env.get("header", "")
+        if (
+            header[:2] == "(*"
+            and header[-2:] == "*)"
+            and "*)" not in header[2:-2]
+        ):
+            pre_header = header[: header.index("%")]
+            if raw_contents[: len(pre_header)] == pre_header:
+                raw_contents = raw_contents[raw_contents.index("*)") + 2 :]
+                if raw_contents and raw_contents[0] == "\n":
+                    raw_contents = raw_contents[1:]
+
         wrapped_contents = (
-            "Module %s.\n%s\nEnd %s.\n" % (top_name, stripped_contents, top_name)
+            "Module %s.\n%s\nEnd %s.\n" % (top_name, raw_contents.strip(), top_name)
         )
 
         env["log"](
