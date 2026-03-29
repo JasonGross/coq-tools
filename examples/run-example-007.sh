@@ -3,7 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 N="${0##*-}"; N="${N%.sh}"
 cd "$DIR/example_${N}" || exit $?
 . "$DIR/init-settings.sh"
-EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-minimize-args" "--no-try-all-inlining-and-minimization-again-at-end" "$@")
 PS4='$ '
 set -x
 find_bug --no-minimize-before-inlining A-dash.v bug_A.v "${EXTRA_ARGS[@]}" || exit $?
