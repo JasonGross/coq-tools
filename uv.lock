@@ -48,7 +48,7 @@ all = [
     { name = "pytest", version = "8.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "pytest", version = "9.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "pytest-doctestplus", version = "0.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "pytest-doctestplus", version = "0.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
     { name = "pytest-doctestplus", version = "1.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "pytest-doctestplus", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "resource" },
@@ -58,7 +58,7 @@ test = [
     { name = "pytest", version = "8.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "pytest", version = "9.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "pytest-doctestplus", version = "0.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "pytest-doctestplus", version = "0.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
     { name = "pytest-doctestplus", version = "1.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "pytest-doctestplus", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "resource" },
@@ -330,31 +330,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pip"
-version = "21.3.1"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.6.8' and python_full_version < '3.7'",
-    "python_full_version < '3.6.8'",
-]
-sdist = { url = "https://files.pythonhosted.org/packages/da/f6/c83229dcc3635cdeb51874184241a9508ada15d8baa337a41093fab58011/pip-21.3.1.tar.gz", hash = "sha256:fd11ba3d0fdb4c07fbc5ecbba0b1b719809420f25038f8ee3cd913d3faa3033a", size = 1731517, upload-time = "2021-10-22T15:57:12.739Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/6d/6463d49a933f547439d6b5b98b46af8742cc03ae83543e4d7688c2420f8b/pip-21.3.1-py3-none-any.whl", hash = "sha256:deaf32dcd9ab821e359cd8330786bcd077604b5c5730c0b096eda46f95c24a2d", size = 1723581, upload-time = "2021-10-22T15:57:09.325Z" },
-]
-
-[[package]]
-name = "pip"
-version = "24.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version == '3.7.*'",
-]
-sdist = { url = "https://files.pythonhosted.org/packages/94/59/6638090c25e9bc4ce0c42817b5a234e183872a1129735a9330c472cc2056/pip-24.0.tar.gz", hash = "sha256:ea9bd1a847e8c5774a5777bb398c19e80bcd4e2aa16a4b301b718fe6f593aba2", size = 2132709, upload-time = "2024-02-03T09:53:18.999Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/6a/19e9fe04fca059ccf770861c7d5721ab4c2aebc539889e97c7977528a53b/pip-24.0-py3-none-any.whl", hash = "sha256:ba0d021a166865d2265246961bec0152ff124de910c5cc39f1156ce3fa7c69dc", size = 2110226, upload-time = "2024-02-03T09:53:09.575Z" },
-]
-
-[[package]]
 name = "pkgutil-resolve-name"
 version = "1.3.10"
 source = { registry = "https://pypi.org/simple" }
@@ -580,7 +555,7 @@ wheels = [
 
 [[package]]
 name = "pytest-doctestplus"
-version = "0.8.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version == '3.7.*'",
@@ -588,11 +563,13 @@ resolution-markers = [
     "python_full_version < '3.6.8'",
 ]
 dependencies = [
-    { name = "pip", version = "21.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.7'" },
-    { name = "pip", version = "24.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.7.*'" },
     { name = "pytest", version = "4.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "six", marker = "python_full_version < '3.8'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/53/0d/23d7f503f1d219bbd66987371eaa4c38149742ed4cdae9dbe6a5576655a0/pytest-doctestplus-0.8.0.tar.gz", hash = "sha256:fb083925a17ce636f33997c275f61123e63372c1db11fefac1e991ed25a4ca37", size = 27489, upload-time = "2020-07-31T21:05:10.823Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/d1/c0e41364a9ff2e6f302767e966c07a628a2b2ab0760f9aae94a6fb92fdac/pytest-doctestplus-0.5.0.tar.gz", hash = "sha256:41386187b9261cd59a3ffe4cf9df58d517288a1d3f11d96749b39b4e38b0a02c", size = 26945, upload-time = "2019-11-15T21:29:58.62Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/78/fdea656cc5736bd56c94b87f51c19f6da4931869a0d7eaf2fc325166a606/pytest_doctestplus-0.5.0-py2.py3-none-any.whl", hash = "sha256:426ec0ef0d3ee84faea72b4530bfb87c2aa9204c39b91b775b7714f9caf5978b", size = 17918, upload-time = "2019-11-15T21:29:56.48Z" },
+]
 
 [[package]]
 name = "pytest-doctestplus"
