@@ -14,7 +14,7 @@ EXAMPLE_DIRECTORY="example_$N/example_$N"
 EXAMPLE_INPUT="example_$N.v"
 EXAMPLE_OUTPUT="bug_$N.v"
 COQC_EXTRA_ARGS=(-Q ../foo/bar qux)
-EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "${COQC_EXTRA_ARGS[@]}" "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-minimize-args" "${COQC_EXTRA_ARGS[@]}" "$@")
 FILES_TO_REMOVE="../foo/bar/A.vo ../foo/bar/A.glob"
 EXTRA_FILES="../foo/bar/A.v"
 ##########################################################

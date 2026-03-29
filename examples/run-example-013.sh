@@ -21,7 +21,7 @@ cd "$DIR/$EXAMPLE_DIRECTORY" || exit $?
 
 # Initialize common settings like the version of python
 . "$DIR/init-settings.sh"
-EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "$@")
+EXTRA_ARGS=("--faster-skip-repeat-edit-suffixes" "--no-minimize-args" "$@")
 
 # Set up bash to be verbose about displaying the commands run
 PS4='$ '
