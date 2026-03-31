@@ -264,6 +264,9 @@ def make_reg_string(output, strict_whitespace=False):
             re_escape(error_string),
         )
         re_string = re.sub(r"(\s)[^\s]+?\.([0-9]+)", r"\1[^\\s]+?\\.\2", re_string)
+        re_string = re.sub(
+            r"(?<=\s)\w+(?:\\\.\w+)+", r"[A-Za-z_\\d\\.]+", re_string
+        )
     elif "Unsatisfied constraints" in error_string:
         re_string = re.sub(
             r"Error:\\ Unsatisfied\\ constraints:.*(?:\n.+)*.*\\\(maybe\\ a\\ bugged\\ tactic\\\)",
