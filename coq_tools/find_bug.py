@@ -1258,9 +1258,8 @@ def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwa
         header_dict["old_header"] = "original input"
     use_header = (dynamic_header + "\n" + header) % header_dict
     escaped_coq_prog_args = escape_coq_prog_args(kwargs["coqc_args"])
-    coq_prog_args = '(* -*- mode: coq; coq-prog-args: (%s) -*- *)\n' % (
-        '"-emacs" %s' % escaped_coq_prog_args if escaped_coq_prog_args else ""
-    )
+    inner_args = '"-emacs" %s' % escaped_coq_prog_args if escaped_coq_prog_args else ""
+    coq_prog_args = '(* -*- mode: coq; coq-prog-args: (%s) -*- *)\n' % inner_args
     ## de-duplicate things in a list
     ## XXX This is a hack to deal with things like "from x lines to y lines, from x lines to y lines"
     # if use_header[-3:] == ' *)':
