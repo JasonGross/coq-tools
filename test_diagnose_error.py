@@ -91,3 +91,5 @@ class TestMakeRegStringUniverseInconsistency:
         assert re.search(reg, output)
         # 'because' clause should be replaced with .*
         assert "blah" not in reg
+        output2 = output.replace("blah blah", "different reason here")
+        assert re.search(reg, output2)
