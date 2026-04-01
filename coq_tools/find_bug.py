@@ -1191,7 +1191,7 @@ def unescape_coq_prog_args(coq_prog_args):
     return tuple(ret)
 
 
-COQ_PROG_ARGS_REG = re.compile(r"coq-prog-args\s*:\s*\(([^\)]+)\)")
+COQ_PROG_ARGS_REG = re.compile(r"coq-prog-args\s*:\s*\(([^\)]*)\)")
 
 
 def get_coq_prog_args(contents):
@@ -1257,12 +1257,9 @@ def prepend_header(contents, dynamic_header="", header="", header_dict={}, **kwa
     if "old_header" not in header_dict.keys():
         header_dict["old_header"] = "original input"
     use_header = (dynamic_header + "\n" + header) % header_dict
-    coq_prog_args = (
-        '(* -*- mode: coq; coq-prog-args: ("-emacs" %s) -*- *)\n'
-        % escape_coq_prog_args(kwargs["coqc_args"])
-        if len(kwargs["coqc_args"]) > 0
-        else ""
-    )
+    escaped_coq_prog_args = escape_coq_prog_args(kwargs["coqc_args"])
+    inner_args = '"-emacs" %s' % escaped_coq_prog_args if escaped_coq_prog_args else ""
+    coq_prog_args = '(* -*- mode: coq; coq-prog-args: (%s) -*- *)\n' % inner_args
     ## de-duplicate things in a list
     ## XXX This is a hack to deal with things like "from x lines to y lines, from x lines to y lines"
     # if use_header[-3:] == ' *)':
