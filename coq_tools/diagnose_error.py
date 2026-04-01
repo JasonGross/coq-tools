@@ -265,7 +265,11 @@ def make_reg_string(output, strict_whitespace=False):
         )
         re_string = re.sub(r"(\s)[^\s]+?\.([0-9]+)", r"\1[^\\s]+?\\.\2", re_string)
         re_string = re.sub(
-            r"(?<=\s)\w+(?:\\\.\w+)+", r"[A-Za-z_\\d\\.]+", re_string
+            r"([Uu]niverse\\ inconsistency(?::|\\.)*)([\s\S]*)",
+            lambda m: m.group(1) + re.sub(
+                r"\w+(?:\\\.\w+)+", r"[A-Za-z_\\d\\.]+", m.group(2)
+            ),
+            re_string,
         )
     elif "Unsatisfied constraints" in error_string:
         re_string = re.sub(
