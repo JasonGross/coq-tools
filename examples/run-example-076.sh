@@ -77,11 +77,16 @@ find_bug "$EXAMPLE_INPUT" "$EXAMPLE_OUTPUT" "${EXTRA_ARGS[@]}" || exit $?
 
 ######################################################################
 # Verify that the -w argument was removed from the output file
-# (it's unnecessary for reproducing the error).
-# The output file should NOT contain a coq-prog-args line with -w,
-# or should not have a coq-prog-args line at all.
+# (it's unnecessary for reproducing the error), while preserving
+# the empty coq-prog-args header line.
 if "$GREP" -q 'coq-prog-args.*"-w"' "$EXAMPLE_OUTPUT"; then
     echo "FAIL: -w argument was not minimized away from the output file"
+    echo "Output file contents:"
+    cat "$EXAMPLE_OUTPUT"
+    exit 1
+fi
+if ! "$GREP" -q 'coq-prog-args: ()' "$EXAMPLE_OUTPUT"; then
+    echo "FAIL: empty coq-prog-args header was not preserved in the output file"
     echo "Output file contents:"
     cat "$EXAMPLE_OUTPUT"
     exit 1
