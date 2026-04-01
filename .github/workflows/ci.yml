@@ -60,6 +60,12 @@ jobs:
           startGroup 'install package Python deps'
           python -m pip install -r requirements.txt
           endGroup
+          startGroup 'install test Python deps'
+          python -m pip install pytest
+          endGroup
+          startGroup 'make pytest'
+          make pytest PYTHON3=python
+          endGroup
           echo '::remove-matcher owner=coq-problem-matcher::'
           if [ "${{ matrix.test-location }}" == "installed" ]; then
             startGroup 'install package building deps'
@@ -140,6 +146,10 @@ jobs:
     - name: make doctests
       run: make doctests PYTHON3=python
       if: ${{ matrix.python-version != '2.7' }}
+    - name: install pytest
+      run: python -m pip install pytest
+    - name: make pytest
+      run: make pytest PYTHON3=python
     - name: install package building deps (pip)
       run: python -m pip install build wheel twine
       if: ${{ matrix.test-location == 'installed' }}

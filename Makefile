@@ -49,6 +49,10 @@ endef
 
 $(foreach m,$(DOCTEST_MODULES),$(eval $(call add_target,doctests,$(m),$(PYTHON3) -m coq_tools.$(m))))
 
+.PHONY: pytest
+pytest:
+	$(PYTHON3) -m pytest tests/
+
 MAIN_FILES_SH = git grep --name-only 'def main' 'coq_tools/*.py'
 MAIN_MODULES = $(sort $(patsubst coq_tools/%.py,%,$(shell $(MAIN_FILES_SH))))
 
