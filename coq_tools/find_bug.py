@@ -3354,52 +3354,6 @@ def try_minimize_coqc_args(output_file_name, **env):
     coqc_help = get_coqc_help(env["coqc"], **env)
     contents = read_from_file(output_file_name)
 
-    def test_file_works(test_contents, coqc_args):
-        """Test if the file still produces the expected error/success with the given args."""
-        output, cmds, retcode, runtime, peak_rss_kb = diagnose_error.get_coq_output(
-            env["coqc"],
-            coqc_args,
-            test_contents,
-            env["timeout"],
-            cwd=env["base_dir"],
-            is_coqtop=env["coqc_is_coqtop"],
-            verbose_base=2,
-            ocamlpath=env["nonpassing_ocamlpath"],
-            coqchk_prog=env["coqchk"],
-            coqchk_prog_args=env["coqchk_args"],
-            **env,
-        )
-        if not env["should_succeed"]:
-            if not diagnose_error.has_error(output, env["error_reg_string"]):
-                return False
-        else:
-            if diagnose_error.has_error(output):
-                return False
-
-        # Check passing coqc if needed
-        if env.get("passing_coqc"):
-            passing_output, _cmds, _retcode, _runtime, _peak_rss_kb = (
-                diagnose_error.get_coq_output(
-                    env["passing_coqc"],
-                    env["passing_coqc_args"],
-                    test_contents,
-                    env["passing_timeout"],
-                    cwd=env["passing_base_dir"],
-                    is_coqtop=env["passing_coqc_is_coqtop"],
-                    verbose_base=2,
-                    ocamlpath=env["passing_ocamlpath"],
-                    coqchk_prog=env.get("passing_coqchk"),
-                    coqchk_prog_args=env.get("passing_coqchk_args", ()),
-                    **env,
-                )
-            )
-            if diagnose_error.has_error(passing_output) or diagnose_error.is_timeout(
-                passing_output
-            ):
-                return False
-
-        return True
-
     # Group args into logical units (e.g., ("-Q", "dir", "lib") as one group)
     grouped_args = group_coq_args(env["coqc_args"], coqc_help)
 
@@ -3414,17 +3368,17 @@ def try_minimize_coqc_args(output_file_name, **env):
             remaining_groups = grouped_args[:i] + grouped_args[i + 1 :]
             reduced_args = tuple(arg for g in remaining_groups for arg in g)
 
-            env["log"](
-                "Trying to remove argument%s %s..."
+            if check_change_and_write_to_file(
+                "",
+                contents,
+                output_file_name,
+                success_message="Successfully removed argument%s %s"
                 % ("s" if len(group) > 1 else "", " ".join(group)),
-                level=2,
-            )
-
-            if test_file_works(contents, reduced_args):
-                env["log"](
-                    "Successfully removed argument%s %s"
-                    % ("s" if len(group) > 1 else "", " ".join(group))
-                )
+                failure_description="remove argument%s %s and preserve the error"
+                % ("s" if len(group) > 1 else "", " ".join(group)),
+                verbose_base=2,
+                **dict(env, coqc_args=reduced_args),
+            ):
                 grouped_args = remaining_groups
                 changed = True
                 # don't increment i, try the next group at the same index
@@ -3475,17 +3429,17 @@ def try_minimize_coqc_args(output_file_name, **env):
             "Module %s.\n%s\nEnd %s.\n" % (top_name, raw_contents.strip(), top_name)
         )
 
-        env["log"](
-            "Trying to replace -top %s with Module %s wrapper..."
+        if check_change_and_write_to_file(
+            contents,
+            wrapped_contents,
+            output_file_name,
+            success_message="Successfully replaced -top %s with Module %s wrapper"
             % (top_name, top_name),
-            level=2,
-        )
-
-        if test_file_works(wrapped_contents, reduced_args):
-            env["log"](
-                "Successfully replaced -top %s with Module %s wrapper"
-                % (top_name, top_name)
-            )
+            failure_description="replace -top %s with Module %s wrapper"
+            % (top_name, top_name),
+            verbose_base=2,
+            **dict(env, coqc_args=reduced_args),
+        ):
             grouped_args = remaining_groups
             contents = wrapped_contents
 
