@@ -86,8 +86,12 @@ def get_coqc_help(coqc_prog, **kwargs):
 
 def get_coqchk_help(coqchk_prog, **kwargs):
     assert isinstance(coqchk_prog, tuple), coqchk_prog
-    (stdout, _stderr), _rc = subprocess_Popen_memoized([*coqchk_prog, "-h"], **kwargs)
-    return util.s(stdout).strip()
+    # coqchk does not accept `-q --help`; its option is `-h`, and it prints its
+    # usage to stderr rather than stdout, so we must capture and include stderr.
+    (stdout, stderr), _rc = subprocess_Popen_memoized(
+        [*coqchk_prog, "-h"], stderr=subprocess.PIPE, **kwargs
+    )
+    return (util.s(stdout) + "\n" + util.s(stderr)).strip()
 
 
 def coqlib_args(coqc_prog_coqlib=None):

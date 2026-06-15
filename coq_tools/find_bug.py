@@ -26,6 +26,7 @@ from .coq_version import (
     get_coq_native_compiler_ondemand_fragment,
     get_coqc_coqlib,
     get_coqc_help,
+    get_coqchk_help,
     get_coqc_version,
     get_coqtop_version,
     group_coq_args,
@@ -4790,7 +4791,14 @@ def main():
             else ()
         ):
             coqc_prog_help = get_coqc_help(coqc_prog, **env)
-            coqtop_prog_help = get_coqc_help(coqtop_prog, **env)
+            # coqchk has its own option set and does not accept `-q --help`, so
+            # we must query it with the coqchk-specific helper; otherwise its
+            # help comes back empty and shared options like -Q/-R/-I get
+            # mistakenly stripped as "coqc-only".
+            if "coqchk" in coqprog:
+                coqtop_prog_help = get_coqchk_help(coqtop_prog, **env)
+            else:
+                coqtop_prog_help = get_coqc_help(coqtop_prog, **env)
             # we want to skip any arguments that are recognized by coqc but not coqtop
             recognized_args, unrecognized_args = group_coq_args_split_recognized(
                 env[args_name], coqtop_prog_help
