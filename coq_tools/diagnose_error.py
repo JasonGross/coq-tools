@@ -705,7 +705,16 @@ def get_coq_output(
         % (returncode, util.s(stdout), util.s(stderr), runtime, peak_rss_kb),
         level=verbose_base + 1,
     )
-    if get_timeout(coqc_prog) is None and timeout_val is not None:
+    # When coqchk is also going to run, defer calibrating the timeout until
+    # after it finishes, so the timeout reflects the combined coqc+coqchk
+    # runtime (see below).  coqchk re-checks the whole transitive closure and is
+    # typically far slower than compiling the file, so a timeout based on coqc
+    # alone would cause every subsequent coqchk run to be killed.
+    if (
+        get_timeout(coqc_prog) is None
+        and timeout_val is not None
+        and coqchk_prog is None
+    ):
         set_timeout(coqc_prog, 3 * max((1, int(math.ceil(finish - start)))), **kwargs)
 
     combined_stdout = util.s(stdout)
@@ -766,6 +775,18 @@ def get_coq_output(
         )
         combined_runtime = runtime + chk_runtime
         combined_peak_rss_kb = max(peak_rss_kb, chk_peak_rss_kb)
+
+    # Calibrate the per-program timeout from the combined coqc+coqchk runtime
+    # when coqchk ran, so coqchk isn't killed on subsequent runs (see the note
+    # where the coqc-only timeout is set above).
+    if (
+        get_timeout(coqc_prog) is None
+        and timeout_val is not None
+        and coqchk_prog is not None
+    ):
+        set_timeout(
+            coqc_prog, 3 * max((1, int(math.ceil(combined_runtime)))), **kwargs
+        )
 
     # Now clean up after coqchk has run (or if coqchk wasn't needed)
     cleaner()
