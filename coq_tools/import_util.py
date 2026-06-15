@@ -787,6 +787,14 @@ def make_one_glob_file_helper(
         tempfile.gettempdir(), os.path.basename(v_file_root) + ".glob"
     )
     glob_file = v_file_root + ".glob"
+    # When the .v file lives in the system temp dir, tmp_glob_file and glob_file
+    # resolve to the same file.  In that case coqc dumps the glob directly to
+    # its final location, so we must neither "move" it onto itself nor delete it
+    # during cleanup below; doing the latter previously produced a spurious
+    # FileNotFoundError when the glob was read back.
+    glob_file_is_tmp_glob_file = os.path.realpath(tmp_glob_file) == os.path.realpath(
+        glob_file
+    )
     if get_coq_accepts_o(coqc_prog, **kwargs):
         cmds += ["-o", o_file]
     else:
@@ -838,13 +846,14 @@ def make_one_glob_file_helper(
                 )
             else:
                 kwargs["log"](f"Moving '{tmp_glob_file}' to '{glob_file}'")
-            try:
-                # N.B. We need shutil.move rather than os.rename because the source and destination may be on different filesystems
-                shutil.move(tmp_glob_file, glob_file)
-            except PermissionError as e:
-                kwargs["log"](
-                    f"Failed to move '{tmp_glob_file}' to '{glob_file}' ({e}), assuming that '{glob_file}' is up to date"
-                )
+            if not glob_file_is_tmp_glob_file:
+                try:
+                    # N.B. We need shutil.move rather than os.rename because the source and destination may be on different filesystems
+                    shutil.move(tmp_glob_file, glob_file)
+                except PermissionError as e:
+                    kwargs["log"](
+                        f"Failed to move '{tmp_glob_file}' to '{glob_file}' ({e}), assuming that '{glob_file}' is up to date"
+                    )
         elif os.path.exists(tmp_glob_file):
             kwargs["log"](
                 f"WARNING: Not clobbering '{glob_file}' ({os.path.getmtime(glob_file)}) because coqc failed on '{v_file}' ({os.path.getmtime(v_file_root + ext)})",
@@ -854,7 +863,10 @@ def make_one_glob_file_helper(
     finally:
         if os.path.exists(o_file):
             os.remove(o_file)
-        if os.path.exists(tmp_glob_file):
+        # Do not delete the glob if tmp_glob_file is the final glob_file (which
+        # happens when the .v file is in the system temp dir); that would remove
+        # the very glob we just generated.
+        if os.path.exists(tmp_glob_file) and not glob_file_is_tmp_glob_file:
             os.remove(tmp_glob_file)
 
 
