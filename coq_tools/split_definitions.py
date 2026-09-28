@@ -552,11 +552,20 @@ def split_statements_to_definitions_with_options(
     statements,
     **kwargs,
 ):
+    # Regex to detect Set/Unset statements that modify options
+    set_unset_reg = re.compile(
+        r"^\s*(?:Local\s+|Global\s+|Polymorphic\s+|Monomorphic\s+|#\[[^\]]+\]\s*)*(?:Set|Unset)(?:\s+|$)",
+        flags=re.MULTILINE,
+    )
     new_statements = []
     for statement in statements:
         # work around COQBUG(https://github.com/rocq-prover/rocq/issues/21091)
         parts = statement.strip().split()
-        if not (len(parts) >= 2 and parts[0] == "Proof" and parts[1].startswith("(")):
+        is_proof_with_parens = len(parts) >= 2 and parts[0] == "Proof" and parts[1].startswith("(")
+        is_set_unset = set_unset_reg.match(statement.strip())
+        # Don't inject Print Options. before Proof(...) or Set/Unset commands
+        # to avoid multiple timing info in the same prompt
+        if not is_proof_with_parens and not is_set_unset:
             new_statements.append("Print Options.")
         new_statements.append(statement)
     new_statements.append("Print Options.")
