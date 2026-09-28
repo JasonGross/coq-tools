@@ -207,7 +207,7 @@ def split_statements_to_definitions(
         re.MULTILINE,
     )
     proof_using_reg = re.compile(
-        r"^\s*<infomsg>\s*The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+)</infomsg>".replace(
+        r"^\s*<(?:infomsg|warning)>\s*(?:Warning: )?The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+?)(?:</infomsg>|\s*\[proof-using[^\]]*\]\s*</warning>)".replace(
             " ", r"\s+"
         ),
         flags=re.MULTILINE | re.DOTALL,
