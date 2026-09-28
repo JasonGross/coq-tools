@@ -206,11 +206,22 @@ def split_statements_to_definitions(
         r"^\s*(?:<infomsg>)?([^\s]+) is (?:defined|assumed|declared)(?:</infomsg>)?$",
         re.MULTILINE,
     )
-    proof_using_reg = re.compile(
-        r"^\s*<infomsg>\s*The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+)</infomsg>".replace(
-            " ", r"\s+"
+    proof_using_regs = (
+        # older Rocq: an info message
+        re.compile(
+            r"^\s*<infomsg>\s*The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+)</infomsg>".replace(
+                " ", r"\s+"
+            ),
+            flags=re.MULTILINE | re.DOTALL,
         ),
-        flags=re.MULTILINE | re.DOTALL,
+        # newer Rocq (rocq-prover/rocq#22532): the proof-using warning, possibly preceded by its location
+        re.compile(
+            r"^(?:(?:Toplevel input|File \"[^\"]*\", line [0-9]+), characters [0-9]+-[0-9]+:\n(?:>[^\n]*\n)*)?"
+            + r"\s*<warning>\s*Warning: The proof of ([^\s]+) should start with(?: one of the following commands)?: ([^<]+?) \[proof-using[^\]]*\]\s*</warning>".replace(
+                " ", r"\s+"
+            ),
+            flags=re.MULTILINE | re.DOTALL,
+        ),
     )
     # goals and definitions are on stdout, prompts are on stderr
     statements_string = "Set Suggest Proof Using.\n" + "\n".join(statements) + "\n\n"
@@ -250,11 +261,15 @@ def split_statements_to_definitions(
                 level=1,
             )
         full_response_text = chars_time_reg.sub(" ", prompt)
-        proof_using_match = proof_using_reg.findall(full_response_text)
+        proof_using_match = []
+        for proof_using_reg in proof_using_regs:
+            cur_proof_using_match = proof_using_reg.findall(full_response_text)
+            if cur_proof_using_match:
+                proof_using_match.extend(cur_proof_using_match)
+                full_response_text = proof_using_reg.sub(" ", full_response_text)
         proof_using_options = []
         proof_using_thm_name = None
         if proof_using_match:
-            full_response_text = proof_using_reg.sub(" ", full_response_text)
             if len(proof_using_match) > 1:
                 log(
                     "Warning: found multiple proof using info in %s: %s"
