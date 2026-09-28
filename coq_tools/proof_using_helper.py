@@ -166,7 +166,7 @@ FOUND_BUT_UNCHANGED = object()
 
 
 def get_indent(term):
-    return re.findall("^\s*", term)[0]
+    return re.findall(r"^\s*", term)[0]
 
 
 COMMENT = "comment"
@@ -213,7 +213,7 @@ def update_proof(name, before_match, match, after_match, filename, rest_id, sugg
         proof_part = after_match[: ending.start()]
         env["log"]("Inspecting proof: %s" % proof_part, level=2)
         if proof_part.count("Proof") == 1:
-            proof_match = re.search("Proof(?: using[^\.]*)?\.", proof_part)
+            proof_match = re.search(r"Proof(?: using[^\.]*)?\.", proof_part)
             if proof_match:
                 if proof_match.group() == suggestion:
                     return FOUND_BUT_UNCHANGED  # already correct

@@ -83,9 +83,9 @@ def set_leading_space(string, space_count):
 
 def strip_parens(string):
     last = string
-    cur = re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', "", last)
+    cur = re.sub(r'"[^"]+|{[^{}]+}|\([^\(\)]+\)', "", last)
     while cur != last:
-        last, cur = cur, re.sub('"[^"]+|{[^{}]+}|\([^\(\)]+\)', "", cur)
+        last, cur = cur, re.sub(r'"[^"]+|{[^{}]+}|\([^\(\)]+\)', "", cur)
     cur = re.sub(r'\slet\s[^\(\){}"]+?:=[^\(\){}"]+?\sin\s', "", cur, re.MULTILINE)
     return cur
 
